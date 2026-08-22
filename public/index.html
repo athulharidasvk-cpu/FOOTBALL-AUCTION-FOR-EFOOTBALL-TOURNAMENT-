@@ -1,1 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Football Auction</title>
 
+  <script src="/socket.io/socket.io.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #101418;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: auto;
+    }
+
+    h1 {
+      color: #4ade80;
+    }
+
+    input, button {
+      padding: 12px;
+      margin: 6px;
+      border-radius: 8px;
+      border: none;
+      font-size: 16px;
+    }
+
+    button {
+      background: #22c55e;
+      color: white;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background: #16a34a;
+    }
+
+    .card {
+      background: #1e293b;
+      padding: 20px;
+      margin-top: 20px;
+      border-radius: 15px;
+    }
+
+    #player {
+      font-size: 28px;
+      font-weight: bold;
+      margin: 15px;
+    }
+
+    #bid {
+      font-size: 22px;
+      color: #facc15;
+    }
+
+    #history {
+      text-align: left;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>⚽ Football Auction</h1>
+
+  <div class="card">
+
+    <input id="name" placeholder="Enter team name">
+
+    <br>
+
+    <button onclick="createRoom()">Create Auction</button>
+
+    <br>
+
+    <input id="room" placeholder="Room Code">
+
+    <button onclick="joinRoom()">Join Auction</button>
+
+    <div id="status">Not connected</div>
+
+  </div>
+
+  <div class="card">
+
+    <h2>Current Player</h2>
+
+    <div id="player">Waiting...</div>
+
+    <div id="bid">Bid: €0M</div>
+
+    <div id="timer">20</div>
+
+    <br>
+
+    <button onclick="bid()">💰 Bid +€5M</button>
+
+    <button onclick="startAuction()">▶ Start Auction</button>
+
+  </div>
+
+  <div class="card">
+
+    <h2>Auction History</h2>
+
+    <div id="history"></div>
+  </div>
+
+</div>
+
+<script>
+
+const socket = io();
+
+let roomCode = "";
+let myId = "";
+
+socket.on("connect", () => {
+  myId = socket.id;
+  document.getElementById("status").innerText =
+    "Connected ✅";
+});
+
+function createRoom() {
+
+  const name = document.getElementById("name").value || "Team";
+
+  socket.emit("create", { name }, (response) => {
+
+    if (!response.ok) {
+      alert(response.error);
+      return;
+    }
+
+    roomCode = response.code;
+
+    document.getElementById("room").value = roomCode;
+
+    document.getElementById("status").innerText =
+      "Room created: " + roomCode;
+  });
+}
+
+function joinRoom() {
+
+  const name = document.getElementById("name").value || "Team";
+  const code = document.getElementById("room").value.trim().toUpperCase();
+
+  if (!code) {
+    alert("Enter a room code");
+    return;
+  }
+
+  socket.emit("join", { code, name }, (response) => {
+
+    if (!response.ok) {
+      alert(response.error);
+      return;
+    }
+
+    roomCode = code;
+
+    document.getElementById("status").innerText =
+      "Joined room: " + code;
+  });
+}
+
+function startAuction() {
+
+  if (!roomCode) {
+    alert("Create or join a room first");
+    return;
+  }
+
+  socket.emit("start", {
+    code: roomCode
+  });
+}
+
+function bid() {
+
+  if (!roomCode) {
+    alert("Create or join a room first");
+    return;
+  }
+
+  socket.emit("bid", {
+    code: roomCode
+  });
+}
+
+socket.on("state", (data) => {
+
+  if (!data) return;
+
+  if (data.current) {
+
+    document.getElementById("player").innerText =
+      data.current.player[0];
+
+    document.getElementById("bid").innerText =
+      "Bid: €" + data.current.bid + "M";
+
+    document.getElementById("timer").innerText =
+      data.current.time;
+
+  } else {
+
+    document.getElementById("player").innerText =
+      "Waiting for next player";
+
+    document.getElementById("bid").innerText =
+      "Bid: €0M";
+  }
+
+  if (data.history) {
+
+    document.getElementById("history").innerHTML =
+      data.history.map(x => "<p>" + x + "</p>").join("");
+  }
+});
+
+socket.on("tick", (data) => {
+
+  document.getElementById("timer").innerText =
+    data.time;
+});
+
+socket.on("sold", (data) => {
+
+  alert(
+    "🔨 SOLD!\n\n" +
+    data.player[0] +
+    "\nBid: €" +
+    data.bid +
+    "M"
+  );
+});
+
+</script>
+
+</body>
+</html>

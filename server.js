@@ -1,120 +1,366 @@
+const express = require("express");
+const http = require("http");
+const { Server } = require("socket.io");
+const path = require("path");
 
-const express=require("express");
-const http=require("http");
-const {Server}=require("socket.io");
-const path=require("path");
-const app=express(), server=http.createServer(app), io=new Server(server);
-app.use(express.static(path.join(__dirname,"public")));
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 
-const players=[
-["Kylian Mbappé","Real Madrid","ST/LW",91,40,"Kylian Mbappe"],
-["Vinícius Júnior","Real Madrid","LW",90,35,"Vinicius Junior"],
-["Jude Bellingham","Real Madrid","CM",90,35,"Jude Bellingham"],
-["Federico Valverde","Real Madrid","CM",88,28,"Federico Valverde"],
-["Lamine Yamal","Barcelona","RW",89,30,"Lamine Yamal"],
-["Pedri","Barcelona","CM",88,28,"Pedri"],
-["Raphinha","Barcelona","RW",88,27,"Raphinha"],
-["Robert Lewandowski","Barcelona","ST",89,30,"Robert Lewandowski"],
-["Erling Haaland","Manchester City","ST",91,40,"Erling Haaland"],
-["Phil Foden","Manchester City","RW/AM",89,32,"Phil Foden"],
-["Rodri","Manchester City","DM",91,40,"Rodri"],
-["Bernardo Silva","Manchester City","AM",88,28,"Bernardo Silva"],
-["Mohamed Salah","Liverpool","RW",89,32,"Mohamed Salah"],
-["Virgil van Dijk","Liverpool","CB",89,30,"Virgil van Dijk"],
-["Alisson Becker","Liverpool","GK",89,25,"Alisson Becker"],
-["Bukayo Saka","Arsenal","RW",88,30,"Bukayo Saka"],
-["Martin Ødegaard","Arsenal","AM",89,30,"Martin Odegaard"],
-["Declan Rice","Arsenal","DM",87,25,"Declan Rice"],
-["William Saliba","Arsenal","CB",87,23,"William Saliba"],
-["Harry Kane","Bayern Munich","ST",90,35,"Harry Kane"],
-["Jamal Musiala","Bayern Munich","AM",90,35,"Jamal Musiala"],
-["Joshua Kimmich","Bayern Munich","DM",88,27,"Joshua Kimmich"],
-["Michael Olise","Bayern Munich","RW",86,20,"Michael Olise"],
-["Ousmane Dembélé","PSG","RW",88,28,"Ousmane Dembele"],
-["Khvicha Kvaratskhelia","PSG","LW",88,30,"Khvicha Kvaratskhelia"],
-["Achraf Hakimi","PSG","RB",87,23,"Achraf Hakimi"],
-["Marquinhos","PSG","CB",87,22,"Marquinhos"],
-["Lautaro Martínez","Inter Milan","ST",89,30,"Lautaro Martinez"],
-["Nicolò Barella","Inter Milan","CM",87,23,"Nicolo Barella"],
-["Alessandro Bastoni","Inter Milan","CB",87,22,"Alessandro Bastoni"],
-["Rafael Leão","AC Milan","LW",88,28,"Rafael Leao"],
-["Theo Hernández","AC Milan","LB",87,23,"Theo Hernandez"],
-["Mike Maignan","AC Milan","GK",87,22,"Mike Maignan"],
-["Christian Pulisic","AC Milan","RW",86,20,"Christian Pulisic"],
-["Dušan Vlahović","Juventus","ST",84,18,"Dusan Vlahovic"],
-["Kenan Yıldız","Juventus","AM/LW",82,12,"Kenan Yildiz"],
-["Nico Williams","Athletic Club","LW",86,22,"Nico Williams"],
-["Antoine Griezmann","Atlético Madrid","AM/ST",88,25,"Antoine Griezmann"]
-];
+const PORT = process.env.PORT || 3000;
 
-const rooms=new Map();
-const makeCode=()=>{let c; do{c=Math.random().toString(36).slice(2,7).toUpperCase()}while(rooms.has(c)); return c};
-function pub(r){return {code:r.code,started:r.started,host:r.host,players:r.players.map(({id,name,budget,squad})=>({id,name,budget,squad:squad.length})),current:r.current,history:r.history.slice(0,30),poolLeft:r.pool.length};}
-function broadcast(r){io.to(r.code).emit("state",pub(r));}
-function next(r){
- if(r.pool.length===0){r.started=false;r.current=null;broadcast(r);io.to(r.code).emit("finished");return}
- const p=r.pool.pop();
- r.current={player:p,bid:p[4],leader:null,time:20};
- clearInterval(r.timer);
- r.timer=setInterval(()=>{
-   if(!r.current)return;
-   r.current.time--;
-   io.to(r.code).emit("tick",{time:r.current.time});
-   if(r.current.time<=0) sell(r);
- },1000);
- broadcast(r);
+// ==========================
+// PLAYER DATABASE
+// ==========================
+const rawPlayers = require("./public/players.js");
+
+// Remove duplicate players automatically
+const players = rawPlayers.filter(
+  (player, index, array) =>
+    index === array.findIndex(
+      p => p.name.toLowerCase().trim() === player.name.toLowerCase().trim()
+    )
+);
+
+// ==========================
+// GAME DATA
+// ==========================
+const teams = {};
+const soldPlayers = new Set();
+
+let currentPlayer = null;
+let currentBid = 0;
+let currentBidder = null;
+let auctionRunning = false;
+let timer = 20;
+let timerInterval = null;
+
+// ==========================
+// STATIC FILES
+// ==========================
+app.use(express.static(path.join(__dirname, "public")));
+
+// ==========================
+// HELPER FUNCTIONS
+// ==========================
+
+function getAvailablePlayers() {
+  return players.filter(
+    player => !soldPlayers.has(player.name.toLowerCase().trim())
+  );
 }
-function sell(r){
- if(!r.current)return;
- clearInterval(r.timer);
- const c=r.current;
- if(c.leader){
-   const t=r.players.find(x=>x.id===c.leader);
-   t.budget-=c.bid;t.squad.push(c.player);
-   r.history.unshift(`🔨 SOLD — ${c.player[0]} to ${t.name} for €${c.bid}M`);
-   io.to(r.code).emit("sold",{player:c.player,bid:c.bid,team:t.name});
- }else r.history.unshift(`⚪ UNSOLD — ${c.player[0]}`);
- r.current=null; broadcast(r);
- setTimeout(()=>r.started&&next(r),2500);
+
+function getGameState() {
+  return {
+    teams,
+    currentPlayer,
+    currentBid,
+    currentBidder,
+    auctionRunning,
+    timer,
+    totalPlayers: players.length,
+    remainingPlayers: getAvailablePlayers().length
+  };
 }
-io.on("connection",s=>{
- s.on("create",({name},cb)=>{
-   const code=makeCode(),id=s.id;
-   const r={code,host:id,started:false,players:[{id,name:(name||"Team 1").slice(0,18),budget:200,squad:[]}],pool:[],current:null,history:[],timer:null};
-   rooms.set(code,r);s.join(code);cb({ok:true,code,id});broadcast(r);
- });
- s.on("join",({code,name},cb)=>{
-   const r=rooms.get((code||"").toUpperCase());
-   if(!r)return cb({ok:false,error:"Room not found"});
-   if(r.started)return cb({ok:false,error:"Auction already started"});
-   if(r.players.length>=12)return cb({ok:false,error:"Room is full"});
-   const id=s.id;r.players.push({id,name:(name||"Team").slice(0,18),budget:200,squad:[]});s.join(r.code);cb({ok:true,code:r.code,id});broadcast(r);
- });
- s.on("start",({code})=>{
-   const r=rooms.get(code); if(!r||s.id!==r.host||r.players.length<2)return;
-   r.started=true;r.pool=[...players].sort(()=>Math.random()-.5);r.history.unshift("🏁 Auction started");
-   next(r);
- });
- s.on("bid",({code})=>{
-   const r=rooms.get(code),t=r?.players.find(x=>x.id===s.id);
-   if(!r||!r.started||!r.current||!t)return;
-   const amount=r.current.bid+5;
-   if(t.budget<amount)return;
-   r.current.bid=amount;r.current.leader=t.id;
-   if(r.current.time<=5)r.current.time=5;
-   io.to(r.code).emit("tick",{time:r.current.time});
-   r.history.unshift(`💰 ${t.name} bid €${amount}M for ${r.current.player[0]}`);
-   broadcast(r);
- });
- s.on("disconnect",()=>{
-   for(const r of rooms.values()){
-     const i=r.players.findIndex(x=>x.id===s.id);
-     if(i>=0&&!r.started){
-       r.players.splice(i,1);
-       if(r.host===s.id)r.host=r.players[0]?.id;
-       broadcast(r);
-     }
-   }
- });
+
+function broadcastState() {
+  io.emit("gameState", getGameState());
+}
+
+function managerMessage(message) {
+  io.emit("managerMessage", message);
+}
+
+function stopTimer() {
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+  }
+}
+
+function startTimer() {
+  stopTimer();
+
+  timer = 20;
+
+  timerInterval = setInterval(() => {
+    timer--;
+
+    io.emit("timerUpdate", timer);
+
+    if (timer <= 0) {
+      finishAuction();
+    }
+  }, 1000);
+}
+
+function finishAuction() {
+  stopTimer();
+
+  if (!currentPlayer) return;
+
+  auctionRunning = false;
+
+  if (currentBidder && teams[currentBidder]) {
+    const team = teams[currentBidder];
+
+    team.budget -= currentBid;
+
+    team.players.push({
+      ...currentPlayer,
+      price: currentBid
+    });
+
+    soldPlayers.add(currentPlayer.name.toLowerCase().trim());
+
+    io.emit("playerSold", {
+      player: currentPlayer,
+      team: currentBidder,
+      price: currentBid
+    });
+
+    managerMessage(
+      `SOLD! ${currentPlayer.name} joins ${currentBidder} for ₹${currentBid}M! Great signing, manager!`
+    );
+  } else {
+    soldPlayers.add(currentPlayer.name.toLowerCase().trim());
+
+    io.emit("playerUnsold", {
+      player: currentPlayer
+    });
+
+    managerMessage(
+      `${currentPlayer.name} receives no bids and remains available outside this auction.`
+    );
+  }
+
+  currentPlayer = null;
+  currentBid = 0;
+  currentBidder = null;
+  timer = 0;
+
+  broadcastState();
+}
+
+// ==========================
+// SOCKET CONNECTION
+// ==========================
+
+io.on("connection", socket => {
+  console.log("Player connected:", socket.id);
+
+  // Send current game state
+  socket.emit("gameState", getGameState());
+
+  // --------------------------
+  // JOIN TEAM
+  // --------------------------
+  socket.on("joinTeam", data => {
+    const teamName = String(data?.teamName || "").trim();
+
+    if (!teamName) {
+      socket.emit("errorMessage", "Enter a valid team name.");
+      return;
+    }
+
+    // Check if name already exists
+    if (!teams[teamName]) {
+      teams[teamName] = {
+        budget: 500,
+        players: [],
+        socketId: socket.id
+      };
+
+      managerMessage(
+        `${teamName} has entered the auction! Use your budget wisely and build the strongest team possible.`
+      );
+    } else {
+      teams[teamName].socketId = socket.id;
+    }
+
+    socket.teamName = teamName;
+
+    broadcastState();
+  });
+
+  // --------------------------
+  // START RANDOM AUCTION
+  // --------------------------
+  socket.on("startAuction", () => {
+    if (auctionRunning) {
+      socket.emit("errorMessage", "An auction is already running.");
+      return;
+    }
+
+    const available = getAvailablePlayers();
+
+    if (available.length === 0) {
+      managerMessage("All players have been auctioned!");
+      return;
+    }
+
+    const randomIndex = Math.floor(
+      Math.random() * available.length
+    );
+
+    currentPlayer = available[randomIndex];
+
+    currentBid = currentPlayer.base || 5;
+    currentBidder = null;
+    auctionRunning = true;
+
+    io.emit("newPlayer", {
+      player: currentPlayer,
+      startingBid: currentBid
+    });
+
+    managerMessage(
+      `New player on the market: ${currentPlayer.name}! Starting bid is ₹${currentBid}M. Think carefully before spending your budget.`
+    );
+
+    startTimer();
+    broadcastState();
+  });
+
+  // --------------------------
+  // PLACE BID
+  // --------------------------
+  socket.on("placeBid", data => {
+    if (!auctionRunning || !currentPlayer) {
+      socket.emit("errorMessage", "No active auction.");
+      return;
+    }
+
+    const teamName = socket.teamName;
+
+    if (!teamName || !teams[teamName]) {
+      socket.emit("errorMessage", "Join a team before bidding.");
+      return;
+    }
+
+    const amount = Number(data?.amount);
+
+    if (!Number.isFinite(amount)) {
+      socket.emit("errorMessage", "Enter a valid bid.");
+      return;
+    }
+
+    if (amount <= currentBid) {
+      socket.emit(
+        "errorMessage",
+        `Your bid must be higher than ₹${currentBid}M.`
+      );
+      return;
+    }
+
+    if (amount > teams[teamName].budget) {
+      socket.emit(
+        "errorMessage",
+        `You only have ₹${teams[teamName].budget}M remaining.`
+      );
+      return;
+    }
+
+    currentBid = amount;
+    currentBidder = teamName;
+
+    // Reset timer after a bid
+    timer = 20;
+
+    io.emit("bidUpdate", {
+      currentBid,
+      currentBidder,
+      timer
+    });
+
+    // Manager reacts to expensive bids
+    const playerBase = currentPlayer.base || 5;
+    const teamBudget = teams[teamName].budget;
+
+    if (amount >= playerBase * 2.5) {
+      managerMessage(
+        `${teamName}, that's a huge amount for ${currentPlayer.name}! Don't spend all your money on one player — you still need a complete squad!`
+      );
+    }
+
+    if (amount >= teamBudget * 0.6) {
+      managerMessage(
+        `Manager warning to ${teamName}: you're about to spend more than 60% of your budget on one player. Choose wisely!`
+      );
+    }
+
+    broadcastState();
+  });
+
+  // --------------------------
+  // SKIP CURRENT PLAYER
+  // --------------------------
+  socket.on("skipPlayer", () => {
+    if (!auctionRunning || !currentPlayer) return;
+
+    managerMessage(
+      `${currentPlayer.name}'s auction has been skipped.`
+    );
+
+    soldPlayers.add(currentPlayer.name.toLowerCase().trim());
+
+    currentPlayer = null;
+    currentBid = 0;
+    currentBidder = null;
+    auctionRunning = false;
+    timer = 0;
+
+    stopTimer();
+    broadcastState();
+  });
+
+  // --------------------------
+  // RESET GAME
+  // --------------------------
+  socket.on("resetGame", () => {
+    stopTimer();
+
+    soldPlayers.clear();
+
+    for (const teamName in teams) {
+      teams[teamName].budget = 500;
+      teams[teamName].players = [];
+    }
+
+    currentPlayer = null;
+    currentBid = 0;
+    currentBidder = null;
+    auctionRunning = false;
+    timer = 20;
+
+    managerMessage(
+      "The auction has been reset! Every manager starts again with ₹500M."
+    );
+
+    broadcastState();
+  });
+
+  // --------------------------
+  // DISCONNECT
+  // --------------------------
+  socket.on("disconnect", () => {
+    console.log("Player disconnected:", socket.id);
+
+    if (
+      socket.teamName &&
+      teams[socket.teamName]
+    ) {
+      teams[socket.teamName].socketId = null;
+    }
+
+    broadcastState();
+  });
 });
-server.listen(process.env.PORT||3000,()=>console.log("Football Auction running on port "+(process.env.PORT||3000)));
+
+// ==========================
+// START SERVER
+// ==========================
+
+server.listen(PORT, () => {
+  console.log(`Football Auction Server running on port ${PORT}`);
+});

@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,636 +9,641 @@
 <script src="/socket.io/socket.io.js"></script>
 
 <style>
-
-* {
-  box-sizing: border-box;
+*{
+  box-sizing:border-box;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  font-family: Arial, Helvetica, sans-serif;
+:root{
+  --green:#22c55e;
+  --dark:#050807;
+  --panel:#0b1210;
+  --gold:#facc15;
+  --muted:#94a3b8;
+}
+
+body{
+  margin:0;
+  min-height:100vh;
   background:
-    radial-gradient(circle at top, #183b2a 0%, #07110d 45%, #030605 100%);
-  color: white;
+    radial-gradient(circle at top,#153d29 0%,#07100c 38%,#020403 100%);
+  color:white;
+  font-family:Arial,Helvetica,sans-serif;
 }
 
-.container {
-  width: 100%;
-  max-width: 1100px;
-  margin: auto;
-  padding: 20px;
+.container{
+  width:100%;
+  max-width:1200px;
+  margin:auto;
+  padding:15px;
 }
 
 /* HEADER */
 
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+  margin-bottom:15px;
 }
 
-.logo {
-  font-size: 25px;
-  font-weight: 900;
-  letter-spacing: 1px;
+.logo{
+  font-size:25px;
+  font-weight:900;
+  letter-spacing:1px;
 }
 
-.status {
-  background: rgba(0,255,120,.12);
-  border: 1px solid #22c55e;
-  padding: 8px 13px;
-  border-radius: 20px;
-  font-size: 13px;
+.status{
+  padding:8px 13px;
+  border-radius:20px;
+  background:#10251a;
+  border:1px solid var(--green);
+  font-size:12px;
 }
 
 /* PANELS */
 
-.panel {
-  background: rgba(10,20,16,.85);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 18px;
-  padding: 20px;
-  margin-bottom: 20px;
-  box-shadow: 0 15px 40px rgba(0,0,0,.35);
+.panel{
+  background:rgba(8,15,12,.92);
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  padding:18px;
+  margin-bottom:18px;
+  box-shadow:0 15px 45px rgba(0,0,0,.35);
 }
 
-h2 {
-  margin-top: 0;
+h2{
+  margin-top:0;
 }
 
-/* INPUTS */
+/* ROOM */
 
-input {
-  width: 100%;
-  max-width: 300px;
-  padding: 13px;
-  margin: 5px;
-  border: 1px solid #334155;
-  border-radius: 9px;
-  background: #0f172a;
-  color: white;
-  font-size: 15px;
+.room-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
 }
 
-button {
-  border: none;
-  padding: 13px 18px;
-  margin: 5px;
-  border-radius: 9px;
-  background: linear-gradient(135deg,#22c55e,#16a34a);
-  color: white;
-  font-weight: bold;
-  cursor: pointer;
+input{
+  width:100%;
+  padding:14px;
+  border-radius:10px;
+  border:1px solid #334155;
+  background:#0b1320;
+  color:white;
+  font-size:15px;
 }
 
-button:hover {
-  transform: translateY(-1px);
+button{
+  border:0;
+  border-radius:10px;
+  padding:13px 18px;
+  margin:5px 3px;
+  font-weight:800;
+  cursor:pointer;
+  background:linear-gradient(135deg,#22c55e,#15803d);
+  color:white;
 }
 
-button:active {
-  transform: scale(.97);
+button:active{
+  transform:scale(.97);
 }
 
-/* AUCTION AREA */
+.start{
+  background:linear-gradient(135deg,#facc15,#eab308);
+  color:#111;
+}
 
-.auction {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+/* MANAGER */
+
+.manager{
+  display:grid;
+  grid-template-columns:150px 1fr;
+  gap:18px;
+  align-items:center;
+
+  background:
+    linear-gradient(135deg,
+      rgba(31,41,55,.95),
+      rgba(9,18,14,.95));
+
+  border:1px solid #b18b27;
+}
+
+.manager-photo{
+  width:150px;
+  height:150px;
+  border-radius:15px;
+  object-fit:cover;
+  object-position:center;
+  border:2px solid #d4af37;
+  box-shadow:0 0 25px rgba(250,204,21,.2);
+}
+
+.manager-name{
+  color:#facc15;
+  font-size:13px;
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+.manager-message{
+  font-size:23px;
+  line-height:1.25;
+  font-weight:900;
+  margin:8px 0;
+}
+
+.manager-message span{
+  color:#facc15;
+}
+
+.manager-sub{
+  color:#cbd5e1;
+  line-height:1.5;
+}
+
+.advice-box{
+  margin-top:12px;
+  padding:12px;
+  border-radius:12px;
+  background:rgba(34,197,94,.10);
+  border-left:4px solid var(--green);
+}
+
+.advice-title{
+  color:#4ade80;
+  font-weight:900;
+  font-size:12px;
+}
+
+.warning-box{
+  margin-top:12px;
+  padding:12px;
+  border-radius:12px;
+  background:rgba(250,204,21,.10);
+  border-left:4px solid #facc15;
+}
+
+.warning-box strong{
+  color:#facc15;
+}
+
+/* ROOM STATUS */
+
+.room-status{
+  color:#94a3b8;
+  margin-bottom:0;
+}
+
+/* AUCTION */
+
+.auction{
+  text-align:center;
+}
+
+.auction-layout{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  gap:25px;
+  flex-wrap:wrap;
 }
 
 /* PLAYER CARD */
 
-.player-card {
+.player-card{
+  width:min(380px,94vw);
+  min-height:550px;
+  position:relative;
+  overflow:hidden;
 
-  width: min(370px, 92vw);
-  min-height: 540px;
-
-  position: relative;
-  overflow: hidden;
-
-  border-radius: 25px;
+  border-radius:28px;
 
   background:
-    radial-gradient(circle at 50% 35%, rgba(255,255,255,.2), transparent 25%),
-    linear-gradient(145deg,#0f5132,#06321f 45%,#020b07);
+    radial-gradient(circle at 50% 20%,
+      rgba(255,255,255,.18),
+      transparent 25%),
+    linear-gradient(145deg,
+      #12613b,
+      #06331f 45%,
+      #020806);
 
-  border: 2px solid #d7b85c;
+  border:2px solid #d6b94e;
 
   box-shadow:
-    0 0 20px rgba(255,205,70,.25),
+    0 0 25px rgba(250,204,21,.2),
     0 25px 70px rgba(0,0,0,.7);
-
-  transition: .35s;
 }
 
-.player-card.active {
-  animation: cardPulse 1.5s infinite alternate;
+.player-card.active{
+  animation:pulse 1.4s infinite alternate;
 }
 
-@keyframes cardPulse {
-
-  from {
+@keyframes pulse{
+  from{
     box-shadow:
-      0 0 15px rgba(255,215,70,.25),
+      0 0 20px rgba(250,204,21,.2),
       0 25px 70px rgba(0,0,0,.7);
   }
-
-  to {
+  to{
     box-shadow:
-      0 0 35px rgba(255,215,70,.8),
+      0 0 40px rgba(250,204,21,.55),
       0 25px 70px rgba(0,0,0,.8);
   }
-
 }
 
-/* CARD SHINE */
-
-.player-card::before {
-  content: "";
-  position: absolute;
-  width: 180%;
-  height: 100%;
-  top: -50%;
-  left: -120%;
-
-  background: linear-gradient(
+.player-card::before{
+  content:"";
+  position:absolute;
+  width:200%;
+  height:100%;
+  top:-50%;
+  left:-130%;
+  background:linear-gradient(
     120deg,
     transparent,
     rgba(255,255,255,.12),
     transparent
   );
-
-  transform: rotate(20deg);
-  animation: shine 5s infinite;
+  transform:rotate(20deg);
+  animation:shine 5s infinite;
 }
 
-@keyframes shine {
-
-  0% {
-    left: -120%;
-  }
-
-  40%,100% {
-    left: 130%;
-  }
-
+@keyframes shine{
+  0%{left:-130%}
+  45%,100%{left:130%}
 }
 
-/* CARD TOP */
-
-.card-top {
-  position: relative;
-  z-index: 2;
-
-  display: flex;
-  justify-content: space-between;
-
-  padding: 20px;
+.card-top{
+  position:relative;
+  z-index:2;
+  display:flex;
+  justify-content:space-between;
+  padding:20px;
+  text-align:left;
 }
 
-.rating {
-  font-size: 50px;
-  font-weight: 900;
-  line-height: .8;
+.rating{
+  font-size:50px;
+  font-weight:900;
+  line-height:.8;
 }
 
-.position {
-  font-size: 14px;
-  margin-top: 8px;
-  color: #d6d6d6;
+.position{
+  margin-top:8px;
+  color:#d1d5db;
+  font-size:13px;
+  font-weight:bold;
 }
 
-.style {
-  text-align: right;
-  font-size: 12px;
-  color: #f5d76e;
-  font-weight: bold;
+.style{
+  color:#facc15;
+  font-size:12px;
+  font-weight:900;
+  text-align:right;
+  max-width:120px;
 }
 
-/* PLAYER IMAGE */
-
-.player-photo {
-
-  position: relative;
-  z-index: 2;
-
-  height: 220px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 110px;
-  font-weight: 900;
-
-  color: rgba(255,255,255,.9);
-
-  text-shadow:
-    0 5px 15px black;
+.player-photo{
+  height:205px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  z-index:2;
 }
 
-.player-photo span {
-  background:
-    linear-gradient(180deg,#ffffff,#b7b7b7);
-
-  -webkit-background-clip: text;
-  color: transparent;
+.player-photo span{
+  font-size:90px;
+  font-weight:900;
+  color:white;
+  text-shadow:0 5px 20px black;
 }
 
-/* CARD INFO */
-
-.card-info {
-
-  position: relative;
-  z-index: 2;
-
-  padding: 0 22px;
+.card-info{
+  position:relative;
+  z-index:2;
+  padding:0 22px;
+  text-align:left;
 }
 
-.player-name {
-  font-size: 28px;
-  font-weight: 900;
-  text-transform: uppercase;
+.player-name{
+  font-size:27px;
+  font-weight:900;
+  text-transform:uppercase;
 }
 
-.club {
-  margin-top: 5px;
-  color: #cbd5e1;
-  font-size: 14px;
+.club{
+  margin-top:5px;
+  color:#cbd5e1;
+  font-size:14px;
 }
 
-/* STATS */
-
-.stats {
-
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
-
-  gap: 8px;
-
-  margin-top: 20px;
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+  margin-top:18px;
 }
 
-.stat {
-
-  background: rgba(0,0,0,.3);
-  border: 1px solid rgba(255,255,255,.08);
-
-  border-radius: 10px;
-
-  padding: 9px;
-
-  text-align: center;
+.stat{
+  background:rgba(0,0,0,.3);
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:9px;
+  padding:8px;
+  text-align:center;
 }
 
-.stat strong {
-  display: block;
-  font-size: 20px;
+.stat strong{
+  display:block;
+  font-size:18px;
 }
 
-.stat span {
-  font-size: 9px;
-  color: #94a3b8;
+.stat span{
+  font-size:8px;
+  color:#94a3b8;
 }
 
-/* BID */
-
-.bid-box {
-
-  position: relative;
-  z-index: 2;
-
-  margin: 20px;
-
-  padding: 14px;
-
-  text-align: center;
-
-  border-radius: 14px;
-
-  background:
-    linear-gradient(
-      135deg,
-      rgba(255,215,80,.2),
-      rgba(0,0,0,.3)
-    );
-
-  border: 1px solid #b8963e;
+.play-style{
+  margin-top:10px;
+  text-align:center;
+  padding:8px;
+  border-radius:8px;
+  background:rgba(250,204,21,.08);
+  border:1px solid rgba(250,204,21,.25);
+  color:#facc15;
+  font-size:11px;
+  font-weight:900;
 }
 
-.bid-label {
-  font-size: 11px;
-  color: #cbd5e1;
+.bid-box{
+  position:relative;
+  z-index:2;
+  margin:17px 20px;
+  padding:12px;
+  border-radius:13px;
+  border:1px solid #b8963e;
+  background:rgba(0,0,0,.25);
 }
 
-.bid-value {
-  font-size: 32px;
-  font-weight: 900;
-  color: #facc15;
+.bid-label{
+  font-size:10px;
+  color:#cbd5e1;
 }
 
-/* TIMER */
-
-.timer {
-
-  font-size: 40px;
-  font-weight: 900;
-
-  margin: 15px;
-
-  color: #4ade80;
+.bid-value{
+  color:#facc15;
+  font-size:31px;
+  font-weight:900;
 }
 
-/* BIDDING */
-
-.bid-button {
-  width: min(350px,90vw);
-  font-size: 20px;
-  padding: 17px;
-
-  background:
-    linear-gradient(135deg,#facc15,#eab308);
-
-  color: #111827;
+.timer{
+  font-size:42px;
+  font-weight:900;
+  color:#4ade80;
+  margin:12px;
 }
 
-.bid-button:hover {
-  box-shadow: 0 0 25px rgba(250,204,21,.5);
+.timer.danger{
+  color:#ef4444;
+  animation:timerPulse .5s infinite alternate;
+}
+
+@keyframes timerPulse{
+  from{transform:scale(1)}
+  to{transform:scale(1.08)}
+}
+
+.bid-button{
+  width:min(380px,94vw);
+  font-size:20px;
+  padding:17px;
+  background:linear-gradient(135deg,#facc15,#eab308);
+  color:#111;
+}
+
+/* TEAMS */
+
+.teams{
+  flex:1;
+  min-width:280px;
+  max-width:430px;
+}
+
+.team{
+  background:#0b1410;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:13px;
+  margin-bottom:9px;
+  padding:12px;
+  text-align:left;
+}
+
+.team-header{
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+}
+
+.team-name{
+  font-weight:900;
+}
+
+.budget{
+  color:#4ade80;
+  font-weight:900;
+}
+
+.squad-count{
+  color:#94a3b8;
+  font-size:12px;
+  margin-top:5px;
+}
+
+.budget.low{
+  color:#ef4444;
 }
 
 /* HISTORY */
 
-.history {
-  max-height: 250px;
-  overflow-y: auto;
+.history{
+  max-height:260px;
+  overflow:auto;
 }
 
-.history-item {
-
-  padding: 10px;
-
-  margin: 6px 0;
-
-  border-radius: 8px;
-
-  background: #111c17;
-
-  border-left: 3px solid #22c55e;
+.history-item{
+  padding:10px;
+  margin:5px 0;
+  border-radius:8px;
+  background:#0d1712;
+  border-left:3px solid #22c55e;
 }
 
 /* SOLD */
 
-.sold {
-
-  position: fixed;
-
-  inset: 0;
-
-  display: none;
-
-  align-items: center;
-  justify-content: center;
-
-  background: rgba(0,0,0,.8);
-
-  z-index: 100;
+.sold{
+  position:fixed;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background:rgba(0,0,0,.85);
+  z-index:1000;
 }
 
-.sold-box {
-
-  text-align: center;
-
-  background: #101b15;
-
-  border: 2px solid #facc15;
-
-  border-radius: 20px;
-
-  padding: 40px;
-
-  animation: soldPop .4s ease;
+.sold-box{
+  width:min(400px,90vw);
+  padding:35px;
+  text-align:center;
+  background:#0c1711;
+  border:2px solid #facc15;
+  border-radius:20px;
+  animation:pop .4s ease;
 }
 
-@keyframes soldPop {
-
-  from {
-    transform: scale(.5);
-    opacity: 0;
+@keyframes pop{
+  from{
+    transform:scale(.5);
+    opacity:0;
   }
-
-  to {
-    transform: scale(1);
-    opacity: 1;
+  to{
+    transform:scale(1);
+    opacity:1;
   }
-
 }
 
-.sold-title {
-
-  font-size: 50px;
-  font-weight: 900;
-  color: #facc15;
+.sold-title{
+  font-size:50px;
+  font-weight:900;
+  color:#facc15;
 }
 
 /* RESPONSIVE */
 
-@media(max-width:600px) {
+@media(max-width:650px){
 
-  .container {
-    padding: 12px;
+  .container{
+    padding:10px;
   }
 
-  .player-card {
-    min-height: 510px;
+  .logo{
+    font-size:19px;
   }
 
-  .rating {
-    font-size: 45px;
+  .manager{
+    grid-template-columns:105px 1fr;
+    padding:12px;
+    gap:12px;
   }
 
-  .player-name {
-    font-size: 24px;
+  .manager-photo{
+    width:105px;
+    height:105px;
   }
 
+  .manager-message{
+    font-size:16px;
+  }
+
+  .manager-sub{
+    font-size:12px;
+  }
+
+  .room-grid{
+    grid-template-columns:1fr;
+  }
+
+  .player-card{
+    min-height:520px;
+  }
+
+  .rating{
+    font-size:43px;
+  }
+
+  .player-name{
+    font-size:23px;
+  }
+
+  .stats{
+    grid-template-columns:repeat(4,1fr);
+  }
+
+  .stat strong{
+    font-size:16px;
+  }
 }
-
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-  <div class="header">
+<!-- HEADER -->
 
-    <div class="logo">
-      ⚽ FOOTBALL AUCTION
-    </div>
+<div class="header">
 
-    <div id="connection" class="status">
-      Connecting...
-    </div>
-
+  <div class="logo">
+    ⚽ FOOTBALL AUCTION
   </div>
 
-
-  <!-- ROOM -->
-
-  <div class="panel">
-
-    <h2>🏟️ Join Auction</h2>
-
-    <input
-      id="name"
-      placeholder="Your Team Name"
-    >
-
-    <input
-      id="room"
-      placeholder="Room Code"
-    >
-
-    <br>
-
-    <button onclick="createRoom()">
-      CREATE ROOM
-    </button>
-
-    <button onclick="joinRoom()">
-      JOIN ROOM
-    </button>
-
-    <button onclick="startAuction()">
-      ▶ START AUCTION
-    </button>
-
-    <p id="roomStatus">
-      Create a room or join an existing room.
-    </p>
-
+  <div id="connection" class="status">
+    🔄 CONNECTING
   </div>
 
+</div>
 
-  <!-- AUCTION -->
 
-  <div class="panel auction">
+<!-- MANAGER -->
 
-    <h2>🔥 LIVE AUCTION</h2>
+<div class="panel manager">
 
-    <div id="playerCard" class="player-card">
+  <img
+    src="/manager.png"
+    class="manager-photo"
+    alt="Football Manager"
+  >
 
-      <div class="card-top">
+  <div>
 
-        <div>
+    <div class="manager-name">
+      COACH ALEX MORGAN
+    </div>
 
-          <div id="rating" class="rating">
-            --
-          </div>
+    <div id="managerMessage" class="manager-message">
+      Build the best team you can with this budget.
+      <span>Make your choices wisely and beat them all!</span>
+    </div>
 
-          <div id="position" class="position">
-            --
-          </div>
+    <div class="manager-sub">
+      Every bid matters. A great team needs balance,
+      not just one superstar.
+    </div>
 
-        </div>
+    <div id="adviceBox" class="advice-box">
 
-        <div>
-
-          <div id="style" class="style">
-            WAITING
-          </div>
-
-        </div>
-
+      <div class="advice-title">
+        🧠 MANAGER'S ADVICE
       </div>
 
-
-      <div class="player-photo">
-
-        <span id="playerInitial">
-          ⚽
-        </span>
-
-      </div>
-
-
-      <div class="card-info">
-
-        <div id="playerName" class="player-name">
-          WAITING FOR PLAYER
-        </div>
-
-        <div id="club" class="club">
-          --
-        </div>
-
-
-        <div class="stats">
-
-          <div class="stat">
-            <strong id="stat1">--</strong>
-            <span>ATTACK</span>
-          </div>
-
-          <div class="stat">
-            <strong id="stat2">--</strong>
-            <span>PACE</span>
-          </div>
-
-          <div class="stat">
-            <strong id="stat3">--</strong>
-            <span>OVERALL</span>
-          </div>
-
-        </div>
-
-      </div>
-
-
-      <div class="bid-box">
-
-        <div class="bid-label">
-          CURRENT BID
-        </div>
-
-        <div id="bid" class="bid-value">
-          €0M
-        </div>
-
+      <div id="adviceText">
+        Save your money for the right players.
+        Build a balanced squad.
       </div>
 
     </div>
 
+    <div id="warningBox" class="warning-box" style="display:none">
 
-    <div id="timer" class="timer">
-      20
-    </div>
+      <strong>⚠️ THINK CAREFULLY</strong>
 
+      <div id="warningText">
+        You are spending a large part of your budget
+        on this player.
+      </div>
 
-    <button
-      class="bid-button"
-      onclick="bid()"
-    >
-      💰 BID +€5M
-    </button>
-
-  </div>
-
-
-  <!-- HISTORY -->
-
-  <div class="panel">
-
-    <h2>📜 Auction History</h2>
-
-    <div
-      id="history"
-      class="history"
-    >
-      No auction activity yet.
     </div>
 
   </div>
@@ -647,12 +651,202 @@ button:active {
 </div>
 
 
+<!-- ROOM -->
+
+<div class="panel">
+
+  <h2>🏟️ JOIN AUCTION</h2>
+
+  <div class="room-grid">
+
+    <input
+      id="name"
+      placeholder="Your Team Name"
+      maxlength="18"
+    >
+
+    <input
+      id="room"
+      placeholder="Room Code"
+      maxlength="5"
+    >
+
+  </div>
+
+  <button onclick="createRoom()">
+    CREATE ROOM
+  </button>
+
+  <button onclick="joinRoom()">
+    JOIN ROOM
+  </button>
+
+  <button class="start" onclick="startAuction()">
+    ▶ START AUCTION
+  </button>
+
+  <p id="roomStatus" class="room-status">
+    Create a room or join an existing room.
+  </p>
+
+</div>
+
+
+<!-- AUCTION -->
+
+<div class="panel auction">
+
+  <h2>🔥 LIVE PLAYER AUCTION</h2>
+
+  <div class="auction-layout">
+
+
+    <!-- PLAYER CARD -->
+
+    <div>
+
+      <div id="playerCard" class="player-card">
+
+        <div class="card-top">
+
+          <div>
+
+            <div id="rating" class="rating">
+              --
+            </div>
+
+            <div id="position" class="position">
+              --
+            </div>
+
+          </div>
+
+          <div id="style" class="style">
+            WAITING
+          </div>
+
+        </div>
+
+
+        <div class="player-photo">
+
+          <span id="playerInitial">
+            ⚽
+          </span>
+
+        </div>
+
+
+        <div class="card-info">
+
+          <div id="playerName" class="player-name">
+            WAITING FOR PLAYER
+          </div>
+
+          <div id="club" class="club">
+            --
+          </div>
+
+
+          <div class="stats">
+
+            <div class="stat">
+              <strong id="attack">--</strong>
+              <span>ATTACK</span>
+            </div>
+
+            <div class="stat">
+              <strong id="pace">--</strong>
+              <span>PACE</span>
+            </div>
+
+            <div class="stat">
+              <strong id="passing">--</strong>
+              <span>PASS</span>
+            </div>
+
+            <div class="stat">
+              <strong id="overall">--</strong>
+              <span>OVERALL</span>
+            </div>
+
+          </div>
+
+
+          <div id="styleBottom" class="play-style">
+            PLAYING STYLE: WAITING
+          </div>
+
+        </div>
+
+
+        <div class="bid-box">
+
+          <div class="bid-label">
+            CURRENT BID
+          </div>
+
+          <div id="bid" class="bid-value">
+            €0M
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <div id="timer" class="timer">
+        20
+      </div>
+
+
+      <button
+        class="bid-button"
+        onclick="bid()"
+      >
+        💰 BID +€5M
+      </button>
+
+    </div>
+
+
+    <!-- TEAMS -->
+
+    <div class="teams">
+
+      <h3>👥 PARTICIPATING TEAMS</h3>
+
+      <div id="teamsList">
+        Waiting for teams...
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- HISTORY -->
+
+<div class="panel">
+
+  <h2>📜 AUCTION HISTORY</h2>
+
+  <div id="history" class="history">
+
+    No auction activity yet.
+
+  </div>
+
+</div>
+
+</div>
+
+
 <!-- SOLD POPUP -->
 
-<div
-  id="soldPopup"
-  class="sold"
->
+<div id="soldPopup" class="sold">
 
   <div class="sold-box">
 
@@ -664,9 +858,13 @@ button:active {
       PLAYER
     </h2>
 
-    <p id="soldBid">
-      €0M
+    <p id="soldTeam">
+      TEAM
     </p>
+
+    <h2 id="soldBid">
+      €0M
+    </h2>
 
   </div>
 
@@ -675,67 +873,64 @@ button:active {
 
 <script>
 
-/* SOCKET */
-
 const socket = io();
 
 let roomCode = "";
+let myId = "";
+let latestState = null;
 
 
 /* PLAYING STYLES */
 
 const playingStyles = {
 
-  "Kylian Mbappé": "Goal Poacher",
-
-  "Vinícius Júnior": "Prolific Winger",
-
-  "Jude Bellingham": "Box-to-Box",
-
-  "Federico Valverde": "Box-to-Box",
-
-  "Lamine Yamal": "Creative Playmaker",
-
-  "Pedri": "Creative Playmaker",
-
-  "Raphinha": "Prolific Winger",
-
-  "Robert Lewandowski": "Goal Poacher",
-
-  "Erling Haaland": "Goal Poacher",
-
-  "Phil Foden": "Creative Playmaker",
-
-  "Rodri": "Anchor Man",
-
-  "Bernardo Silva": "Creative Playmaker",
-
-  "Mohamed Salah": "Prolific Winger",
-
-  "Alessandro Bastoni": "Build Up",
-
-  "Rafael Leão": "Prolific Winger",
-
-  "Theo Hernández": "Offensive Full-back",
-
-  "Mike Maignan": "Offensive Goalkeeper",
-
-  "Christian Pulisic": "Prolific Winger",
-
-  "Dušan Vlahović": "Goal Poacher",
-
-  "Kenan Yıldız": "Creative Playmaker",
-
-  "Nico Williams": "Prolific Winger",
-
-  "Antoine Griezmann": "Deep-Lying Forward"
+  "Kylian Mbappé":"Goal Poacher",
+  "Vinícius Júnior":"Prolific Winger",
+  "Jude Bellingham":"Box-to-Box",
+  "Federico Valverde":"Box-to-Box",
+  "Lamine Yamal":"Creative Playmaker",
+  "Pedri":"Creative Playmaker",
+  "Raphinha":"Prolific Winger",
+  "Robert Lewandowski":"Goal Poacher",
+  "Erling Haaland":"Goal Poacher",
+  "Phil Foden":"Creative Playmaker",
+  "Rodri":"Anchor Man",
+  "Bernardo Silva":"Creative Playmaker",
+  "Mohamed Salah":"Prolific Winger",
+  "Virgil van Dijk":"Build Up",
+  "Alisson Becker":"Offensive Goalkeeper",
+  "Bukayo Saka":"Prolific Winger",
+  "Martin Ødegaard":"Creative Playmaker",
+  "Declan Rice":"Anchor Man",
+  "William Saliba":"Build Up",
+  "Harry Kane":"Goal Poacher",
+  "Jamal Musiala":"Creative Playmaker",
+  "Joshua Kimmich":"Orchestrator",
+  "Michael Olise":"Creative Playmaker",
+  "Ousmane Dembélé":"Prolific Winger",
+  "Khvicha Kvaratskhelia":"Prolific Winger",
+  "Achraf Hakimi":"Offensive Full-back",
+  "Marquinhos":"Build Up",
+  "Lautaro Martínez":"Goal Poacher",
+  "Nicolò Barella":"Box-to-Box",
+  "Alessandro Bastoni":"Build Up",
+  "Rafael Leão":"Prolific Winger",
+  "Theo Hernández":"Offensive Full-back",
+  "Mike Maignan":"Offensive Goalkeeper",
+  "Christian Pulisic":"Prolific Winger",
+  "Dušan Vlahović":"Goal Poacher",
+  "Kenan Yıldız":"Creative Playmaker",
+  "Nico Williams":"Prolific Winger",
+  "Antoine Griezmann":"Deep-Lying Forward"
 
 };
 
 
 /* CONNECTION */
 
-socket.on("connect", () => {
+socket.on("connect",()=>{
+
+  myId = socket.id;
 
   document.getElementById("connection").innerText =
     "🟢 CONNECTED";
@@ -743,7 +938,7 @@ socket.on("connect", () => {
 });
 
 
-socket.on("disconnect", () => {
+socket.on("disconnect",()=>{
 
   document.getElementById("connection").innerText =
     "🔴 DISCONNECTED";
@@ -753,18 +948,18 @@ socket.on("disconnect", () => {
 
 /* CREATE ROOM */
 
-function createRoom() {
+function createRoom(){
 
   const name =
     document.getElementById("name").value.trim()
-    || "Team";
+    || "Team 1";
 
   socket.emit(
     "create",
-    { name },
-    response => {
+    {name},
+    response=>{
 
-      if (!response || !response.ok) {
+      if(!response || !response.ok){
 
         alert(
           response?.error ||
@@ -775,6 +970,7 @@ function createRoom() {
       }
 
       roomCode = response.code;
+      myId = response.id;
 
       document.getElementById("room").value =
         roomCode;
@@ -788,22 +984,20 @@ function createRoom() {
 }
 
 
-/* JOIN ROOM */
+/* JOIN */
 
-function joinRoom() {
+function joinRoom(){
 
   const name =
     document.getElementById("name").value.trim()
     || "Team";
 
   const code =
-    document
-      .getElementById("room")
-      .value
-      .trim()
-      .toUpperCase();
+    document.getElementById("room").value
+    .trim()
+    .toUpperCase();
 
-  if (!code) {
+  if(!code){
 
     alert("Enter a room code");
 
@@ -812,10 +1006,10 @@ function joinRoom() {
 
   socket.emit(
     "join",
-    { code, name },
-    response => {
+    {code,name},
+    response=>{
 
-      if (!response || !response.ok) {
+      if(!response || !response.ok){
 
         alert(
           response?.error ||
@@ -826,6 +1020,7 @@ function joinRoom() {
       }
 
       roomCode = code;
+      myId = response.id;
 
       document.getElementById("roomStatus").innerText =
         "Joined room: " + code;
@@ -838,9 +1033,9 @@ function joinRoom() {
 
 /* START */
 
-function startAuction() {
+function startAuction(){
 
-  if (!roomCode) {
+  if(!roomCode){
 
     alert(
       "Create or join a room first."
@@ -851,7 +1046,7 @@ function startAuction() {
 
   socket.emit(
     "start",
-    { code: roomCode }
+    {code:roomCode}
   );
 
 }
@@ -859,9 +1054,9 @@ function startAuction() {
 
 /* BID */
 
-function bid() {
+function bid(){
 
-  if (!roomCode) {
+  if(!roomCode){
 
     alert(
       "Create or join a room first."
@@ -870,19 +1065,79 @@ function bid() {
     return;
   }
 
+  if(!latestState || !latestState.current){
+
+    return;
+  }
+
   socket.emit(
     "bid",
-    { code: roomCode }
+    {code:roomCode}
   );
 
 }
 
 
-/* UPDATE CARD */
+/* PLAYER STATS */
 
-function updateCard(current) {
+function calculateStats(player){
 
-  if (!current) {
+  const rating = Number(player[3]) || 80;
+  const style = playingStyles[player[0]] || "";
+
+  let attack = rating;
+  let pace = rating;
+  let passing = rating;
+
+  if(style === "Goal Poacher"){
+    attack += 7;
+    pace += 3;
+  }
+
+  else if(style === "Prolific Winger"){
+    attack += 5;
+    pace += 7;
+  }
+
+  else if(style === "Creative Playmaker"){
+    attack += 3;
+    passing += 7;
+  }
+
+  else if(style === "Box-to-Box"){
+    attack += 2;
+    pace += 2;
+    passing += 3;
+  }
+
+  else if(style === "Anchor Man"){
+    passing += 5;
+    pace -= 2;
+  }
+
+  else if(style === "Build Up"){
+    passing += 4;
+  }
+
+  return {
+    attack:Math.min(99,attack),
+    pace:Math.min(99,pace),
+    passing:Math.min(99,passing)
+  };
+
+}
+
+
+/* UPDATE PLAYER */
+
+function updateCard(current){
+
+  const card =
+    document.getElementById("playerCard");
+
+  if(!current){
+
+    card.classList.remove("active");
 
     document.getElementById("playerName").innerText =
       "WAITING FOR PLAYER";
@@ -899,6 +1154,9 @@ function updateCard(current) {
     document.getElementById("style").innerText =
       "WAITING";
 
+    document.getElementById("styleBottom").innerText =
+      "PLAYING STYLE: WAITING";
+
     document.getElementById("bid").innerText =
       "€0M";
 
@@ -912,17 +1170,14 @@ function updateCard(current) {
   const player = current.player;
 
   const name = player[0];
-
   const club = player[1];
-
   const position = player[2];
-
   const rating = player[3];
 
-  const baseBid = player[4];
+  const style =
+    playingStyles[name] ||
+    "Standard Player";
 
-
-  /* PLAYER */
 
   document.getElementById("playerName").innerText =
     name;
@@ -937,16 +1192,16 @@ function updateCard(current) {
     position;
 
   document.getElementById("style").innerText =
-    playingStyles[name] ||
-    "Standard Player";
+    style;
 
+  document.getElementById("styleBottom").innerText =
+    "PLAYING STYLE: " + style;
 
-  /* INITIALS */
 
   const initials =
     name
       .split(" ")
-      .map(x => x[0])
+      .map(x=>x[0])
       .slice(0,2)
       .join("");
 
@@ -954,93 +1209,246 @@ function updateCard(current) {
     initials;
 
 
-  /* STATS */
+  const stats =
+    calculateStats(player);
 
-  let attack = rating + 2;
-  let pace = rating;
+  document.getElementById("attack").innerText =
+    stats.attack;
 
-  if (
-    playingStyles[name] ===
-    "Prolific Winger"
-  ) {
+  document.getElementById("pace").innerText =
+    stats.pace;
 
-    pace = rating + 6;
-    attack = rating + 4;
+  document.getElementById("passing").innerText =
+    stats.passing;
 
-  }
-
-  if (
-    playingStyles[name] ===
-    "Goal Poacher"
-  ) {
-
-    attack = rating + 7;
-
-  }
-
-  if (
-    playingStyles[name] ===
-    "Anchor Man"
-  ) {
-
-    attack = rating - 2;
-
-    pace = rating - 3;
-
-  }
-
-  document.getElementById("stat1").innerText =
-    attack;
-
-  document.getElementById("stat2").innerText =
-    pace;
-
-  document.getElementById("stat3").innerText =
+  document.getElementById("overall").innerText =
     rating;
 
-
-  /* BID */
 
   document.getElementById("bid").innerText =
     "€" + current.bid + "M";
 
 
-  /* CARD */
+  card.classList.add("active");
 
-  document
-    .getElementById("playerCard")
-    .classList.add("active");
+  managerAdvice(current);
+
+}
+
+
+/* MANAGER ADVICE */
+
+function managerAdvice(current){
+
+  if(!current || !latestState){
+
+    return;
+  }
+
+  const player = current.player;
+
+  const bid = Number(current.bid) || 0;
+
+  const me =
+    latestState.players?.find(
+      p=>p.id === myId
+    );
+
+  if(!me){
+
+    return;
+  }
+
+  const budget = Number(me.budget) || 0;
+
+  const spentPercentage =
+    ((200-budget)/200)*100;
+
+  const bidPercentage =
+    (bid/Math.max(1,budget))*100;
+
+
+  const warning =
+    document.getElementById("warningBox");
+
+  const warningText =
+    document.getElementById("warningText");
+
+  const advice =
+    document.getElementById("adviceText");
+
+
+  if(bid >= 60){
+
+    warning.style.display = "block";
+
+    warningText.innerText =
+      "This is becoming a huge investment. " +
+      "Make sure you still have enough money " +
+      "to complete a balanced squad.";
+
+    advice.innerText =
+      "A superstar can win matches, but a complete squad wins tournaments.";
+
+  }
+
+  else if(bidPercentage >= 45){
+
+    warning.style.display = "block";
+
+    warningText.innerText =
+      "You're approaching a large part of your remaining budget. " +
+      "Think about the positions you still need.";
+
+    advice.innerText =
+      "Don't spend everything too early. Keep money for important positions.";
+
+  }
+
+  else if(spentPercentage >= 70){
+
+    warning.style.display = "block";
+
+    warningText.innerText =
+      "Most of your original budget is already committed. " +
+      "Be extremely careful with your next bids.";
+
+    advice.innerText =
+      "Your squad needs balance. Look for value instead of only big names.";
+
+  }
+
+  else{
+
+    warning.style.display = "none";
+
+    if(player[3] >= 90){
+
+      advice.innerText =
+        "Elite player available. Bid only if he fits your squad plan.";
+
+    }
+
+    else if(player[3] >= 87){
+
+      advice.innerText =
+        "Strong player. Compare his price with the positions you still need.";
+
+    }
+
+    else{
+
+      advice.innerText =
+        "Don't ignore value players. A balanced squad can beat an expensive squad.";
+
+    }
+
+  }
+
+}
+
+
+/* TEAM LIST */
+
+function updateTeams(players){
+
+  const container =
+    document.getElementById("teamsList");
+
+  if(!players || !players.length){
+
+    container.innerText =
+      "Waiting for teams...";
+
+    return;
+  }
+
+
+  container.innerHTML =
+    players.map(player=>{
+
+      const budget =
+        Number(player.budget) || 0;
+
+      const low =
+        budget <= 50;
+
+      return `
+
+        <div class="team">
+
+          <div class="team-header">
+
+            <div class="team-name">
+              🛡️ ${escapeHtml(player.name)}
+            </div>
+
+            <div class="budget ${low ? "low":""}">
+              €${budget}M
+            </div>
+
+          </div>
+
+          <div class="squad-count">
+            👥 ${player.squad || 0} players
+          </div>
+
+        </div>
+
+      `;
+
+    }).join("");
+
+}
+
+
+/* ESCAPE */
+
+function escapeHtml(text){
+
+  return String(text)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 
 }
 
 
 /* STATE */
 
-socket.on("state", data => {
+socket.on("state",data=>{
 
-  if (!data) return;
+  if(!data){
+
+    return;
+  }
+
+  latestState = data;
 
   updateCard(data.current);
 
+  updateTeams(data.players);
 
-  /* TIMER */
 
-  if (data.current) {
+  if(data.current){
 
-    document.getElementById("timer").innerText =
-      data.current.time;
+    updateTimer(
+      data.current.time
+    );
 
   }
 
 
-  /* HISTORY */
-
-  if (data.history && data.history.length) {
+  if(data.history && data.history.length){
 
     document.getElementById("history").innerHTML =
       data.history
-        .map(item =>
-          `<div class="history-item">${item}</div>`
+        .map(item=>
+          `<div class="history-item">
+             ${escapeHtml(item)}
+           </div>`
         )
         .join("");
 
@@ -1051,38 +1459,86 @@ socket.on("state", data => {
 
 /* TIMER */
 
-socket.on("tick", data => {
+function updateTimer(time){
 
-  if (!data) return;
+  const timer =
+    document.getElementById("timer");
 
-  document.getElementById("timer").innerText =
-    data.time;
+  timer.innerText =
+    time;
+
+  if(Number(time) <= 5){
+
+    timer.classList.add("danger");
+
+  }
+
+  else{
+
+    timer.classList.remove("danger");
+
+  }
+
+}
+
+
+socket.on("tick",data=>{
+
+  if(!data){
+
+    return;
+  }
+
+  updateTimer(data.time);
 
 });
 
 
 /* SOLD */
 
-socket.on("sold", data => {
+socket.on("sold",data=>{
 
-  if (!data) return;
+  if(!data){
+
+    return;
+  }
 
   document.getElementById("soldPlayer").innerText =
     data.player[0];
 
+  document.getElementById("soldTeam").innerText =
+    "🏆 " + (data.team || "Team");
+
   document.getElementById("soldBid").innerText =
-    "Sold for €" + data.bid + "M";
+    "€" + data.bid + "M";
+
 
   const popup =
     document.getElementById("soldPopup");
 
-  popup.style.display = "flex";
+  popup.style.display =
+    "flex";
 
-  setTimeout(() => {
 
-    popup.style.display = "none";
+  setTimeout(()=>{
 
-  }, 2200);
+    popup.style.display =
+      "none";
+
+  },2300);
+
+});
+
+
+/* AUCTION FINISHED */
+
+socket.on("finished",()=>{
+
+  document.getElementById("managerMessage").innerHTML =
+    "The auction is complete. <span>Now build your strongest team!</span>";
+
+  document.getElementById("adviceText").innerText =
+    "Review your squad and prepare for the tournament.";
 
 });
 

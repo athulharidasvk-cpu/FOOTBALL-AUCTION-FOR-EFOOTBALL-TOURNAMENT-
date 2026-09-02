@@ -1,319 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Auction</title>
 
-  <title>Football Auction</title>
+<script src="/socket.io/socket.io.js"></script>
 
-  <script src="/socket.io/socket.io.js"></script>
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
-  <style>
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+body {
+  font-family: Arial, sans-serif;
+  background: #07111f;
+  color: white;
+  min-height: 100vh;
+}
 
-    body {
-      font-family: Arial, sans-serif;
-      background: #07111f;
-      color: white;
-      min-height: 100vh;
-    }
+button {
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
 
-    header {
-      background: linear-gradient(135deg, #0b5cff, #06327d);
-      padding: 18px;
-      text-align: center;
-      box-shadow: 0 4px 20px rgba(0,0,0,.4);
-    }
+.header {
+  background: #0d1b2a;
+  padding: 15px;
+  text-align: center;
+  border-bottom: 2px solid #1d3557;
+}
 
-    header h1 {
-      font-size: 26px;
-    }
+.header h1 {
+  font-size: 25px;
+}
 
-    header p {
-      margin-top: 5px;
-      opacity: .85;
-    }
+.header p {
+  color: #9fb3c8;
+  margin-top: 5px;
+}
 
-    .container {
-      width: 95%;
-      max-width: 1100px;
-      margin: auto;
-      padding: 18px 0;
-    }
+.container {
+  width: 95%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 15px;
+}
 
-    .join-box,
-    .auction-box,
-    .teams-box,
-    .manager-box {
-      background: #101d30;
-      border: 1px solid #263b59;
-      border-radius: 16px;
-      padding: 18px;
-      margin-bottom: 18px;
-      box-shadow: 0 8px 25px rgba(0,0,0,.25);
-    }
+/* MANAGER */
 
-    input,
-    button {
-      width: 100%;
-      padding: 13px;
-      border-radius: 10px;
-      border: none;
-      font-size: 16px;
-      margin-top: 10px;
-    }
+.manager {
+  background: linear-gradient(135deg, #132a44, #0b1726);
+  border-radius: 18px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  border: 1px solid #294866;
+}
 
-    input {
-      background: #172942;
-      color: white;
-      border: 1px solid #355071;
-    }
+.manager img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid #f1c40f;
+}
 
-    button {
-      background: #1677ff;
-      color: white;
-      font-weight: bold;
-      cursor: pointer;
-    }
+.manager-text h2 {
+  color: #f1c40f;
+  margin-bottom: 7px;
+}
 
-    button:hover {
-      background: #0b63df;
-    }
+.manager-text p {
+  line-height: 1.4;
+}
 
-    button:disabled {
-      background: #45556b;
-      cursor: not-allowed;
-    }
+/* JOIN */
 
-    .danger {
-      background: #d9363e;
-    }
+.join-box {
+  background: #102238;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 15px;
+}
 
-    .danger:hover {
-      background: #b82c34;
-    }
+.join-box h2 {
+  margin-bottom: 12px;
+}
 
-    .green {
-      background: #16a05d;
-    }
+input {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
 
-    .green:hover {
-      background: #11824b;
-    }
+.primary {
+  background: #16a085;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 16px;
+}
 
-    .hidden {
-      display: none;
-    }
+.primary:hover {
+  opacity: 0.85;
+}
 
-    .player-card {
-      background: linear-gradient(145deg, #172b48, #0d1828);
-      border: 2px solid #2f6eb7;
-      border-radius: 20px;
-      padding: 20px;
-      text-align: center;
-      max-width: 400px;
-      margin: 15px auto;
-    }
+/* STATUS */
 
-    .player-picture {
-      width: 150px;
-      height: 150px;
-      object-fit: cover;
-      border-radius: 14px;
-      background: #233957;
-      border: 2px solid #4c8ed8;
-    }
+.status {
+  background: #102238;
+  border-radius: 15px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
 
-    .player-name {
-      font-size: 25px;
-      font-weight: bold;
-      margin-top: 12px;
-    }
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
 
-    .club {
-      color: #9bbce5;
-      margin-top: 5px;
-    }
+.stat {
+  background: #071827;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+}
 
-    .rating {
-      font-size: 30px;
-      font-weight: bold;
-      margin: 12px;
-    }
+.stat span {
+  display: block;
+  color: #9fb3c8;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
 
-    .style {
-      display: inline-block;
-      background: #0b5cff;
-      padding: 7px 12px;
-      border-radius: 20px;
-      font-size: 13px;
-    }
+.stat strong {
+  font-size: 18px;
+}
 
-    .position {
-      margin-top: 8px;
-      color: #b9c9dc;
-    }
+/* AUCTION */
 
-    .timer {
-      text-align: center;
-      font-size: 55px;
-      font-weight: bold;
-      color: #36e38a;
-      margin: 10px;
-    }
+.auction {
+  background: #102238;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 15px;
+  text-align: center;
+}
 
-    .bid {
-      text-align: center;
-      font-size: 24px;
-      font-weight: bold;
-      margin: 10px;
-    }
+.auction-title {
+  color: #f1c40f;
+  font-size: 22px;
+  margin-bottom: 15px;
+}
 
-    .bidder {
-      text-align: center;
-      color: #ffd75a;
-      margin-bottom: 10px;
-    }
+.player-card {
+  max-width: 330px;
+  margin: auto;
+  background: linear-gradient(145deg, #17395d, #081521);
+  border: 2px solid #f1c40f;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
 
-    .bid-buttons {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 8px;
-    }
+.player-photo {
+  width: 130px;
+  height: 130px;
+  margin: auto;
+  border-radius: 50%;
+  background: #1d3557;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  border: 3px solid #f1c40f;
+}
 
-    .bid-buttons button {
-      margin: 0;
-    }
+.player-name {
+  font-size: 25px;
+  margin-top: 15px;
+}
 
-    .teams {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 12px;
-      margin-top: 15px;
-    }
+.club {
+  color: #a9c1d8;
+  margin-top: 5px;
+}
 
-    .team {
-      background: #172942;
-      border-radius: 12px;
-      padding: 15px;
-      border: 1px solid #2c4667;
-    }
+.rating {
+  font-size: 25px;
+  color: #f1c40f;
+  margin-top: 10px;
+}
 
-    .team h3 {
-      color: #65a9ff;
-    }
+.position {
+  display: inline-block;
+  background: #16a085;
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-top: 8px;
+}
 
-    .budget {
-      color: #52e38a;
-      margin: 7px 0;
-      font-weight: bold;
-    }
+.style {
+  margin-top: 10px;
+  color: #d7e3ee;
+}
 
-    .squad-player {
-      font-size: 13px;
-      padding: 5px 0;
-      border-bottom: 1px solid #29405e;
-    }
+.timer {
+  font-size: 42px;
+  color: #f1c40f;
+  margin: 15px 0;
+}
 
-    .manager {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-    }
+.bid {
+  font-size: 25px;
+  margin-bottom: 5px;
+}
 
-    .manager img {
-      width: 90px;
-      height: 90px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 3px solid #1677ff;
-      background: #172942;
-    }
+.bidder {
+  color: #9fb3c8;
+  margin-bottom: 15px;
+}
 
-    .manager-text {
-      flex: 1;
-    }
+/* CONTROLS */
 
-    .manager-name {
-      font-size: 18px;
-      font-weight: bold;
-      color: #5fa8ff;
-      margin-bottom: 6px;
-    }
+.controls {
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  margin: 20px auto 0;
+}
 
-    #message {
-      text-align: center;
-      background: #172942;
-      padding: 12px;
-      border-radius: 10px;
-      margin-bottom: 15px;
-      color: #ffd75a;
-    }
+.controls input {
+  margin: 0;
+}
 
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 18px;
-    }
+.bid-button {
+  background: #e67e22;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  min-width: 100px;
+}
 
-    .stat {
-      background: #101d30;
-      padding: 14px;
-      border-radius: 12px;
-      text-align: center;
-    }
+.start-button {
+  background: #2980b9;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
 
-    .stat strong {
-      display: block;
-      font-size: 22px;
-      color: #54a7ff;
-    }
+.skip-button {
+  background: #c0392b;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  margin-top: 15px;
+  margin-left: 5px;
+}
 
-    @media(max-width:600px) {
+/* MANAGER MESSAGE */
 
-      header h1 {
-        font-size: 21px;
-      }
+.message {
+  background: #182d43;
+  border-left: 4px solid #f1c40f;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
 
-      .player-picture {
-        width: 125px;
-        height: 125px;
-      }
+.message-title {
+  color: #f1c40f;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
 
-      .timer {
-        font-size: 45px;
-      }
+/* TEAMS */
 
-      .bid-buttons {
-        grid-template-columns: repeat(2, 1fr);
-      }
+.teams {
+  background: #102238;
+  padding: 20px;
+  border-radius: 15px;
+}
 
-      .manager img {
-        width: 70px;
-        height: 70px;
-      }
-    }
-  </style>
+.teams h2 {
+  margin-bottom: 15px;
+}
+
+.team {
+  background: #071827;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.budget {
+  color: #2ecc71;
+}
+
+.squad {
+  color: #9fb3c8;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ERROR */
+
+#error {
+  background: #8e2b2b;
+  padding: 12px;
+  border-radius: 8px;
+  display: none;
+  margin-bottom: 15px;
+}
+
+/* MOBILE */
+
+@media (max-width: 600px) {
+
+  .manager {
+    align-items: flex-start;
+  }
+
+  .manager img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .manager-text h2 {
+    font-size: 17px;
+  }
+
+  .manager-text p {
+    font-size: 13px;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .bid-button {
+    width: 100%;
+  }
+
+  .player-card {
+    width: 100%;
+  }
+}
+</style>
 </head>
 
 <body>
 
-<header>
+<div class="header">
   <h1>⚽ FOOTBALL AUCTION</h1>
-  <p>Build the best team you can build and beat them all!</p>
-</header>
+  <p>Build your ultimate squad</p>
+</div>
 
 <div class="container">
+
+  <!-- MANAGER -->
+  <div class="manager">
+
+    <img src="/manager.png"
+         onerror="this.style.display='none'"
+         alt="Manager">
+
+    <div class="manager-text">
+      <h2>🧑‍💼 Manager's Advice</h2>
+
+      <p>
+        Build the best team you can build with your budget
+        and beat them all!
+      </p>
+
+    </div>
+
+  </div>
+
+  <!-- ERROR -->
+  <div id="error"></div>
 
   <!-- JOIN -->
   <div class="join-box">
 
-    <h2>👤 Join Auction</h2>
+    <h2>Join Your Team</h2>
 
     <input
       id="teamName"
@@ -322,203 +414,213 @@
       maxlength="25"
     >
 
-    <button onclick="joinTeam()">
-      JOIN TEAM
+    <button class="primary" onclick="joinTeam()">
+      JOIN AUCTION
     </button>
 
   </div>
 
+  <!-- MANAGER MESSAGE -->
+  <div class="message">
 
-  <!-- MANAGER -->
-  <div class="manager-box">
+    <div class="message-title">
+      🧑‍💼 MANAGER
+    </div>
 
-    <div class="manager">
+    <div id="managerMessage">
+      Welcome manager! Join the auction to begin.
+    </div>
 
-      <img
-        src="/manager.png"
-        alt="Manager"
-        onerror="this.style.display='none'"
-      >
+  </div>
 
-      <div class="manager-text">
+  <!-- STATUS -->
+  <div class="status">
 
-        <div class="manager-name">
-          🧠 Your Manager
-        </div>
+    <div class="status-grid">
 
-        <div id="managerMessage">
-          Build the best team you can. Don't waste your entire budget on one player!
-        </div>
+      <div class="stat">
+        <span>YOUR TEAM</span>
+        <strong id="myTeam">Not Joined</strong>
+      </div>
 
+      <div class="stat">
+        <span>BUDGET</span>
+        <strong id="myBudget">₹500M</strong>
+      </div>
+
+      <div class="stat">
+        <span>PLAYERS LEFT</span>
+        <strong id="playersLeft">-</strong>
       </div>
 
     </div>
 
   </div>
 
+  <!-- AUCTION -->
+  <div class="auction">
 
-  <!-- GAME -->
-  <div id="gameArea" class="hidden">
-
-    <div id="message">
-      Waiting for the auction to begin...
+    <div class="auction-title">
+      🔨 PLAYER AUCTION
     </div>
 
+    <div id="noPlayer">
 
-    <!-- STATS -->
+      <p>Waiting for the next player...</p>
 
-    <div class="stats">
-
-      <div class="stat">
-        <span>Players Remaining</span>
-        <strong id="remainingPlayers">-</strong>
-      </div>
-
-      <div class="stat">
-        <span>Total Players</span>
-        <strong id="totalPlayers">-</strong>
-      </div>
+      <button
+        class="start-button"
+        onclick="startAuction()"
+      >
+        START AUCTION
+      </button>
 
     </div>
 
+    <div
+      id="playerArea"
+      style="display:none"
+    >
 
-    <!-- AUCTION -->
+      <div class="player-card">
 
-    <div class="auction-box">
+        <div class="player-photo" id="playerPhoto">
+          ⚽
+        </div>
 
-      <h2 style="text-align:center">
-        🔨 CURRENT AUCTION
-      </h2>
+        <div
+          class="player-name"
+          id="playerName"
+        >
+          Player
+        </div>
 
-      <div id="playerCard" class="player-card">
+        <div
+          class="club"
+          id="playerClub"
+        >
+          Club
+        </div>
 
-        <div style="padding:30px">
-          Waiting for next player...
+        <div
+          class="rating"
+          id="playerRating"
+        >
+          ⭐ 80
+        </div>
+
+        <div
+          class="position"
+          id="playerPosition"
+        >
+          CF
+        </div>
+
+        <div
+          class="style"
+          id="playerStyle"
+        >
+          Goal Poacher
         </div>
 
       </div>
 
-
-      <div class="timer" id="timer">
+      <div
+        class="timer"
+        id="timer"
+      >
         20
       </div>
 
-      <div class="bid" id="currentBid">
-        Current Bid: ₹0M
+      <div class="bid">
+        Current Bid:
+        <strong id="currentBid">₹0M</strong>
       </div>
 
-      <div class="bidder" id="currentBidder">
+      <div
+        class="bidder"
+        id="currentBidder"
+      >
         No bids yet
       </div>
 
+      <div class="controls">
 
-      <!-- HOST CONTROLS -->
+        <input
+          id="bidAmount"
+          type="number"
+          min="1"
+          placeholder="Bid ₹M"
+        >
 
-      <button
-        id="startButton"
-        class="green"
-        onclick="startAuction()"
-      >
-        🎲 START NEXT PLAYER
-      </button>
-
-      <button
-        onclick="skipPlayer()"
-        class="danger"
-      >
-        ⏭️ SKIP PLAYER
-      </button>
-
-
-      <!-- BID BUTTONS -->
-
-      <h3 style="margin-top:18px">
-        Place Bid
-      </h3>
-
-      <div class="bid-buttons">
-
-        <button onclick="bidIncrease(1)">
-          +₹1M
-        </button>
-
-        <button onclick="bidIncrease(2)">
-          +₹2M
-        </button>
-
-        <button onclick="bidIncrease(5)">
-          +₹5M
-        </button>
-
-        <button onclick="bidIncrease(10)">
-          +₹10M
-        </button>
-
-        <button onclick="bidIncrease(20)">
-          +₹20M
-        </button>
-
-        <button onclick="customBid()">
-          Custom Bid
+        <button
+          class="bid-button"
+          onclick="placeBid()"
+        >
+          BID
         </button>
 
       </div>
 
-
       <button
-        class="danger"
-        onclick="resetGame()"
-        style="margin-top:15px"
+        class="skip-button"
+        onclick="skipPlayer()"
       >
-        🔄 RESET AUCTION
+        SKIP PLAYER
       </button>
 
     </div>
 
+  </div>
 
-    <!-- TEAMS -->
+  <!-- TEAMS -->
+  <div class="teams">
 
-    <div class="teams-box">
+    <h2>🏆 Teams</h2>
 
-      <h2>🏆 Teams</h2>
-
-      <div
-        id="teams"
-        class="teams"
-      ></div>
-
+    <div id="teamsList">
+      No teams have joined yet.
     </div>
 
   </div>
 
 </div>
 
-
 <script>
 
 const socket = io();
 
 let myTeam = null;
+let gameState = null;
 
-let currentBidValue = 0;
+// ==========================
+// ERROR
+// ==========================
 
+function showError(message) {
 
-// ==================================
+  const box = document.getElementById("error");
+
+  box.innerText = message;
+  box.style.display = "block";
+
+  setTimeout(() => {
+    box.style.display = "none";
+  }, 4000);
+}
+
+// ==========================
 // JOIN TEAM
-// ==================================
+// ==========================
 
 function joinTeam() {
 
-  const input =
-    document.getElementById("teamName");
+  const input = document.getElementById("teamName");
 
-  const name =
-    input.value.trim();
+  const name = input.value.trim();
 
   if (!name) {
-
-    alert("Enter a team name first.");
-
+    showError("Enter a team name.");
     return;
   }
 
@@ -528,18 +630,12 @@ function joinTeam() {
     teamName: name
   });
 
-  document
-    .getElementById("gameArea")
-    .classList.remove("hidden");
-
-  input.disabled = true;
-
+  document.getElementById("myTeam").innerText = name;
 }
 
-
-// ==================================
+// ==========================
 // START AUCTION
-// ==================================
+// ==========================
 
 function startAuction() {
 
@@ -547,10 +643,31 @@ function startAuction() {
 
 }
 
+// ==========================
+// PLACE BID
+// ==========================
 
-// ==================================
-// SKIP PLAYER
-// ==================================
+function placeBid() {
+
+  const input = document.getElementById("bidAmount");
+
+  const amount = Number(input.value);
+
+  if (!amount) {
+    showError("Enter a bid amount.");
+    return;
+  }
+
+  socket.emit("placeBid", {
+    amount: amount
+  });
+
+  input.value = "";
+}
+
+// ==========================
+// SKIP
+// ==========================
 
 function skipPlayer() {
 
@@ -558,430 +675,262 @@ function skipPlayer() {
 
 }
 
+// ==========================
+// GAME STATE
+// ==========================
 
-// ==================================
-// RESET GAME
-// ==================================
+socket.on("gameState", state => {
 
-function resetGame() {
+  gameState = state;
 
-  if (
-    confirm(
-      "Reset the entire auction?"
-    )
-  ) {
+  document.getElementById("playersLeft")
+    .innerText = state.remainingPlayers;
 
-    socket.emit("resetGame");
+  if (myTeam && state.teams[myTeam]) {
+
+    document.getElementById("myBudget")
+      .innerText =
+      "₹" + state.teams[myTeam].budget + "M";
 
   }
 
+  updateTeams();
+
+  if (state.currentPlayer) {
+
+    showPlayer(state.currentPlayer);
+
+    document.getElementById("currentBid")
+      .innerText =
+      "₹" + state.currentBid + "M";
+
+    document.getElementById("currentBidder")
+      .innerText =
+      state.currentBidder || "No bids yet";
+
+  } else {
+
+    document.getElementById("playerArea")
+      .style.display = "none";
+
+    document.getElementById("noPlayer")
+      .style.display = "block";
+
+  }
+
+});
+
+// ==========================
+// NEW PLAYER
+// ==========================
+
+socket.on("newPlayer", data => {
+
+  showPlayer(data.player);
+
+  document.getElementById("currentBid")
+    .innerText =
+    "₹" + data.startingBid + "M";
+
+  document.getElementById("currentBidder")
+    .innerText = "No bids yet";
+
+});
+
+// ==========================
+// SHOW PLAYER
+// ==========================
+
+function showPlayer(player) {
+
+  document.getElementById("noPlayer")
+    .style.display = "none";
+
+  document.getElementById("playerArea")
+    .style.display = "block";
+
+  document.getElementById("playerName")
+    .innerText = player.name;
+
+  document.getElementById("playerClub")
+    .innerText = player.club || "Unknown Club";
+
+  document.getElementById("playerRating")
+    .innerText =
+    "⭐ " + (player.rating || 80);
+
+  document.getElementById("playerPosition")
+    .innerText =
+    player.position || "CF";
+
+  document.getElementById("playerStyle")
+    .innerText =
+    "Playing Style: " +
+    (player.style || "Standard");
+
 }
 
+// ==========================
+// TIMER
+// ==========================
 
-// ==================================
-// BID
-// ==================================
+socket.on("timerUpdate", time => {
 
-function bidIncrease(amount) {
+  document.getElementById("timer")
+    .innerText = time;
 
-  const newBid =
-    currentBidValue + amount;
+});
 
-  socket.emit("placeBid", {
-    amount: newBid
-  });
+// ==========================
+// BID UPDATE
+// ==========================
 
-}
+socket.on("bidUpdate", data => {
 
+  document.getElementById("currentBid")
+    .innerText =
+    "₹" + data.currentBid + "M";
 
-function customBid() {
+  document.getElementById("currentBidder")
+    .innerText =
+    data.currentBidder;
 
-  const amount =
-    prompt(
-      "Enter your bid amount in millions:"
-    );
+  document.getElementById("timer")
+    .innerText = data.timer;
 
-  if (!amount) return;
+});
 
-  const number =
-    Number(amount);
+// ==========================
+// MANAGER MESSAGE
+// ==========================
 
-  if (
-    !Number.isFinite(number)
-  ) {
+socket.on("managerMessage", message => {
 
-    alert("Invalid bid.");
+  document.getElementById("managerMessage")
+    .innerText = message;
+
+});
+
+// ==========================
+// PLAYER SOLD
+// ==========================
+
+socket.on("playerSold", data => {
+
+  document.getElementById("managerMessage")
+    .innerText =
+    "🔨 SOLD! " +
+    data.player.name +
+    " → " +
+    data.team +
+    " for ₹" +
+    data.price +
+    "M";
+
+});
+
+// ==========================
+// UNSOLD
+// ==========================
+
+socket.on("playerUnsold", data => {
+
+  document.getElementById("managerMessage")
+    .innerText =
+    data.player.name +
+    " went unsold.";
+
+});
+
+// ==========================
+// ERROR FROM SERVER
+// ==========================
+
+socket.on("errorMessage", message => {
+
+  showError(message);
+
+});
+
+// ==========================
+// UPDATE TEAMS
+// ==========================
+
+function updateTeams() {
+
+  if (!gameState) return;
+
+  const list =
+    document.getElementById("teamsList");
+
+  const teams =
+    gameState.teams;
+
+  const names =
+    Object.keys(teams);
+
+  if (!names.length) {
+
+    list.innerText =
+      "No teams have joined yet.";
 
     return;
+
   }
 
-  socket.emit("placeBid", {
-    amount: number
-  });
+  list.innerHTML = "";
 
-}
+  names.forEach(name => {
 
+    const team =
+      teams[name];
 
-// ==================================
-// NEW PLAYER
-// ==================================
+    const div =
+      document.createElement("div");
 
-socket.on(
-  "newPlayer",
-  data => {
+    div.className = "team";
 
-    const player =
-      data.player;
+    const players =
+      team.players || [];
 
-    currentBidValue =
-      Number(data.startingBid) || 0;
+    let squadText =
+      "No players purchased";
 
-    document
-      .getElementById("currentBid")
-      .textContent =
-      `Starting Bid: ₹${currentBidValue}M`;
+    if (players.length) {
 
-    document
-      .getElementById("currentBidder")
-      .textContent =
-      "No bids yet";
+      squadText =
+        players
+          .map(p =>
+            p.name +
+            " (₹" +
+            p.price +
+            "M)"
+          )
+          .join(" • ");
 
-    const card =
-      document.getElementById(
-        "playerCard"
-      );
+    }
 
-    card.innerHTML = `
+    div.innerHTML = `
 
-      <img
-        class="player-picture"
-        src="${getPlayerImage(player)}"
-        alt="${escapeHtml(player.name)}"
-        onerror="this.style.display='none'"
-      >
+      <div class="team-header">
 
-      <div class="player-name">
-        ${escapeHtml(player.name)}
+        <strong>${name}</strong>
+
+        <span class="budget">
+          ₹${team.budget}M
+        </span>
+
       </div>
 
-      <div class="club">
-        ${escapeHtml(player.club)}
-      </div>
-
-      <div class="rating">
-        ${player.rating}
-      </div>
-
-      <div class="position">
-        Position: ${escapeHtml(player.position)}
-      </div>
-
-      <div class="style">
-        ${escapeHtml(player.style)}
+      <div class="squad">
+        ${squadText}
       </div>
 
     `;
 
-  }
-);
+    list.appendChild(div);
 
-
-// ==================================
-// TIMER
-// ==================================
-
-socket.on(
-  "timerUpdate",
-  time => {
-
-    document
-      .getElementById("timer")
-      .textContent = time;
-
-    const timer =
-      document.getElementById(
-        "timer"
-      );
-
-    if (time <= 5) {
-
-      timer.style.color =
-        "#ff4545";
-
-    } else {
-
-      timer.style.color =
-        "#36e38a";
-
-    }
-
-  }
-);
-
-
-// ==================================
-// BID UPDATE
-// ==================================
-
-socket.on(
-  "bidUpdate",
-  data => {
-
-    currentBidValue =
-      Number(data.currentBid);
-
-    document
-      .getElementById("currentBid")
-      .textContent =
-      `Current Bid: ₹${currentBidValue}M`;
-
-    document
-      .getElementById("currentBidder")
-      .textContent =
-      `Highest Bidder: ${data.currentBidder}`;
-
-  }
-);
-
-
-// ==================================
-// GAME STATE
-// ==================================
-
-socket.on(
-  "gameState",
-  state => {
-
-    currentBidValue =
-      Number(state.currentBid) || 0;
-
-    document
-      .getElementById("remainingPlayers")
-      .textContent =
-      state.remainingPlayers;
-
-    document
-      .getElementById("totalPlayers")
-      .textContent =
-      state.totalPlayers;
-
-    updateTeams(state.teams);
-
-  }
-);
-
-
-// ==================================
-// SOLD
-// ==================================
-
-socket.on(
-  "playerSold",
-  data => {
-
-    showMessage(
-      `🔨 SOLD! ${data.player.name} → ${data.team} for ₹${data.price}M`
-    );
-
-  }
-);
-
-
-// ==================================
-// UNSOLD
-// ==================================
-
-socket.on(
-  "playerUnsold",
-  data => {
-
-    showMessage(
-      `${data.player.name} was not sold.`
-    );
-
-  }
-);
-
-
-// ==================================
-// MANAGER MESSAGE
-// ==================================
-
-socket.on(
-  "managerMessage",
-  message => {
-
-    document
-      .getElementById("managerMessage")
-      .textContent =
-      message;
-
-    showMessage(
-      message
-    );
-
-  }
-);
-
-
-// ==================================
-// ERROR
-// ==================================
-
-socket.on(
-  "errorMessage",
-  message => {
-
-    alert(message);
-
-  }
-);
-
-
-// ==================================
-// TEAM DISPLAY
-// ==================================
-
-function updateTeams(teams) {
-
-  const container =
-    document.getElementById(
-      "teams"
-    );
-
-  container.innerHTML = "";
-
-  Object.keys(teams).forEach(
-    teamName => {
-
-      const team =
-        teams[teamName];
-
-      const div =
-        document.createElement(
-          "div"
-        );
-
-      div.className =
-        "team";
-
-      let squadHTML = "";
-
-      team.players.forEach(
-        player => {
-
-          squadHTML += `
-            <div class="squad-player">
-              ${escapeHtml(player.name)}
-              — ₹${player.soldPrice}M
-            </div>
-          `;
-
-        }
-      );
-
-      div.innerHTML = `
-
-        <h3>
-          ${escapeHtml(teamName)}
-        </h3>
-
-        <div class="budget">
-          💰 ₹${team.budget}M
-        </div>
-
-        <div>
-          👥 ${team.players.length} players
-        </div>
-
-        <div style="margin-top:10px">
-          ${squadHTML || "No players yet"}
-        </div>
-
-      `;
-
-      container.appendChild(
-        div
-      );
-
-    }
-  );
-
-}
-
-
-// ==================================
-// MESSAGE
-// ==================================
-
-function showMessage(message) {
-
-  document
-    .getElementById("message")
-    .textContent =
-    message;
-
-}
-
-
-// ==================================
-// PLAYER IMAGE
-// ==================================
-
-function getPlayerImage(player) {
-
-  /*
-    You can later add individual
-    player pictures.
-
-    For now this uses:
-    /players/player-name.jpg
-  */
-
-  const filename =
-    player.name
-      .toLowerCase()
-      .replace(
-        /[^a-z0-9]+/g,
-        "-"
-      )
-      .replace(
-        /^-|-\$/g,
-        ""
-      );
-
-  return `/players/${filename}.jpg`;
-
-}
-
-
-// ==================================
-// SECURITY
-// ==================================
-
-function escapeHtml(text) {
-
-  return String(text)
-    .replace(
-      /&/g,
-      "&amp;"
-    )
-    .replace(
-      /</g,
-      "&lt;"
-    )
-    .replace(
-      />/g,
-      "&gt;"
-    )
-    .replace(
-      /"/g,
-      "&quot;"
-    )
-    .replace(
-      /'/g,
-      "&#039;"
-    );
+  });
 
 }
 
@@ -989,13 +938,3 @@ function escapeHtml(text) {
 
 </body>
 </html>
-
-
-             
-
-
-
-
-  
-
-    

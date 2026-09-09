@@ -13,17 +13,8 @@ const PORT = process.env.PORT || 3000;
 // PLAYER DATABASE
 // =====================================================
 
-const players1 = require("./public/players1.js");
-const players2 = require("./public/players2.js");
-const players3 = require("./public/players3.js");
-const players4 = require("./public/players4.js");
 
-const rawPlayers = [
-  ...players1,
-  ...players2,
-  ...players3,
-  ...players4
-];
+const rawPlayers = require("./public/players.js");
 
 // Remove duplicate players
 const players = rawPlayers.filter(

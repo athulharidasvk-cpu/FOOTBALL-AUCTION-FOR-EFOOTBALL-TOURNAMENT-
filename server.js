@@ -13,7 +13,6 @@ const PORT = process.env.PORT || 3000;
 // PLAYER DATABASE
 // =====================================================
 
-
 const rawPlayers = require("./public/players.js");
 
 // Remove duplicate players
@@ -43,50 +42,10 @@ const BID_INCREMENT = 5;
 
 const rooms = {};
 
-// Example room:
-//
-// rooms["ABC123"] = {
-//   host: socketId,
-//   teams: {},
-//   soldPlayers: Set(),
-//   currentPlayer: null,
-//   currentBid: 0,
-//   currentBidder: null,
-//   auctionRunning: false,
-//   timer: 20,
-//   timerInterval: null
-// };
+const GLOBAL_ROOM = "MAIN";
 
-// =====================================================
-// STATIC FILES
-// =====================================================
-
-app.use(express.static(path.join(__dirname, "public")));
-
-// =====================================================
-// HELPER FUNCTIONS
-// =====================================================
-
-function generateRoomCode() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-  let code = "";
-
-  do {
-    code = "";
-
-    for (let i = 0; i < 6; i++) {
-      code += chars[Math.floor(Math.random() * chars.length)];
-    }
-  } while (rooms[code]);
-
-  return code;
-}
-
-function createRoom() {
-  const code = generateRoomCode();
-
-  rooms[code] = {
+function initGlobalRoom() {
+  rooms[GLOBAL_ROOM] = {
     host: null,
     teams: {},
     soldPlayers: new Set(),
@@ -100,14 +59,22 @@ function createRoom() {
     timer: AUCTION_TIME,
     timerInterval: null
   };
-
-  return code;
 }
 
-function getRoom(socket) {
-  if (!socket.roomCode) return null;
+initGlobalRoom();
 
-  return rooms[socket.roomCode] || null;
+// =====================================================
+// STATIC FILES
+// =====================================================
+
+app.use(express.static(path.join(__dirname, "public")));
+
+// =====================================================
+// HELPER FUNCTIONS
+// =====================================================
+
+function getRoom(socket) {
+  return rooms[GLOBAL_ROOM] || null;
 }
 
 function getAvailablePlayers(room) {
@@ -285,10 +252,10 @@ io.on("connection", socket => {
   );
 
   // ===================================================
-  // CREATE ROOM
+  // JOIN TEAM (single shared auction room)
   // ===================================================
 
-  socket.on("createRoom", data => {
+  socket.on("joinTeam", data => {
     const teamName = String(
       data?.teamName || ""
     ).trim();
@@ -302,138 +269,57 @@ io.on("connection", socket => {
       return;
     }
 
-    const roomCode = createRoom();
-
-    const room = rooms[roomCode];
-
-    room.host = socket.id;
-
-    room.teams[teamName] = {
-      budget: STARTING_BUDGET,
-
-      players: [],
-
-      socketId: socket.id
-    };
-
-    socket.join(roomCode);
-
-    socket.roomCode = roomCode;
-
-    socket.teamName = teamName;
-
-    socket.emit("roomCreated", {
-      roomCode,
-      teamName,
-      host: true
-    });
-
-    managerMessage(
-      roomCode,
-      `🏟️ Room ${roomCode} created! Waiting for managers to join.`
-    );
-
-    broadcastState(roomCode);
-
-    console.log(
-      `Room ${roomCode} created by ${teamName}`
-    );
-  });
-
-  // ===================================================
-  // JOIN ROOM
-  // ===================================================
-
-  socket.on("joinRoom", data => {
-    const roomCode = String(
-      data?.roomCode || ""
-    )
-      .trim()
-      .toUpperCase();
-
-    const teamName = String(
-      data?.teamName || ""
-    ).trim();
-
-    if (!roomCode || !teamName) {
-      socket.emit(
-        "errorMessage",
-        "Enter a room code and team name."
-      );
-
-      return;
-    }
-
-    const room = rooms[roomCode];
-
-    if (!room) {
-      socket.emit(
-        "errorMessage",
-        "Room not found."
-      );
-
-      return;
-    }
-
-    if (
-      Object.keys(room.teams).length >=
-      MAX_TEAMS
-    ) {
-      socket.emit(
-        "errorMessage",
-        "This room is full."
-      );
-
-      return;
-    }
-
-    if (room.auctionRunning) {
-      socket.emit(
-        "errorMessage",
-        "The auction has already started."
-      );
-
-      return;
-    }
+    const room = rooms[GLOBAL_ROOM];
 
     if (room.teams[teamName]) {
-      socket.emit(
-        "errorMessage",
-        "That team name is already taken."
-      );
+      // Rejoin existing team (e.g. after refresh)
+      room.teams[teamName].socketId = socket.id;
+    } else {
+      if (
+        Object.keys(room.teams).length >=
+        MAX_TEAMS
+      ) {
+        socket.emit(
+          "errorMessage",
+          "This room is full."
+        );
 
-      return;
+        return;
+      }
+
+      room.teams[teamName] = {
+        budget: STARTING_BUDGET,
+
+        players: [],
+
+        socketId: socket.id
+      };
     }
 
-    room.teams[teamName] = {
-      budget: STARTING_BUDGET,
+    if (!room.host) {
+      room.host = socket.id;
+    }
 
-      players: [],
+    socket.join(GLOBAL_ROOM);
 
-      socketId: socket.id
-    };
-
-    socket.join(roomCode);
-
-    socket.roomCode = roomCode;
+    socket.roomCode = GLOBAL_ROOM;
 
     socket.teamName = teamName;
 
-    socket.emit("roomJoined", {
-      roomCode,
+    socket.emit("teamJoined", {
       teamName,
       host: room.host === socket.id
     });
 
     managerMessage(
-      roomCode,
+      GLOBAL_ROOM,
       `👋 ${teamName} has joined the auction!`
     );
 
-    broadcastState(roomCode);
+    broadcastState(GLOBAL_ROOM);
 
     console.log(
-      `${teamName} joined room ${roomCode}`
+      `${teamName} joined the auction`
     );
   });
 
@@ -462,7 +348,7 @@ io.on("connection", socket => {
     if (!room) {
       socket.emit(
         "errorMessage",
-        "Create or join a room first."
+        "Join a team first."
       );
 
       return;
@@ -546,7 +432,7 @@ io.on("connection", socket => {
     if (!room) {
       socket.emit(
         "errorMessage",
-        "Join a room first."
+        "Join a team first."
       );
 
       return;

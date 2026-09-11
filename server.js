@@ -556,8 +556,11 @@ io.on("connection", socket => {
     // FIRST PLAYER BECOMES HOST
     // -------------------------------------------------
 
+    // Host is tracked by TEAM NAME, not socket.id, so the host
+    // keeps control after a reconnect / page refresh (socket.id
+    // changes on every new connection, but the team name does not).
     if (!room.host) {
-      room.host = socket.id;
+      room.host = teamName;
     }
 
     socket.join(GLOBAL_ROOM);
@@ -574,7 +577,7 @@ io.on("connection", socket => {
         teamName,
 
         host:
-          room.host === socket.id
+          room.host === teamName
       }
     );
 
@@ -634,7 +637,7 @@ io.on("connection", socket => {
       // HOST ONLY
       if (
         room.host !==
-        socket.id
+        socket.teamName
       ) {
         socket.emit(
           "errorMessage",
@@ -916,7 +919,7 @@ io.on("connection", socket => {
       // HOST ONLY
       if (
         room.host !==
-        socket.id
+        socket.teamName
       ) {
         socket.emit(
           "errorMessage",
@@ -984,7 +987,7 @@ io.on("connection", socket => {
       // HOST ONLY
       if (
         room.host !==
-        socket.id
+        socket.teamName
       ) {
         socket.emit(
           "errorMessage",
@@ -1068,7 +1071,6 @@ io.on("connection", socket => {
 
       const teamName =
         socket.teamName;
-
       if (
         !teamName ||
         !room.teams[teamName]
@@ -1379,6 +1381,16 @@ io.on("connection", socket => {
 
       seller.transferOffers.push(
         offer
+      );
+
+      // Confirm to the buyer specifically that their offer went out.
+      socket.emit(
+        "transferOfferSent",
+        {
+          seller: sellerTeamName,
+          playerName: player.name,
+          amount: amount
+        }
       );
 
       managerMessage(
@@ -1893,7 +1905,7 @@ io.on("connection", socket => {
 
       if (
         room.host !==
-        socket.id
+        socket.teamName
       ) {
         socket.emit(
           "errorMessage",
@@ -1936,7 +1948,7 @@ io.on("connection", socket => {
 
       if (
         room.host !==
-        socket.id
+        socket.teamName
       ) {
         socket.emit(
           "errorMessage",
@@ -2202,8 +2214,6 @@ app.get(
 
     res.json({
       status:
-        "online",
-
       season:
         currentSeason,
 
@@ -2427,3 +2437,5 @@ server.listen(
     );
   }
 );
+
+  

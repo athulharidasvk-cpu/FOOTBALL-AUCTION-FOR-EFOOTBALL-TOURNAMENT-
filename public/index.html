@@ -1,1 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Football Auction</title>
 
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: #07111f;
+  color: white;
+  min-height: 100vh;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.header {
+  background: #0d1b2a;
+  padding: 15px;
+  text-align: center;
+  border-bottom: 2px solid #1d3557;
+}
+
+.header h1 {
+  font-size: 25px;
+}
+
+.header p {
+  color: #9fb3c8;
+  margin-top: 5px;
+}
+
+.container {
+  width: 95%;
+  max-width: 1100px;
+  margin: auto;
+  padding: 15px;
+}
+
+/* =========================
+   MANAGER
+========================= */
+
+.manager {
+  background: linear-gradient(135deg, #132a44, #0b1726);
+  border-radius: 18px;
+  padding: 15px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 15px;
+  border: 1px solid #294866;
+}
+
+.manager img {
+  width: 90px;
+  height: 90px;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 3px solid #f1c40f;
+}
+
+.manager-text h2 {
+  color: #f1c40f;
+  margin-bottom: 7px;
+}
+
+.manager-text p {
+  line-height: 1.4;
+}
+
+/* =========================
+   JOIN
+========================= */
+
+.join-box {
+  background: #102238;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 15px;
+}
+
+.join-box h2 {
+  margin-bottom: 12px;
+}
+
+input,
+select {
+  width: 100%;
+  padding: 13px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 10px;
+  font-size: 16px;
+}
+
+.primary {
+  background: #16a085;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  width: 100%;
+  font-size: 16px;
+}
+
+.primary:hover,
+.action:hover {
+  opacity: 0.85;
+}
+
+/* =========================
+   ERROR
+========================= */
+
+#error {
+  background: #8e2b2b;
+  padding: 12px;
+  border-radius: 8px;
+  display: none;
+  margin-bottom: 15px;
+}
+
+/* =========================
+   MESSAGE
+========================= */
+
+.message {
+  background: #182d43;
+  border-left: 4px solid #f1c40f;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 15px;
+}
+
+.message-title {
+  color: #f1c40f;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+/* =========================
+   STATUS
+========================= */
+
+.status {
+  background: #102238;
+  border-radius: 15px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+.stat {
+  background: #071827;
+  padding: 12px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+.stat span {
+  display: block;
+  color: #9fb3c8;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+.stat strong {
+  font-size: 17px;
+}
+
+/* =========================
+   AUCTION
+========================= */
+
+.auction {
+  background: #102238;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+.auction-title {
+  color: #f1c40f;
+  font-size: 22px;
+  margin-bottom: 15px;
+}
+
+.player-card {
+  max-width: 330px;
+  margin: auto;
+  background: linear-gradient(145deg, #17395d, #081521);
+  border: 2px solid #f1c40f;
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+}
+
+.player-photo {
+  width: 130px;
+  height: 130px;
+  margin: auto;
+  border-radius: 50%;
+  background: #1d3557;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  border: 3px solid #f1c40f;
+  overflow: hidden;
+}
+
+.player-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player-name {
+  font-size: 25px;
+  margin-top: 15px;
+}
+
+.club {
+  color: #a9c1d8;
+  margin-top: 5px;
+}
+
+.rating {
+  font-size: 25px;
+  color: #f1c40f;
+  margin-top: 10px;
+}
+
+.position {
+  display: inline-block;
+  background: #16a085;
+  padding: 5px 12px;
+  border-radius: 20px;
+  margin-top: 8px;
+}
+
+.style {
+  margin-top: 10px;
+  color: #d7e3ee;
+}
+
+.timer {
+  font-size: 42px;
+  color: #f1c40f;
+  margin: 15px 0;
+}
+
+.bid {
+  font-size: 25px;
+  margin-bottom: 5px;
+}
+
+.bidder {
+  color: #9fb3c8;
+  margin-bottom: 15px;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  max-width: 500px;
+  margin: 20px auto 0;
+}
+
+.controls input {
+  margin: 0;
+}
+
+.bid-button {
+  background: #e67e22;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  min-width: 100px;
+}
+
+.start-button {
+  background: #2980b9;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  margin-top: 15px;
+}
+
+.skip-button {
+  background: #c0392b;
+  color: white;
+  padding: 13px 20px;
+  border-radius: 8px;
+  margin-top: 15px;
+  margin-left: 5px;
+}
+
+/* =========================
+   MANAGEMENT SECTIONS
+========================= */
+
+.section {
+  background: #102238;
+  padding: 20px;
+  border-radius: 15px;
+  margin-bottom: 15px;
+}
+
+.section h2 {
+  margin-bottom: 15px;
+  color: #f1c40f;
+}
+
+.action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.action {
+  background: #2980b9;
+  color: white;
+  padding: 11px 15px;
+  border-radius: 8px;
+}
+
+.green {
+  background: #16a085;
+}
+
+.red {
+  background: #c0392b;
+}
+
+.orange {
+  background: #e67e22;
+}
+
+.purple {
+  background: #8e44ad;
+}
+
+/* =========================
+   CONTRACT CARDS
+========================= */
+
+.contract-card,
+.offer-card,
+.team {
+  background: #071827;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.contract-card {
+  border-left: 3px solid #f1c40f;
+}
+
+.contract-header,
+.offer-header,
+.team-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.contract-info,
+.offer-info {
+  color: #9fb3c8;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.contract-status {
+  color: #2ecc71;
+}
+
+.expiring {
+  color: #e67e22;
+}
+
+.expired {
+  color: #e74c3c;
+}
+
+.offer-card {
+  border-left: 3px solid #3498db;
+}
+
+.offer-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.offer-buttons button {
+  padding: 9px 13px;
+  border-radius: 7px;
+  color: white;
+}
+
+/* =========================
+   TRANSFER FORM
+========================= */
+
+.transfer-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.transfer-grid .full {
+  grid-column: 1 / -1;
+}
+
+.transfer-note {
+  color: #9fb3c8;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
+
+/* =========================
+   TEAMS
+========================= */
+
+.teams {
+  background: #102238;
+  padding: 20px;
+  border-radius: 15px;
+}
+
+.teams h2 {
+  margin-bottom: 15px;
+}
+
+.budget {
+  color: #2ecc71;
+}
+
+.squad {
+  color: #9fb3c8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+/* =========================
+   HIDDEN
+========================= */
+
+.hidden {
+  display: none;
+}
+
+.empty {
+  color: #9fb3c8;
+  text-align: center;
+  padding: 15px;
+}
+
+/* =========================
+   MOBILE
+========================= */
+
+@media (max-width: 700px) {
+
+  .manager {
+    align-items: flex-start;
+  }
+
+  .manager img {
+    width: 70px;
+    height: 70px;
+  }
+
+  .manager-text h2 {
+    font-size: 17px;
+  }
+
+  .manager-text p {
+    font-size: 13px;
+  }
+
+  .status-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .status-grid .stat:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .bid-button {
+    width: 100%;
+  }
+
+  .player-card {
+    width: 100%;
+  }
+
+  .transfer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .transfer-grid .full {
+    grid-column: auto;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="header">
+  <h1>⚽ FOOTBALL AUCTION</h1>
+  <p>Build your ultimate squad</p>
+</div>
+
+<div class="container">
+
+  <!-- =========================
+       MANAGER
+  ========================== -->
+
+  <div class="manager">
+
+    <img
+      src="/manager.png"
+      onerror="this.style.display='none'"
+      alt="Manager"
+    >
+
+    <div class="manager-text">
+
+      <h2>🧑‍💼 Manager's Advice</h2>
+
+      <p>
+        Build the best team you can build with your budget
+        and beat them all!
+      </p>
+
+    </div>
+
+  </div>
+
+  <!-- ERROR -->
+
+  <div id="error"></div>
+
+  <!-- =========================
+       JOIN
+  ========================== -->
+
+  <div class="join-box">
+
+    <h2>Join Your Team</h2>
+
+    <input
+      id="teamName"
+      type="text"
+      placeholder="Enter your team name"
+      maxlength="25"
+    >
+
+    <button
+      class="primary"
+      onclick="joinTeam()"
+    >
+      JOIN AUCTION
+    </button>
+
+  </div>
+
+  <!-- =========================
+       MANAGER MESSAGE
+  ========================== -->
+
+  <div class="message">
+
+    <div class="message-title">
+      🧑‍💼 MANAGER
+    </div>
+
+    <div id="managerMessage">
+      Welcome manager! Join the auction to begin.
+    </div>
+
+  </div>
+
+  <!-- =========================
+       STATUS
+  ========================== -->
+
+  <div class="status">
+
+    <div class="status-grid">
+
+      <div class="stat">
+        <span>YOUR TEAM</span>
+        <strong id="myTeam">Not Joined</strong>
+      </div>
+
+      <div class="stat">
+        <span>BUDGET</span>
+        <strong id="myBudget">₹500M</strong>
+      </div>
+
+      <div class="stat">
+        <span>SEASON</span>
+        <strong id="season">1</strong>
+      </div>
+
+      <div class="stat">
+        <span>PLAYERS LEFT</span>
+        <strong id="playersLeft">-</strong>
+      </div>
+
+      <div class="stat">
+        <span>TRANSFER WINDOW</span>
+        <strong id="transferStatus">OPEN</strong>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       AUCTION
+  ========================== -->
+
+  <div class="auction">
+
+    <div class="auction-title">
+      🔨 PLAYER AUCTION
+    </div>
+
+    <div id="noPlayer">
+
+      <p>Waiting for the next player...</p>
+
+      <button
+        class="start-button"
+        onclick="startAuction()"
+      >
+        START AUCTION
+      </button>
+
+    </div>
+
+    <div
+      id="playerArea"
+      style="display:none"
+    >
+
+      <div class="player-card">
+
+        <div
+          class="player-photo"
+          id="playerPhoto"
+        >
+          ⚽
+        </div>
+
+        <div
+          class="player-name"
+          id="playerName"
+        >
+          Player
+        </div>
+
+        <div
+          class="club"
+          id="playerClub"
+        >
+          Club
+        </div>
+
+        <div
+          class="rating"
+          id="playerRating"
+        >
+          ⭐ 80
+        </div>
+
+        <div
+          class="position"
+          id="playerPosition"
+        >
+          CF
+        </div>
+
+        <div
+          class="style"
+          id="playerStyle"
+        >
+          Playing Style: Standard
+        </div>
+
+      </div>
+
+      <div
+        class="timer"
+        id="timer"
+      >
+        20
+      </div>
+
+      <div class="bid">
+        Current Bid:
+        <strong id="currentBid">₹0M</strong>
+      </div>
+
+      <div
+        class="bidder"
+        id="currentBidder"
+      >
+        No bids yet
+      </div>
+
+      <div class="controls">
+
+        <input
+          id="bidAmount"
+          type="number"
+          min="1"
+          placeholder="Bid ₹M"
+        >
+
+        <button
+          class="bid-button"
+          onclick="placeBid()"
+        >
+          BID
+        </button>
+
+      </div>
+
+      <button
+        class="skip-button"
+        onclick="skipPlayer()"
+      >
+        SKIP PLAYER
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       CLUB MANAGEMENT
+  ========================== -->
+
+  <div class="section">
+
+    <h2>🏟️ Club Management</h2>
+
+    <div class="action-row">
+
+      <button
+        class="action"
+        onclick="loadContracts()"
+      >
+        📄 MY CONTRACTS
+      </button>
+
+      <button
+        class="action green"
+        onclick="loadOffers()"
+      >
+        📨 TRANSFER OFFERS
+      </button>
+
+      <button
+        class="action orange"
+        onclick="toggleTransferMarket()"
+      >
+        🔁 TRANSFER MARKET
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       CONTRACTS
+  ========================== -->
+
+  <div
+    id="contractsSection"
+    class="section hidden"
+  >
+
+    <h2>📄 Player Contracts</h2>
+
+    <p class="transfer-note">
+      Contracts are separate from the auction price.
+      Renew players before their contracts expire.
+    </p>
+
+    <div id="contractsList">
+      <div class="empty">
+        No contract information loaded.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================
+       TRANSFER MARKET
+  ========================== -->
+
+  <div
+    id="transferSection"
+    class="section hidden"
+  >
+
+    <h2>🔁 Transfer Market</h2>
+
+    <p class="transfer-note">
+      Make an offer to another participating club,
+      or activate a player's release clause.
+    </p>
+
+    <div class="transfer-grid">
+
+      <div>
+        <label>Seller Club</label>
+
+        <select id="sellerTeam">
+          <option value="">
+            Select seller
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label>Player</label>
+
+        <select id="transferPlayer">
+          <option value="">
+            Select player
+          </option>
+        </select>
+      </div>
+
+      <div>
+        <label>Transfer Fee ₹M</label>
+
+        <input
+          id="transferAmount"
+          type="number"
+          min="1"
+          placeholder="Example: 100"
+        >
+      </div>
+
+      <div>
+        <label>Release Clause ₹M</label>
+
+        <input
+          id="releasePlayer"
+          type="text"
+          placeholder="Player name"
+        >
+      </div>
+
+      <div class="full action-row">
+
+        <button
+          class="action green"
+          onclick="makeTransferOffer()"
+        >
+          SEND TRANSFER OFFER
+        </button>
+
+        <button
+          class="action purple"
+          onclick="activateReleaseClause()"
+        >
+          ACTIVATE RELEASE CLAUSE
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       OFFERS
+  ========================== -->
+
+  <div
+    id="offersSection"
+    class="section hidden"
+  >
+
+    <h2>📨 Transfer Offers</h2>
+
+    <div id="offersList">
+      <div class="empty">
+        No transfer offers.
+      </div>
+    </div>
+
+  </div>
+
+  <!-- =========================
+       HOST CONTROLS
+  ========================== -->
+
+  <div
+    id="hostSection"
+    class="section hidden"
+  >
+
+    <h2>👑 Host Controls</h2>
+
+    <div class="action-row">
+
+      <button
+        class="action green"
+        onclick="openTransferWindow()"
+      >
+        🟢 OPEN TRANSFER WINDOW
+      </button>
+
+      <button
+        class="action red"
+        onclick="closeTransferWindow()"
+      >
+        🔴 CLOSE TRANSFER WINDOW
+      </button>
+
+      <button
+        class="action purple"
+        onclick="nextSeason()"
+      >
+        🌍 NEXT SEASON
+      </button>
+
+      <button
+        class="action red"
+        onclick="resetGame()"
+      >
+        🔄 RESET AUCTION
+      </button>
+
+    </div>
+
+  </div>
+
+  <!-- =========================
+       TEAMS
+  ========================== -->
+
+  <div class="teams">
+
+    <h2>🏆 Teams</h2>
+
+    <div id="teamsList">
+      No teams have joined yet.
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+
+/* =====================================================
+   SOCKET
+===================================================== */
+
+const socket = io();
+
+let myTeam = null;
+
+let gameState = null;
+
+/* =====================================================
+   ERROR
+===================================================== */
+
+function showError(message) {
+
+  const box =
+    document.getElementById("error");
+
+  box.innerText = message;
+
+  box.style.display = "block";
+
+  setTimeout(() => {
+
+    box.style.display = "none";
+
+  }, 4000);
+}
+
+/* =====================================================
+   JOIN TEAM
+===================================================== */
+
+function joinTeam() {
+
+  const input =
+    document.getElementById("teamName");
+
+  const name =
+    input.value.trim();
+
+  if (!name) {
+
+    showError(
+      "Enter a team name."
+    );
+
+    return;
+  }
+
+  myTeam = name;
+
+  socket.emit(
+    "joinTeam",
+    {
+      teamName: name
+    }
+  );
+
+  document.getElementById(
+    "myTeam"
+  ).innerText = name;
+}
+
+/* =====================================================
+   TEAM JOINED
+===================================================== */
+
+socket.on(
+  "teamJoined",
+  data => {
+
+    myTeam =
+      data.teamName;
+
+    document.getElementById(
+      "myTeam"
+    ).innerText =
+      myTeam;
+
+    if (data.host) {
+
+      document.getElementById(
+        "hostSection"
+      ).classList.remove(
+        "hidden"
+      );
+
+    }
+
+    socket.emit(
+      "requestState"
+    );
+
+  }
+);
+
+/* =====================================================
+   START AUCTION
+===================================================== */
+
+function startAuction() {
+
+  socket.emit(
+    "startAuction"
+  );
+
+}
+
+/* =====================================================
+   PLACE BID
+===================================================== */
+
+function placeBid() {
+
+  const input =
+    document.getElementById(
+      "bidAmount"
+    );
+
+  const amount =
+    Number(input.value);
+
+  if (!amount) {
+
+    showError(
+      "Enter a bid amount."
+    );
+
+    return;
+  }
+
+  socket.emit(
+    "placeBid",
+    {
+      amount: amount
+    }
+  );
+
+  input.value = "";
+}
+
+/* =====================================================
+   SKIP
+===================================================== */
+
+function skipPlayer() {
+
+  socket.emit(
+    "skipPlayer"
+  );
+
+}
+
+/* =====================================================
+   GAME STATE
+===================================================== */
+
+socket.on(
+  "gameState",
+  state => {
+
+    gameState = state;
+
+    document.getElementById(
+      "playersLeft"
+    ).innerText =
+      state.remainingPlayers;
+
+    document.getElementById(
+      "season"
+    ).innerText =
+      state.season || 1;
+
+    document.getElementById(
+      "transferStatus"
+    ).innerText =
+      state.transferWindowOpen
+        ? "OPEN"
+        : "CLOSED";
+
+    if (
+      state.transferWindowOpen
+    ) {
+
+      document.getElementById(
+        "transferStatus"
+      ).style.color =
+        "#2ecc71";
+
+    } else {
+
+      document.getElementById(
+        "transferStatus"
+      ).style.color =
+        "#e74c3c";
+
+    }
+
+    if (
+      myTeam &&
+      state.teams &&
+      state.teams[myTeam]
+    ) {
+
+      document.getElementById(
+        "myBudget"
+      ).innerText =
+        "₹" +
+        state.teams[
+          myTeam
+        ].budget +
+        "M";
+
+    }
+
+    updateTeams();
+
+    updateSellerTeams();
+
+    if (
+      state.currentPlayer
+    ) {
+
+      showPlayer(
+        state.currentPlayer
+      );
+
+      document.getElementById(
+        "currentBid"
+      ).innerText =
+        "₹" +
+        state.currentBid +
+        "M";
+
+      document.getElementById(
+        "currentBidder"
+      ).innerText =
+        state.currentBidder ||
+        "No bids yet";
+
+    } else {
+
+      document.getElementById(
+        "playerArea"
+      ).style.display =
+        "none";
+
+      document.getElementById(
+        "noPlayer"
+      ).style.display =
+        "block";
+
+    }
+
+  }
+);
+
+/* =====================================================
+   NEW PLAYER
+===================================================== */
+
+socket.on(
+  "newPlayer",
+  data => {
+
+    showPlayer(
+      data.player
+    );
+
+    document.getElementById(
+      "currentBid"
+    ).innerText =
+      "₹" +
+      data.startingBid +
+      "M";
+
+    document.getElementById(
+      "currentBidder"
+    ).innerText =
+      "No bids yet";
+
+  }
+);
+
+/* =====================================================
+   SHOW PLAYER
+===================================================== */
+
+function showPlayer(
+  player
+) {
+
+  document.getElementById(
+    "noPlayer"
+  ).style.display =
+    "none";
+
+  document.getElementById(
+    "playerArea"
+  ).style.display =
+    "block";
+
+  document.getElementById(
+    "playerName"
+  ).innerText =
+    player.name;
+
+  document.getElementById(
+    "playerClub"
+  ).innerText =
+    player.club ||
+    "Unknown Club";
+
+  document.getElementById(
+    "playerRating"
+  ).innerText =
+    "⭐ " +
+    (
+      player.rating ||
+      80
+    );
+
+  document.getElementById(
+    "playerPosition"
+  ).innerText =
+    player.position ||
+    "CF";
+
+  document.getElementById(
+    "playerStyle"
+  ).innerText =
+    "Playing Style: " +
+    (player.style || "Standard");
+
+  const photo =
+    document.getElementById("playerPhoto");
+
+  if (player.image || player.photo) {
+    photo.innerHTML =
+      '<img src="' +
+      (player.image || player.photo) +
+      '" alt="Player" onerror="this.parentElement.innerHTML=\'⚽\'">';
+  } else {
+    photo.innerHTML = "⚽";
+  }
+}
+
+/* =====================================================
+   TIMER
+===================================================== */
+
+socket.on(
+  "timerUpdate",
+  time => {
+    document.getElementById(
+      "timer"
+    ).innerText = time;
+  }
+);
+
+socket.on(
+  "bidUpdate",
+  data => {
+    document.getElementById(
+      "currentBid"
+    ).innerText =
+      "₹" + data.currentBid + "M";
+
+    document.getElementById(
+      "currentBidder"
+    ).innerText =
+      data.currentBidder ||
+      "No bids yet";
+
+    document.getElementById(
+      "timer"
+    ).innerText =
+      data.timer;
+  }
+);
+
+/* =====================================================
+   MANAGER MESSAGE
+===================================================== */
+
+socket.on(
+  "managerMessage",
+  message => {
+    document.getElementById(
+      "managerMessage"
+    ).innerText = message;
+  }
+);
+
+/* =====================================================
+   ERRORS
+===================================================== */
+
+socket.on(
+  "errorMessage",
+  message => {
+    showError(message);
+  }
+);
+
+/* =====================================================
+   PLAYER SOLD / UNSOLD
+===================================================== */
+
+socket.on(
+  "playerSold",
+  data => {
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `🔨 SOLD! ${data.player.name} → ${data.team} for ₹${data.price}M`;
+  }
+);
+
+socket.on(
+  "playerUnsold",
+  data => {
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `❌ ${data.player.name} was unsold.`;
+  }
+);
+
+/* =====================================================
+   TEAMS
+===================================================== */
+
+function updateTeams() {
+  const box =
+    document.getElementById("teamsList");
+
+  if (!gameState || !gameState.teams) {
+    box.innerHTML =
+      '<div class="empty">No teams have joined yet.</div>';
+    return;
+  }
+
+  const names =
+    Object.keys(gameState.teams);
+
+  if (!names.length) {
+    box.innerHTML =
+      '<div class="empty">No teams have joined yet.</div>';
+    return;
+  }
+
+  box.innerHTML = names.map(name => {
+    const team = gameState.teams[name];
+    const players = team.players || [];
+
+    return `
+      <div class="team">
+        <div class="team-header">
+          <strong>⚽ ${escapeHtml(name)}</strong>
+          <span class="budget">₹${team.budget}M</span>
+        </div>
+
+        <div class="squad">
+          Squad: ${players.length}/18
+
+          ${
+            players.length
+              ? "<br>" +
+                players
+                  .map(p => escapeHtml(p.name))
+                  .join(", ")
+              : ""
+          }
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+/* =====================================================
+   TRANSFER SELLER TEAMS
+===================================================== */
+
+function updateSellerTeams() {
+  const select =
+    document.getElementById("sellerTeam");
+
+  if (!select || !gameState?.teams) return;
+
+  const current =
+    select.value;
+
+  select.innerHTML =
+    '<option value="">Select seller</option>';
+
+  Object.keys(gameState.teams)
+    .filter(name => name !== myTeam)
+    .forEach(name => {
+
+      const option =
+        document.createElement("option");
+
+      option.value = name;
+
+      option.textContent =
+        name;
+
+      select.appendChild(option);
+    });
+
+  if (
+    gameState.teams[current] &&
+    current !== myTeam
+  ) {
+    select.value = current;
+  }
+
+  updateTransferPlayers();
+}
+
+function updateTransferPlayers() {
+
+  const seller =
+    document.getElementById(
+      "sellerTeam"
+    ).value;
+
+  const select =
+    document.getElementById(
+      "transferPlayer"
+    );
+
+  select.innerHTML =
+    '<option value="">Select player</option>';
+
+  if (
+    !seller ||
+    !gameState?.teams?.[seller]
+  ) {
+    return;
+  }
+
+  const players =
+    gameState.teams[seller].players || [];
+
+  players.forEach(player => {
+
+    const option =
+      document.createElement("option");
+
+    option.value =
+      player.name;
+
+    option.textContent =
+      `${player.name} (${player.position || "CF"})`;
+
+    select.appendChild(option);
+  });
+}
+
+document
+  .getElementById("sellerTeam")
+  ?.addEventListener(
+    "change",
+    updateTransferPlayers
+  );
+
+/* =====================================================
+   CLUB MANAGEMENT
+===================================================== */
+
+function toggleTransferMarket() {
+
+  const section =
+    document.getElementById(
+      "transferSection"
+    );
+
+  section.classList.toggle(
+    "hidden"
+  );
+
+  if (
+    !section.classList.contains(
+      "hidden"
+    )
+  ) {
+    updateSellerTeams();
+  }
+}
+
+function loadContracts() {
+
+  const section =
+    document.getElementById(
+      "contractsSection"
+    );
+
+  section.classList.remove(
+    "hidden"
+  );
+
+  const list =
+    document.getElementById(
+      "contractsList"
+    );
+
+  if (
+    !myTeam ||
+    !gameState?.teams?.[myTeam]
+  ) {
+    list.innerHTML =
+      '<div class="empty">Join a team first.</div>';
+
+    return;
+  }
+
+  const players =
+    gameState.teams[myTeam].players || [];
+
+  const contracts =
+    players.filter(
+      p => p.contract
+    );
+
+  if (!contracts.length) {
+
+    list.innerHTML =
+      '<div class="empty">No player contracts yet.</div>';
+
+    return;
+  }
+
+  const season =
+    Number(
+      gameState.season || 1
+    );
+
+  list.innerHTML =
+    contracts
+      .map(player => {
+
+        const c =
+          player.contract;
+
+        let status =
+          c.status || "active";
+
+        if (
+          Number(c.endSeason) <
+          season
+        ) {
+          status = "expired";
+
+        } else if (
+          Number(c.endSeason) ===
+          season
+        ) {
+          status = "expiring";
+        }
+
+        const statusClass =
+          status === "expired"
+            ? "expired"
+            : status === "expiring"
+              ? "expiring"
+              : "contract-status";
+
+        return `
+          <div class="contract-card">
+
+            <div class="contract-header">
+
+              <strong>
+                ${escapeHtml(player.name)}
+              </strong>
+
+              <span class="${statusClass}">
+                ${escapeHtml(status.toUpperCase())}
+              </span>
+
+            </div>
+
+            <div class="contract-info">
+
+              Position:
+              ${escapeHtml(player.position || "CF")}
+              <br>
+
+              Auction Price:
+              ₹${player.price ?? "-"}M
+              <br>
+
+              Contract:
+              Season ${c.startSeason}
+              →
+              Season ${c.endSeason}
+              <br>
+
+              Salary:
+              ₹${c.salary ?? "-"}M / season
+              <br>
+
+              Release Clause:
+              ₹${c.releaseClause ?? "-"}M
+
+            </div>
+
+            <div class="offer-buttons">
+
+              <button
+                class="action green"
+                onclick="renewPlayer('${encodeURIComponent(player.name)}')"
+              >
+                RENEW
+              </button>
+
+            </div>
+
+          </div>
+        `;
+      })
+      .join("");
+}
+
+function renewPlayer(
+  encodedName
+) {
+
+  const playerName =
+    decodeURIComponent(
+      encodedName
+    );
+
+  const yearsText =
+    prompt(
+      "New contract length (1-5 seasons):",
+      "3"
+    );
+
+  if (
+    yearsText === null
+  ) {
+    return;
+  }
+
+  const years =
+    Number(yearsText);
+
+  if (
+    !Number.isInteger(years) ||
+    years < 1 ||
+    years > 5
+  ) {
+
+    showError(
+      "Contract length must be 1 to 5 seasons."
+    );
+
+    return;
+  }
+
+  socket.emit(
+    "renewContract",
+    {
+      playerName,
+      years
+    }
+  );
+}
+
+/* =====================================================
+   TRANSFER OFFERS
+===================================================== */
+
+function loadOffers() {
+
+  const section =
+    document.getElementById(
+      "offersSection"
+    );
+
+  section.classList.remove(
+    "hidden"
+  );
+
+  renderOffers();
+}
+
+function renderOffers() {
+
+  const list =
+    document.getElementById(
+      "offersList"
+    );
+
+  if (
+    !myTeam ||
+    !gameState?.teams?.[myTeam]
+  ) {
+
+    list.innerHTML =
+      '<div class="empty">Join a team first.</div>';
+
+    return;
+  }
+
+  const offers =
+    gameState.teams[myTeam]
+      .transferOffers || [];
+
+  if (!offers.length) {
+
+    list.innerHTML =
+      '<div class="empty">No transfer offers.</div>';
+
+    return;
+  }
+
+  list.innerHTML =
+    offers
+      .slice()
+      .reverse()
+      .map(offer => {
+
+        const pending =
+          offer.status === "pending";
+
+        return `
+          <div class="offer-card">
+
+            <div class="offer-header">
+
+              <strong>
+                ${escapeHtml(
+                  offer.playerName
+                )}
+              </strong>
+
+              <span>
+                ${escapeHtml(
+                  String(
+                    offer.status ||
+                    "pending"
+                  ).toUpperCase()
+                )}
+              </span>
+
+            </div>
+
+            <div class="offer-info">
+
+              Buyer:
+              ${escapeHtml(
+                offer.buyer
+              )}
+              <br>
+
+              Fee:
+              ₹${offer.fee}M
+              <br>
+
+              Season:
+              ${offer.season}
+
+            </div>
+
+            ${
+              pending
+                ? `
+                  <div class="offer-buttons">
+
+                    <button
+                      class="action green"
+                      onclick="acceptOffer('${encodeURIComponent(offer.id)}')"
+                    >
+                      ACCEPT
+                    </button>
+
+                    <button
+                      class="action red"
+                      onclick="rejectOffer('${encodeURIComponent(offer.id)}')"
+                    >
+                      REJECT
+                    </button>
+
+                  </div>
+                `
+                : ""
+            }
+
+          </div>
+        `;
+      })
+      .join("");
+}
+
+function acceptOffer(
+  encodedId
+) {
+
+  socket.emit(
+    "acceptTransfer",
+    {
+      offerId:
+        decodeURIComponent(
+          encodedId
+        )
+    }
+  );
+}
+
+function rejectOffer(
+  encodedId
+) {
+
+  socket.emit(
+    "rejectTransfer",
+    {
+      offerId:
+        decodeURIComponent(
+          encodedId
+        )
+    }
+  );
+}
+
+/* =====================================================
+   MAKE TRANSFER OFFER
+===================================================== */
+
+function makeTransferOffer() {
+
+  if (!myTeam) {
+
+    showError(
+      "Join a team first."
+    );
+
+    return;
+  }
+
+  const sellerTeam =
+    document.getElementById(
+      "sellerTeam"
+    ).value;
+
+  const playerName =
+    document.getElementById(
+      "transferPlayer"
+    ).value;
+
+  const fee =
+    Number(
+      document.getElementById(
+        "transferAmount"
+      ).value
+    );
+
+  if (
+    !sellerTeam ||
+    !playerName ||
+    !fee
+  ) {
+
+    showError(
+      "Select a seller, player and transfer fee."
+    );
+
+    return;
+  }
+
+  socket.emit(
+    "transferOffer",
+    {
+      sellerTeam,
+      playerName,
+      fee
+    }
+  );
+}
+
+/* =====================================================
+   RELEASE CLAUSE
+===================================================== */
+
+function activateReleaseClause() {
+
+  if (!myTeam) {
+
+    showError(
+      "Join a team first."
+    );
+
+    return;
+  }
+
+  const sellerTeam =
+    document.getElementById(
+      "sellerTeam"
+    ).value;
+
+  const playerName =
+    document.getElementById(
+      "transferPlayer"
+    ).value;
+
+  if (
+    !sellerTeam ||
+    !playerName
+  ) {
+
+    showError(
+      "Select the seller and player first."
+    );
+
+    return;
+  }
+
+  socket.emit(
+    "releaseClauseBuy",
+    {
+      sellerTeam,
+      playerName
+    }
+  );
+}
+
+/* =====================================================
+   TRANSFER EVENTS
+===================================================== */
+
+socket.on(
+  "transferOfferReceived",
+  offer => {
+
+    if (
+      gameState?.teams?.[myTeam]
+    ) {
+
+      gameState
+        .teams[myTeam]
+        .transferOffers =
+        gameState
+          .teams[myTeam]
+          .transferOffers ||
+        [];
+
+      gameState
+        .teams[myTeam]
+        .transferOffers
+        .push(offer);
+    }
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `📨 New offer: ${offer.buyer} offered ₹${offer.fee}M for ${offer.playerName}.`;
+
+    renderOffers();
+  }
+);
+
+socket.on(
+  "transferOfferSent",
+  offer => {
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `📨 Offer sent to ${offer.seller} for ${offer.playerName}.`;
+  }
+);
+
+socket.on(
+  "transferOfferRejected",
+  offer => {
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `❌ ${offer.seller} rejected your offer for ${offer.playerName}.`;
+  }
+);
+
+socket.on(
+  "transferCompleted",
+  data => {
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `🔁 TRANSFER COMPLETE: ${data.player.name} → ${data.to} for ₹${data.fee}M`;
+
+    setTimeout(
+      () => {
+        socket.emit(
+          "requestState"
+        );
+      },
+      300
+    );
+  }
+);
+
+socket.on(
+  "contractRenewed",
+  data => {
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `📝 ${data.player.name} renewed for ${data.player.contract.years} season(s).`;
+
+    socket.emit(
+      "requestState"
+    );
+
+    loadContracts();
+  }
+);
+
+/* =====================================================
+   HOST CONTROLS
+===================================================== */
+
+function openTransferWindow() {
+
+  socket.emit(
+    "setTransferWindow",
+    {
+      open: true
+    }
+  );
+}
+
+function closeTransferWindow() {
+
+  socket.emit(
+    "setTransferWindow",
+    {
+      open: false
+    }
+  );
+}
+
+function nextSeason() {
+
+  if (
+    !confirm(
+      "Start the next season? Expired contracts will be removed."
+    )
+  ) {
+    return;
+  }
+
+  socket.emit(
+    "nextSeason"
+  );
+}
+
+function resetGame() {
+
+  if (
+    !confirm(
+      "Reset the auction and all squads?"
+    )
+  ) {
+    return;
+  }
+
+  socket.emit(
+    "resetGame"
+  );
+}
+
+/* =====================================================
+   SEASON EVENTS
+===================================================== */
+
+socket.on(
+  "seasonChanged",
+  data => {
+
+    document.getElementById(
+      "season"
+    ).innerText =
+      data.season;
+
+    document.getElementById(
+      "managerMessage"
+    ).innerText =
+      `🌍 Season ${data.season} has started!`;
+
+    socket.emit(
+      "requestState"
+    );
+  }
+);
+
+/* =====================================================
+   SOCKET CONNECTION
+===================================================== */
+
+socket.on(
+  "connect",
+  () => {
+
+    if (myTeam) {
+
+      socket.emit(
+        "joinTeam",
+        {
+          teamName:
+            myTeam
+        }
+      );
+    }
+  }
+);
+
+/* =====================================================
+   KEYBOARD SUPPORT
+===================================================== */
+
+document
+  .getElementById(
+    "bidAmount"
+  )
+  ?.addEventListener(
+    "keydown",
+    event => {
+
+      if (
+        event.key === "Enter"
+      ) {
+        placeBid();
+      }
+    }
+  );
+
+/* =====================================================
+   INITIAL STATE
+===================================================== */
+
+socket.emit(
+  "requestState"
+);
+
+</script>
+
+</body>
+</html>

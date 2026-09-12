@@ -79,6 +79,397 @@ const AI_STARS = {
 };
 
 // =====================================================
+// DEFAULT CLUB JERSEYS & KIT DESIGNER ENGINE
+// =====================================================
+const DEFAULT_CLUB_JERSEYS = {
+  "Real Madrid": {
+    kitName: "Home Galáctico Pure",
+    primaryColor: "#ffffff",
+    secondaryColor: "#0f172a",
+    accentColor: "#f59e0b",
+    pattern: "solid",
+    collarStyle: "polo",
+    sponsor: "Fly Emirates",
+    badgeIcon: "👑",
+    numberColor: "#0f172a"
+  },
+  "Manchester City": {
+    kitName: "Sky Blue Celestial",
+    primaryColor: "#38bdf8",
+    secondaryColor: "#0f172a",
+    accentColor: "#ffffff",
+    pattern: "stripes",
+    collarStyle: "crew",
+    sponsor: "Etihad Airways",
+    badgeIcon: "🏙️",
+    numberColor: "#0f172a"
+  },
+  "Bayern Munich": {
+    kitName: "Bavarian Crimson Pride",
+    primaryColor: "#dc2626",
+    secondaryColor: "#ffffff",
+    accentColor: "#991b1b",
+    pattern: "hoops",
+    collarStyle: "v-neck",
+    sponsor: "T-Mobile",
+    badgeIcon: "🔴",
+    numberColor: "#ffffff"
+  },
+  "Arsenal": {
+    kitName: "Gunners Cannon White-Sleeve",
+    primaryColor: "#ef4444",
+    secondaryColor: "#ffffff",
+    accentColor: "#facc15",
+    pattern: "halves",
+    collarStyle: "polo",
+    sponsor: "Fly Emirates",
+    badgeIcon: "🔴",
+    numberColor: "#ffffff"
+  },
+  "Paris Saint-Germain": {
+    kitName: "Hechter Classic Navy & Rouge",
+    primaryColor: "#1e3a8a",
+    secondaryColor: "#dc2626",
+    accentColor: "#ffffff",
+    pattern: "sash",
+    collarStyle: "crew",
+    sponsor: "Qatar Airways",
+    badgeIcon: "🗼",
+    numberColor: "#ffffff"
+  },
+  "Liverpool": {
+    kitName: "Anfield Gold Pinstripe",
+    primaryColor: "#b91c1c",
+    secondaryColor: "#fbbf24",
+    accentColor: "#ffffff",
+    pattern: "pinstripes",
+    collarStyle: "v-neck",
+    sponsor: "Standard Chartered",
+    badgeIcon: "🔴",
+    numberColor: "#fbbf24"
+  },
+  "Barcelona": {
+    kitName: "Blaugrana Heritage",
+    primaryColor: "#1d4ed8",
+    secondaryColor: "#be123c",
+    accentColor: "#fbbf24",
+    pattern: "stripes",
+    collarStyle: "crew",
+    sponsor: "Spotify",
+    badgeIcon: "🔵",
+    numberColor: "#fbbf24"
+  },
+  "Borussia Dortmund": {
+    kitName: "Signal Iduna Cyber Yellow",
+    primaryColor: "#facc15",
+    secondaryColor: "#0f172a",
+    accentColor: "#ffffff",
+    pattern: "stripes",
+    collarStyle: "v-neck",
+    sponsor: "1&1",
+    badgeIcon: "🟡",
+    numberColor: "#0f172a"
+  },
+  "Atletico Madrid": {
+    kitName: "Rojiblancos Passion",
+    primaryColor: "#dc2626",
+    secondaryColor: "#ffffff",
+    accentColor: "#1e3a8a",
+    pattern: "stripes",
+    collarStyle: "crew",
+    sponsor: "Riyadh Air",
+    badgeIcon: "⚪",
+    numberColor: "#1e3a8a"
+  },
+  "Juventus": {
+    kitName: "Bianconeri Gold Edition",
+    primaryColor: "#0f172a",
+    secondaryColor: "#ffffff",
+    accentColor: "#eab308",
+    pattern: "stripes",
+    collarStyle: "polo",
+    sponsor: "Jeep",
+    badgeIcon: "🦓",
+    numberColor: "#eab308"
+  },
+  "AC Milan": {
+    kitName: "Rossoneri Fire",
+    primaryColor: "#dc2626",
+    secondaryColor: "#0f172a",
+    accentColor: "#fbbf24",
+    pattern: "stripes",
+    collarStyle: "v-neck",
+    sponsor: "Fly Emirates",
+    badgeIcon: "🔴",
+    numberColor: "#ffffff"
+  },
+  "Napoli": {
+    kitName: "Azzurri Marine",
+    primaryColor: "#0284c7",
+    secondaryColor: "#ffffff",
+    accentColor: "#0369a1",
+    pattern: "solid",
+    collarStyle: "crew",
+    sponsor: "MSC Cruises",
+    badgeIcon: "🔵",
+    numberColor: "#ffffff"
+  },
+  "Bayer Leverkusen": {
+    kitName: "Werkself Cross",
+    primaryColor: "#0f172a",
+    secondaryColor: "#dc2626",
+    accentColor: "#ffffff",
+    pattern: "sash",
+    collarStyle: "polo",
+    sponsor: "Barmenia",
+    badgeIcon: "🦁",
+    numberColor: "#dc2626"
+  },
+  "Ajax": {
+    kitName: "Amsterdam Total Red",
+    primaryColor: "#ffffff",
+    secondaryColor: "#dc2626",
+    accentColor: "#facc15",
+    pattern: "halves",
+    collarStyle: "crew",
+    sponsor: "Ziggo",
+    badgeIcon: "⚔️",
+    numberColor: "#dc2626"
+  },
+  "Benfica": {
+    kitName: "Águias Vermelho",
+    primaryColor: "#dc2626",
+    secondaryColor: "#ffffff",
+    accentColor: "#fbbf24",
+    pattern: "solid",
+    collarStyle: "v-neck",
+    sponsor: "Fly Emirates",
+    badgeIcon: "🦅",
+    numberColor: "#ffffff"
+  },
+  "Sporting CP": {
+    kitName: "Verde e Branco Hoops",
+    primaryColor: "#15803d",
+    secondaryColor: "#ffffff",
+    accentColor: "#0f172a",
+    pattern: "hoops",
+    collarStyle: "polo",
+    sponsor: "Betano",
+    badgeIcon: "🦁",
+    numberColor: "#ffffff"
+  },
+  "FC Porto": {
+    kitName: "Dragão Stripes",
+    primaryColor: "#1d4ed8",
+    secondaryColor: "#ffffff",
+    accentColor: "#f59e0b",
+    pattern: "stripes",
+    collarStyle: "v-neck",
+    sponsor: "Betano",
+    badgeIcon: "🐉",
+    numberColor: "#ffffff"
+  },
+  "Marseille": {
+    kitName: "Vélodrome Sky & White",
+    primaryColor: "#ffffff",
+    secondaryColor: "#0284c7",
+    accentColor: "#facc15",
+    pattern: "solid",
+    collarStyle: "crew",
+    sponsor: "CMA CGM",
+    badgeIcon: "⚪",
+    numberColor: "#0284c7"
+  },
+  "Aston Villa": {
+    kitName: "Claret & Blue Heritage",
+    primaryColor: "#831843",
+    secondaryColor: "#38bdf8",
+    accentColor: "#fbbf24",
+    pattern: "halves",
+    collarStyle: "v-neck",
+    sponsor: "Betano",
+    badgeIcon: "🦁",
+    numberColor: "#ffffff"
+  }
+};
+
+// Player ages lookup to power authentic Golden Boy (U-21) and Ballon d'Or awards
+const PLAYER_AGES_DATABASE = {
+  "Lamine Yamal": 17,
+  "Pau Cubarsi": 18,
+  "Endrick": 18,
+  "Warren Zaire-Emery": 18,
+  "Arda Guler": 19,
+  "Kobbie Mainoo": 19,
+  "Kenan Yildiz": 19,
+  "Savinho": 20,
+  "Gavi": 20,
+  "Alejandro Balde": 21,
+  "Jude Bellingham": 21,
+  "Jamal Musiala": 21,
+  "Florian Wirtz": 21,
+  "Eduardo Camavinga": 21,
+  "Jeremy Doku": 22,
+  "Pedri": 22,
+  "Cole Palmer": 22,
+  "Bukayo Saka": 22,
+  "Rodrygo": 23,
+  "Phil Foden": 24,
+  "Erling Haaland": 24,
+  "Vinicius Junior": 24,
+  "Vinícius Jr.": 24,
+  "Kylian Mbappe": 25,
+  "Kylian Mbappé": 25,
+  "Federico Valverde": 26,
+  "Martin Odegaard": 25,
+  "Declan Rice": 25,
+  "Rodri": 28,
+  "Mohamed Salah": 32,
+  "Kevin De Bruyne": 33,
+  "Harry Kane": 31,
+  "Robert Lewandowski": 36,
+  "Antoine Griezmann": 33,
+  "Luka Modric": 38,
+  "Thibaut Courtois": 32,
+  "Alisson Becker": 31,
+  "Ederson": 31,
+  "Marc-Andre ter Stegen": 32,
+  "David Raya": 28,
+  "Jan Oblak": 31,
+  "Gianluigi Donnarumma": 25,
+  "Manuel Neuer": 38,
+  "Gregor Kobel": 26
+};
+
+// Aesthetics Evaluation Algorithm
+function evaluateJerseyAesthetics(jersey) {
+  function hexToRgb(hex) {
+    hex = (hex || "#ffffff").replace("#", "");
+    if (hex.length === 3) hex = hex.split("").map(c => c + c).join("");
+    const num = parseInt(hex, 16) || 0;
+    return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+  }
+
+  function getLuminance(rgb) {
+    const a = [rgb.r, rgb.g, rgb.b].map(v => {
+      v /= 255;
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+    });
+    return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+  }
+
+  function contrastRatio(hex1, hex2) {
+    const l1 = getLuminance(hexToRgb(hex1));
+    const l2 = getLuminance(hexToRgb(hex2));
+    const lighter = Math.max(l1, l2);
+    const darker = Math.min(l1, l2);
+    return (lighter + 0.05) / (darker + 0.05);
+  }
+
+  function rgbToHsl(rgb) {
+    const r = rgb.r / 255, g = rgb.g / 255, b = rgb.b / 255;
+    const max = Math.max(r, g, b), min = Math.min(r, g, b);
+    let h = 0, s = 0, l = (max + min) / 2;
+    if (max !== min) {
+      const d = max - min;
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+      switch (max) {
+        case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+        case g: h = (b - r) / d + 2; break;
+        case b: h = (r - g) / d + 4; break;
+      }
+      h /= 6;
+    }
+    return { h: h * 360, s, l };
+  }
+
+  const primary = jersey.primaryColor || "#ffffff";
+  const secondary = jersey.secondaryColor || "#0f172a";
+  const accent = jersey.accentColor || "#f59e0b";
+  const sponsorColor = jersey.numberColor || secondary;
+
+  // 1. Contrast ratio between primary jersey and sponsor text
+  const textContrast = contrastRatio(primary, sponsorColor);
+  let contrastBonus = 0;
+  if (textContrast >= 7.0) contrastBonus = 2.8; // WCAG AAA
+  else if (textContrast >= 4.5) contrastBonus = 2.2; // WCAG AA
+  else if (textContrast >= 3.0) contrastBonus = 1.0;
+  else contrastBonus = -1.8; // Hard to read sponsor
+
+  // 2. Color harmony calculation
+  const hsl1 = rgbToHsl(hexToRgb(primary));
+  const hsl2 = rgbToHsl(hexToRgb(secondary));
+  const hsl3 = rgbToHsl(hexToRgb(accent));
+
+  let hueDiff = Math.abs(hsl1.h - hsl2.h);
+  if (hueDiff > 180) hueDiff = 360 - hueDiff;
+
+  let harmonyScore = 2.0;
+  // Complementary or classic high-energy contrast
+  if (hueDiff >= 140 && hueDiff <= 200) harmonyScore += 1.8;
+  // Analogous / Monochromatic harmony
+  else if (hueDiff <= 40) harmonyScore += 1.5;
+  // Classic athletic neutral pairings (white, black, navy, grey)
+  if (hsl1.s < 0.15 || hsl2.s < 0.15) harmonyScore += 1.5;
+
+  // Gold or bright accent bonus
+  if ((hsl3.h >= 35 && hsl3.h <= 55 && hsl3.s > 0.6) || (hsl3.s < 0.15 && hsl3.l > 0.85)) {
+    harmonyScore += 0.8;
+  }
+
+  // 3. Pattern styling bonus
+  let patternBonus = 1.0;
+  if (["stripes", "hoops", "halves", "sash", "pinstripes"].includes(jersey.pattern)) {
+    patternBonus = 1.4;
+  }
+  if (jersey.collarStyle === "polo" || jersey.collarStyle === "v-neck") {
+    patternBonus += 0.5;
+  }
+  if (jersey.sponsor && jersey.sponsor.trim().length > 0) {
+    patternBonus += 0.5;
+  }
+
+  let totalRaw = 4.0 + contrastBonus + harmonyScore + patternBonus;
+  let aestheticScore = Math.min(10.0, Math.max(2.5, Math.round(totalRaw * 10) / 10));
+
+  let tier = "B-Tier";
+  let multiplier = 1.0;
+  let critique = "";
+
+  if (aestheticScore >= 9.2) {
+    tier = "S-Tier Masterpiece 💎";
+    multiplier = 1.85 + (aestheticScore - 9.2) * 0.45; // 1.85x up to ~2.2x
+    critique = "Haute couture masterpiece! Fans worldwide are queueing overnight outside club megastores. Instant cultural classic.";
+  } else if (aestheticScore >= 8.2) {
+    tier = "A-Tier Elite Drip 🔥";
+    multiplier = 1.40 + (aestheticScore - 8.2) * 0.40; // 1.4x - 1.8x
+    critique = "Brilliant design! Superb color harmony and crisp sponsor contrast make this one of the hottest kits of the season.";
+  } else if (aestheticScore >= 7.0) {
+    tier = "B-Tier Solid Classic ⭐";
+    multiplier = 1.10 + (aestheticScore - 7.0) * 0.25; // 1.1x - 1.35x
+    critique = "Sharp and dependable commercial kit. Strong fan reception with steady retail sales across stadium stores.";
+  } else if (aestheticScore >= 5.5) {
+    tier = "C-Tier Ordinary ⚠️";
+    multiplier = 0.95;
+    critique = "Average kit execution. Moderate sales; supporters feel the color coordination could be elevated.";
+  } else {
+    tier = "D-Tier Clashing 🚨";
+    multiplier = 0.78;
+    critique = "Fan backlash! Unreadable sponsor or conflicting color palettes lead to discounted shelf stock and memes online.";
+  }
+
+  multiplier = Math.round(multiplier * 100) / 100;
+
+  return {
+    aestheticScore,
+    tier,
+    salesMultiplier: multiplier,
+    critique,
+    contrastRatio: Math.round(textContrast * 10) / 10
+  };
+}
+
+// =====================================================
 // AUTHENTIC STADIUMS DATABASE
 // =====================================================
 const STADIUM_DATABASE = {
@@ -156,6 +547,9 @@ class LeagueManager {
     this.seasonAims = {};
     this.scoutReports = {};
     this.freeAgentManagers = [...FREE_AGENT_MANAGERS];
+    this.jerseys = {};
+    this.playerSeasonStats = {};
+    this.seasonAwards = null;
 
     this.initSeason(this.season, INITIAL_CLUBS);
   }
@@ -328,6 +722,26 @@ class LeagueManager {
         desc,
         boardSatisfaction: "Delighted 🌟",
         boardWarning: false
+      };
+    }
+
+    if (!this.jerseys[clubName]) {
+      const def = DEFAULT_CLUB_JERSEYS[clubName] || {
+        kitName: `${clubName} Home Kit`,
+        primaryColor: "#1e3a8a",
+        secondaryColor: "#ffffff",
+        accentColor: "#f59e0b",
+        pattern: "stripes",
+        collarStyle: "crew",
+        sponsor: "Emirates",
+        badgeIcon: "⚽",
+        numberColor: "#ffffff"
+      };
+      const evalRes = evaluateJerseyAesthetics(def);
+      this.jerseys[clubName] = {
+        ...def,
+        ...evalRes,
+        lastUpdatedRound: this.currentRound
       };
     }
   }
@@ -634,6 +1048,15 @@ class LeagueManager {
     fixture.played = true;
     fixture.scorers = scorers;
 
+    // Generate minute-by-minute timeline and match statistics
+    const matchSimData = this.generateMatchTimelineAndStats(fixture, homeScore, awayScore, scorers, homeRating, awayRating, roomTeams);
+    fixture.stats = matchSimData.stats;
+    fixture.timeline = matchSimData.timeline;
+    fixture.motm = matchSimData.motm;
+
+    // Record stats for Ballon d'Or, Golden Glove, and individual awards
+    this.updatePlayerStatsFromMatch(fixture, matchSimData, roomTeams);
+
     // Update standings for both clubs
     const div = this.divisions[fixture.division];
     const homeStanding = div.standings.find(s => s.name === fixture.homeTeam);
@@ -703,11 +1126,16 @@ class LeagueManager {
     // Ticket Gate Revenue (₹ Millions)
     const ticketRevenue = Math.round(((attendance * (homeStad.ticketPrice || 60)) / 1000000) * 100) / 100;
 
-    // Merchandise & Jersey Sales
+    // Merchandise & Jersey Sales with Aesthetics Multiplier
+    if (!this.jerseys[fixture.homeTeam]) {
+      this.initClubExtras(fixture.homeTeam, fixture.division, homeRating);
+    }
+    const jersey = this.jerseys[fixture.homeTeam] || { salesMultiplier: 1.0, aestheticScore: 7.5, tier: "B-Tier" };
+    const jerseyMultiplier = jersey.salesMultiplier || 1.0;
     const baseJerseyBuyers = Math.floor(attendance * (0.10 + Math.random() * 0.10));
     const facilitiesMultiplier = 1 + ((homeStad.facilitiesLevel || 3) - 3) * 0.15;
     const starMultiplier = (homeRating >= 88) ? 1.4 : (homeRating >= 85 ? 1.2 : 1.0);
-    const jerseysSold = Math.floor(baseJerseyBuyers * facilitiesMultiplier * starMultiplier);
+    const jerseysSold = Math.floor(baseJerseyBuyers * facilitiesMultiplier * starMultiplier * jerseyMultiplier);
 
     // Top selling shirt player
     const userTeam = roomTeams[fixture.homeTeam];
@@ -738,6 +1166,9 @@ class LeagueManager {
       ticketRevenue,
       merchRevenue,
       jerseysSold,
+      jerseySalesMultiplier: jerseyMultiplier,
+      jerseyAestheticScore: jersey.aestheticScore || 7.5,
+      jerseyTier: jersey.tier || "B-Tier",
       topSellingJersey: topJerseyPlayer,
       tvRevenue,
       matchWages,
@@ -1100,8 +1531,648 @@ class LeagueManager {
     };
   }
 
-  // Calculate promotion and relegation lists based on current standings
-  calculateSeasonSummary() {
+  // Generate authentic minute-by-minute timeline and match statistics
+  generateMatchTimelineAndStats(fixture, homeScore, awayScore, scorers, homeRating, awayRating, roomTeams = {}) {
+    const homeTeam = fixture.homeTeam;
+    const awayTeam = fixture.awayTeam;
+
+    const getClubStar = (team, role = "attacker") => {
+      const uTeam = roomTeams[team];
+      const squad = uTeam?.players || [];
+      if (role === "gk") {
+        const gk = squad.find(p => p.position === "GK");
+        if (gk) return gk.name;
+        const knownGk = {
+          "Real Madrid": "Thibaut Courtois", "Manchester City": "Ederson", "Bayern Munich": "Manuel Neuer",
+          "Arsenal": "David Raya", "Paris Saint-Germain": "Gianluigi Donnarumma", "Liverpool": "Alisson Becker",
+          "Barcelona": "Marc-André ter Stegen", "Borussia Dortmund": "Gregor Kobel", "Atletico Madrid": "Jan Oblak",
+          "Juventus": "Michele Di Gregorio", "AC Milan": "Mike Maignan", "Napoli": "Alex Meret",
+          "Bayer Leverkusen": "Lukáš Hrádecký", "Ajax": "Remko Pasveer", "Benfica": "Anatoliy Trubin",
+          "Sporting CP": "Franco Israel", "FC Porto": "Diogo Costa", "Marseille": "Gerónimo Rulli",
+          "Aston Villa": "Emiliano Martínez"
+        };
+        return knownGk[team] || `${team} Goalkeeper`;
+      }
+      if (role === "mid") {
+        const mid = squad.find(p => ["AMF", "CMF", "DMF"].includes(p.position));
+        if (mid) return mid.name;
+        const knownMids = {
+          "Real Madrid": "Jude Bellingham", "Manchester City": "Kevin De Bruyne", "Bayern Munich": "Jamal Musiala",
+          "Arsenal": "Martin Ødegaard", "Paris Saint-Germain": "Vitinha", "Liverpool": "Alexis Mac Allister",
+          "Barcelona": "Pedri", "Borussia Dortmund": "Julian Brandt", "Atletico Madrid": "Rodrigo De Paul",
+          "Juventus": "Teun Koopmeiners", "AC Milan": "Tijjani Reijnders", "Napoli": "Stanislav Lobotka",
+          "Bayer Leverkusen": "Florian Wirtz", "Ajax": "Kenneth Taylor", "Benfica": "Orkun Kökçü",
+          "Sporting CP": "Morten Hjulmand", "FC Porto": "Alan Varela", "Marseille": "Pierre-Emile Højbjerg",
+          "Aston Villa": "John McGinn"
+        };
+        return knownMids[team] || `${team} Playmaker`;
+      }
+      if (role === "def") {
+        const def = squad.find(p => ["CB", "LB", "RB"].includes(p.position));
+        if (def) return def.name;
+        const knownDefs = {
+          "Real Madrid": "Antonio Rüdiger", "Manchester City": "Rúben Dias", "Bayern Munich": "Dayot Upamecano",
+          "Arsenal": "William Saliba", "Paris Saint-Germain": "Marquinhos", "Liverpool": "Virgil van Dijk",
+          "Barcelona": "Pau Cubarsí", "Borussia Dortmund": "Nico Schlotterbeck", "Atletico Madrid": "José Giménez",
+          "Juventus": "Bremer", "AC Milan": "Théo Hernandez", "Napoli": "Giovanni Di Lorenzo",
+          "Bayer Leverkusen": "Jonathan Tah", "Ajax": "Josip Šutalo", "Benfica": "Nicolás Otamendi",
+          "Sporting CP": "Gonçalo Inácio", "FC Porto": "Nehuén Pérez", "Marseille": "Leonardo Balerdi",
+          "Aston Villa": "Ezri Konsa"
+        };
+        return knownDefs[team] || `${team} Defender`;
+      }
+      if (squad.length > 0) {
+        return squad[Math.floor(Math.random() * squad.length)].name;
+      }
+      return AI_STARS[team]?.[0] || `${team} Striker`;
+    };
+
+    const homeGk = getClubStar(homeTeam, "gk");
+    const awayGk = getClubStar(awayTeam, "gk");
+
+    // Match statistics calculation
+    const ratingDiff = homeRating - awayRating;
+    const homePoss = Math.min(68, Math.max(34, Math.round(50 + ratingDiff * 1.2 + (Math.random() * 6 - 3))));
+    const awayPoss = 100 - homePoss;
+
+    const homeShots = Math.max(homeScore + 3, Math.round(homeScore * 2.8 + Math.random() * 6 + 5));
+    const awayShots = Math.max(awayScore + 2, Math.round(awayScore * 2.6 + Math.random() * 5 + 3));
+
+    const homeOnTarget = Math.min(homeShots, homeScore + Math.floor(Math.random() * 4) + 2);
+    const awayOnTarget = Math.min(awayShots, awayScore + Math.floor(Math.random() * 3) + 1);
+
+    const homeXG = Math.round((homeScore * 0.72 + (homeShots - homeScore) * 0.08 + Math.random() * 0.25) * 100) / 100;
+    const awayXG = Math.round((awayScore * 0.72 + (awayShots - awayScore) * 0.08 + Math.random() * 0.25) * 100) / 100;
+
+    const homeCorners = Math.floor(Math.random() * 6) + 3;
+    const awayCorners = Math.floor(Math.random() * 5) + 2;
+
+    const homeFouls = Math.floor(Math.random() * 7) + 6;
+    const awayFouls = Math.floor(Math.random() * 8) + 7;
+
+    const homeYellows = Math.floor(Math.random() * 3);
+    const awayYellows = Math.floor(Math.random() * 3) + (fixture.isRivalry ? 1 : 0);
+
+    const homeSaves = Math.max(1, awayOnTarget - awayScore);
+    const awaySaves = Math.max(1, homeOnTarget - homeScore);
+
+    const homePasses = Math.floor(homePoss * 9.2 + Math.random() * 40);
+    const awayPasses = Math.floor(awayPoss * 9.2 + Math.random() * 40);
+
+    const homePassAcc = Math.min(94, Math.floor(79 + (homeRating / 12) + Math.random() * 5));
+    const awayPassAcc = Math.min(94, Math.floor(79 + (awayRating / 12) + Math.random() * 5));
+
+    const homeTackles = Math.floor(Math.random() * 8) + 12;
+    const awayTackles = Math.floor(Math.random() * 8) + 12;
+
+    const stats = {
+      possession: { home: homePoss, away: awayPoss },
+      shots: { home: homeShots, away: awayShots },
+      shotsOnTarget: { home: homeOnTarget, away: awayOnTarget },
+      xG: { home: homeXG, away: awayXG },
+      corners: { home: homeCorners, away: awayCorners },
+      fouls: { home: homeFouls, away: awayFouls },
+      yellowCards: { home: homeYellows, away: awayYellows },
+      redCards: { home: 0, away: 0 },
+      saves: { home: homeSaves, away: awaySaves },
+      passes: { home: homePasses, away: awayPasses },
+      passAccuracy: { home: homePassAcc, away: awayPassAcc },
+      tackles: { home: homeTackles, away: awayTackles }
+    };
+
+    // Build Minute-by-Minute Timeline Events
+    const events = [];
+
+    events.push({
+      minute: 0,
+      type: "kickoff",
+      team: homeTeam,
+      player: homeTeam,
+      commentary: `Match begins! Referee signals kickoff as ${homeTeam} get the action underway at ${fixture.matchdayStats?.stadiumName || 'the stadium'}.`,
+      icon: "📢",
+      scoreHome: 0,
+      scoreAway: 0
+    });
+
+    let currentHome = 0;
+    let currentAway = 0;
+
+    for (const sc of (scorers || [])) {
+      const isHome = sc.team === homeTeam;
+      if (isHome) currentHome++;
+      else currentAway++;
+
+      const assistMaker = getClubStar(sc.team, "mid");
+      events.push({
+        minute: sc.minute,
+        type: "goal",
+        team: sc.team,
+        player: sc.scorer,
+        secondaryPlayer: assistMaker,
+        commentary: `⚽ GOOOOOAL! ${sc.scorer} finds the back of the net with an unstoppable strike! Precision assist by ${assistMaker}. [${currentHome} - ${currentAway}]`,
+        icon: "⚽",
+        scoreHome: currentHome,
+        scoreAway: currentAway,
+        isHighlight: true
+      });
+    }
+
+    const sampleMinutes = [8, 15, 23, 31, 39, 44, 45, 52, 61, 70, 78, 86, 90];
+    for (const min of sampleMinutes) {
+      const exists = events.find(e => {
+        const m = typeof e.minute === "string" ? 90 : e.minute;
+        return Math.abs(m - min) <= 1;
+      });
+      if (exists) continue;
+
+      if (min === 45) {
+        events.push({
+          minute: 45,
+          type: "halftime",
+          team: homeTeam,
+          player: "Referee",
+          commentary: `Half-time whistle blows. Players head down the tunnel for tactical briefing. Current score: ${homeTeam} ${currentHome} - ${currentAway} ${awayTeam}.`,
+          icon: "⏸️",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+        continue;
+      }
+
+      if (min === 61) {
+        const subInHome = getClubStar(homeTeam, "mid");
+        events.push({
+          minute: 61,
+          type: "sub",
+          team: homeTeam,
+          player: subInHome,
+          commentary: `🔄 Tactical substitution for ${homeTeam}: Fresh legs introduced to intensify the press and maintain tempo.`,
+          icon: "🔄",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+        continue;
+      }
+
+      if (min === 70) {
+        const subInAway = getClubStar(awayTeam, "mid");
+        events.push({
+          minute: 70,
+          type: "sub",
+          team: awayTeam,
+          player: subInAway,
+          commentary: `🔄 Tactical change for ${awayTeam}: Adjusting offensive shape aiming to stretch the backline.`,
+          icon: "🔄",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+        continue;
+      }
+
+      const rand = Math.random();
+      if (rand < 0.28) {
+        const attackingHome = Math.random() < (homePoss / 100);
+        const attacker = attackingHome ? getClubStar(homeTeam, "attacker") : getClubStar(awayTeam, "attacker");
+        const gk = attackingHome ? awayGk : homeGk;
+        const defendingTeam = attackingHome ? awayTeam : homeTeam;
+        events.push({
+          minute: min,
+          type: "save",
+          team: defendingTeam,
+          player: gk,
+          secondaryPlayer: attacker,
+          commentary: `🧤 Sensational reflex stop by ${gk}! ${attacker} unleashed a ferocious curling drive, but the goalkeeper parries it away safely!`,
+          icon: "🧤",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+      } else if (rand < 0.48) {
+        const cardTeam = Math.random() < 0.5 ? homeTeam : awayTeam;
+        const def = getClubStar(cardTeam, "def");
+        events.push({
+          minute: min,
+          type: "card_yellow",
+          team: cardTeam,
+          player: def,
+          commentary: `🟨 Caution issued! ${def} pulls down the counter-attacker with a cynical tactical foul. Yellow card shown.`,
+          icon: "🟨",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+      } else if (rand < 0.68) {
+        const attTeam = Math.random() < 0.5 ? homeTeam : awayTeam;
+        const shooter = getClubStar(attTeam, "attacker");
+        events.push({
+          minute: min,
+          type: "woodwork",
+          team: attTeam,
+          player: shooter,
+          commentary: `🎯 OFF THE WOODWORK! ${shooter} rattles the crossbar from outside the box! Millimeters away from glory!`,
+          icon: "🎯",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+      } else if (rand < 0.85) {
+        const cornerTeam = Math.random() < 0.5 ? homeTeam : awayTeam;
+        const taker = getClubStar(cornerTeam, "mid");
+        events.push({
+          minute: min,
+          type: "corner",
+          team: cornerTeam,
+          player: taker,
+          commentary: `🚩 Corner awarded to ${cornerTeam}. ${taker} whips an in-swinging delivery into the danger zone, headed away by the defense.`,
+          icon: "🚩",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+      } else {
+        const counterTeam = Math.random() < 0.5 ? homeTeam : awayTeam;
+        const runner = getClubStar(counterTeam, "attacker");
+        events.push({
+          minute: min,
+          type: "chance",
+          team: counterTeam,
+          player: runner,
+          commentary: `⚡ Rapid break by ${counterTeam}! ${runner} sprints clear down the wing, delivering a venomous low cross that gets cleared.`,
+          icon: "⚡",
+          scoreHome: currentHome,
+          scoreAway: currentAway
+        });
+      }
+    }
+
+    events.push({
+      minute: "90+2",
+      type: "fulltime",
+      team: homeTeam,
+      player: "Referee",
+      commentary: `Full-time whistle! An enthralling match concludes. Final score: ${homeTeam} ${homeScore} - ${awayScore} ${awayTeam}.`,
+      icon: "🏁",
+      scoreHome: homeScore,
+      scoreAway: awayScore,
+      isHighlight: true
+    });
+
+    events.sort((a, b) => {
+      const minA = typeof a.minute === "string" ? 90 + parseInt(a.minute.replace("90+", "") || "1", 10) : a.minute;
+      const minB = typeof b.minute === "string" ? 90 + parseInt(b.minute.replace("90+", "") || "1", 10) : b.minute;
+      return minA - minB;
+    });
+
+    let motm = null;
+    if (scorers && scorers.length > 0) {
+      motm = {
+        name: scorers[0].scorer,
+        team: scorers[0].team,
+        rating: 9.4,
+        role: "Match Winner",
+        impact: "Decisive match-winning performance with clinical finishing."
+      };
+    } else if (homeScore === 0 && awayScore === 0) {
+      motm = {
+        name: homeGk,
+        team: homeTeam,
+        rating: 9.1,
+        role: "Goalkeeper",
+        impact: "Heroic clean sheet with key reflex saves to preserve the draw."
+      };
+    } else {
+      motm = {
+        name: getClubStar(homeScore > awayScore ? homeTeam : awayTeam, "mid"),
+        team: homeScore > awayScore ? homeTeam : awayTeam,
+        rating: 8.8,
+        role: "Midfield General",
+        impact: "Controlled the tempo of the game with flawless passing distribution."
+      };
+    }
+
+    return {
+      stats,
+      timeline: events,
+      motm
+    };
+  }
+
+  // Update individual player statistics for awards from match simulation
+  updatePlayerStatsFromMatch(fixture, matchData, roomTeams = {}) {
+    const { homeTeam, awayTeam, homeScore, awayScore, scorers, motm } = fixture;
+
+    const getOrInitPlayer = (playerName, club, position = "CF") => {
+      if (!this.playerSeasonStats[playerName]) {
+        const age = PLAYER_AGES_DATABASE[playerName] || Math.floor(Math.random() * 8) + 21;
+        this.playerSeasonStats[playerName] = {
+          name: playerName,
+          club,
+          position,
+          age,
+          appearances: 0,
+          goals: 0,
+          assists: 0,
+          cleanSheets: 0,
+          saves: 0,
+          goalsConceded: 0,
+          ratingTotal: 0,
+          avgRating: 7.0,
+          motmCount: 0
+        };
+      }
+      return this.playerSeasonStats[playerName];
+    };
+
+    for (const sc of (scorers || [])) {
+      const p = getOrInitPlayer(sc.scorer, sc.team, "CF");
+      p.goals += 1;
+      p.appearances = Math.max(1, p.appearances + 1);
+      p.ratingTotal += (Math.random() * 1.5 + 8.2);
+    }
+
+    for (const ev of (matchData.timeline || [])) {
+      if (ev.type === "goal" && ev.secondaryPlayer) {
+        const p = getOrInitPlayer(ev.secondaryPlayer, ev.team, "AMF");
+        p.assists += 1;
+        p.appearances = Math.max(1, p.appearances + 1);
+        p.ratingTotal += (Math.random() * 1.2 + 7.8);
+      }
+    }
+
+    const homeGkName = matchData.timeline.find(e => e.type === "save" && e.team === homeTeam)?.player || `${homeTeam} Goalkeeper`;
+    const awayGkName = matchData.timeline.find(e => e.type === "save" && e.team === awayTeam)?.player || `${awayTeam} Goalkeeper`;
+
+    const homeGk = getOrInitPlayer(homeGkName, homeTeam, "GK");
+    homeGk.appearances += 1;
+    homeGk.saves += matchData.stats?.saves?.home || 3;
+    homeGk.goalsConceded += awayScore;
+    if (awayScore === 0) homeGk.cleanSheets += 1;
+    homeGk.ratingTotal += (awayScore === 0 ? 8.5 : 7.3);
+
+    const awayGk = getOrInitPlayer(awayGkName, awayTeam, "GK");
+    awayGk.appearances += 1;
+    awayGk.saves += matchData.stats?.saves?.away || 3;
+    awayGk.goalsConceded += homeScore;
+    if (homeScore === 0) awayGk.cleanSheets += 1;
+    awayGk.ratingTotal += (homeScore === 0 ? 8.5 : 7.3);
+
+    if (motm && motm.name) {
+      const motmP = getOrInitPlayer(motm.name, motm.team);
+      motmP.motmCount += 1;
+      motmP.ratingTotal += motm.rating || 9.0;
+    }
+
+    for (const key of Object.keys(this.playerSeasonStats)) {
+      const p = this.playerSeasonStats[key];
+      const games = Math.max(1, p.appearances || (p.goals > 0 ? 1 : 0));
+      p.avgRating = Math.round((p.ratingTotal / (games + 0.4)) * 10) / 10;
+      p.avgRating = Math.min(9.9, Math.max(6.0, p.avgRating));
+    }
+  }
+
+  // Seed baseline star players for season awards before matches or at season start
+  seedInitialPlayerStats() {
+    const seedStars = [
+      { name: "Kylian Mbappé", club: "Real Madrid", position: "CF", age: 25, goals: 7, assists: 3, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.9, motmCount: 3 },
+      { name: "Vinicius Junior", club: "Real Madrid", position: "LWF", age: 24, goals: 6, assists: 6, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.9, motmCount: 2 },
+      { name: "Erling Haaland", club: "Manchester City", position: "CF", age: 24, goals: 8, assists: 1, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.8, motmCount: 3 },
+      { name: "Jude Bellingham", club: "Real Madrid", position: "AMF", age: 21, goals: 4, assists: 5, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.7, motmCount: 2 },
+      { name: "Lamine Yamal", club: "Barcelona", position: "RWF", age: 17, goals: 5, assists: 7, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.9, motmCount: 3 },
+      { name: "Kevin De Bruyne", club: "Manchester City", position: "CMF", age: 33, goals: 3, assists: 8, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.8, motmCount: 2 },
+      { name: "Mohamed Salah", club: "Liverpool", position: "RWF", age: 32, goals: 7, assists: 4, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.8, motmCount: 2 },
+      { name: "Harry Kane", club: "Bayern Munich", position: "CF", age: 31, goals: 7, assists: 3, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.7, motmCount: 2 },
+      { name: "Jamal Musiala", club: "Bayern Munich", position: "AMF", age: 21, goals: 5, assists: 5, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.8, motmCount: 2 },
+      { name: "Florian Wirtz", club: "Bayer Leverkusen", position: "AMF", age: 21, goals: 4, assists: 6, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.7, motmCount: 1 },
+      { name: "Arda Güler", club: "Real Madrid", position: "AMF", age: 19, goals: 3, assists: 4, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 7, avgRating: 8.4, motmCount: 1 },
+      { name: "Kobbie Mainoo", club: "Manchester City", position: "CMF", age: 19, goals: 2, assists: 3, cleanSheets: 0, saves: 0, goalsConceded: 0, appearances: 7, avgRating: 8.2, motmCount: 1 },
+      { name: "Rodri", club: "Manchester City", position: "DMF", age: 28, goals: 2, assists: 4, cleanSheets: 4, saves: 0, goalsConceded: 0, appearances: 8, avgRating: 8.8, motmCount: 2 },
+      { name: "Thibaut Courtois", club: "Real Madrid", position: "GK", age: 32, goals: 0, assists: 0, cleanSheets: 5, saves: 31, goalsConceded: 5, appearances: 8, avgRating: 8.6, motmCount: 1 },
+      { name: "Ederson", club: "Manchester City", position: "GK", age: 31, goals: 0, assists: 0, cleanSheets: 4, saves: 26, goalsConceded: 7, appearances: 8, avgRating: 8.4, motmCount: 0 },
+      { name: "David Raya", club: "Arsenal", position: "GK", age: 28, goals: 0, assists: 0, cleanSheets: 5, saves: 28, goalsConceded: 6, appearances: 8, avgRating: 8.5, motmCount: 1 },
+      { name: "Alisson Becker", club: "Liverpool", position: "GK", age: 31, goals: 0, assists: 0, cleanSheets: 4, saves: 27, goalsConceded: 7, appearances: 8, avgRating: 8.4, motmCount: 0 },
+      { name: "Virgil van Dijk", club: "Liverpool", position: "CB", age: 33, goals: 1, assists: 1, cleanSheets: 4, saves: 0, goalsConceded: 7, appearances: 8, avgRating: 8.3, motmCount: 1 },
+      { name: "Antonio Rüdiger", club: "Real Madrid", position: "CB", age: 31, goals: 1, assists: 0, cleanSheets: 5, saves: 0, goalsConceded: 5, appearances: 8, avgRating: 8.4, motmCount: 1 },
+      { name: "Achraf Hakimi", club: "Paris Saint-Germain", position: "RB", age: 25, goals: 2, assists: 3, cleanSheets: 3, saves: 0, goalsConceded: 8, appearances: 8, avgRating: 8.3, motmCount: 0 },
+      { name: "Théo Hernandez", club: "AC Milan", position: "LB", age: 26, goals: 2, assists: 4, cleanSheets: 3, saves: 0, goalsConceded: 9, appearances: 8, avgRating: 8.3, motmCount: 1 }
+    ];
+
+    for (const s of seedStars) {
+      if (!this.playerSeasonStats[s.name]) {
+        this.playerSeasonStats[s.name] = {
+          ...s,
+          ratingTotal: s.avgRating * s.appearances
+        };
+      }
+    }
+  }
+
+  // Calculate Ballon d'Or, Golden Glove, Golden Boot, Playmaker, and Golden Boy awards
+  calculateSeasonAwards(roomTeams = {}) {
+    if (Object.keys(this.playerSeasonStats).length < 5) {
+      this.seedInitialPlayerStats();
+    }
+
+    const allPlayers = Object.values(this.playerSeasonStats);
+    const div1Leader = this.divisions[1]?.standings?.[0]?.name || "Real Madrid";
+
+    // 1. BALLON D'OR
+    const rankedBallon = [...allPlayers].sort((a, b) => {
+      const scoreA = (a.avgRating * 14) + (a.goals * 4) + (a.assists * 3) + (a.motmCount * 6) + (a.cleanSheets * 4) + (a.club === div1Leader ? 20 : 0);
+      const scoreB = (b.avgRating * 14) + (b.goals * 4) + (b.assists * 3) + (b.motmCount * 6) + (b.cleanSheets * 4) + (b.club === div1Leader ? 20 : 0);
+      return scoreB - scoreA;
+    });
+
+    const ballonWinner = rankedBallon[0] || allPlayers[0];
+    const ballonTop5 = rankedBallon.slice(0, 5).map((p, idx) => ({
+      rank: idx + 1,
+      player: p.name,
+      club: p.club,
+      position: p.position,
+      goals: p.goals,
+      assists: p.assists,
+      rating: p.avgRating,
+      motm: p.motmCount,
+      votesPct: idx === 0 ? 46.2 : Math.max(9.5, Math.round((30 - idx * 6 + Math.random() * 2) * 10) / 10),
+      trophyBadge: idx === 0 ? "🏆 BALLON D'OR WINNER" : `#${idx + 1} Nominee`
+    }));
+
+    // 2. GOLDEN GLOVE (Yashin Trophy)
+    const gks = allPlayers.filter(p => p.position === "GK" || p.saves > 0 || p.cleanSheets > 0);
+    const rankedGk = [...gks].sort((a, b) => {
+      const scoreA = (a.cleanSheets * 12) + (a.saves * 0.9) - (a.goalsConceded * 1.5) + (a.avgRating * 6);
+      const scoreB = (b.cleanSheets * 12) + (b.saves * 0.9) - (b.goalsConceded * 1.5) + (b.avgRating * 6);
+      return scoreB - scoreA;
+    });
+    const gloveWinner = rankedGk[0] || { name: "Thibaut Courtois", club: "Real Madrid", cleanSheets: 6, saves: 32, savePct: 88, goalsConceded: 5 };
+    const gloveTop3 = rankedGk.slice(0, 3).map((g, idx) => ({
+      rank: idx + 1,
+      player: g.name,
+      club: g.club,
+      cleanSheets: g.cleanSheets,
+      saves: g.saves,
+      goalsConceded: g.goalsConceded,
+      savePct: g.saves > 0 ? Math.min(96, Math.round((g.saves / (g.saves + g.goalsConceded + 0.1)) * 100)) : 85
+    }));
+
+    // 3. GOLDEN BOOT
+    const rankedScorers = [...allPlayers].sort((a, b) => b.goals - a.goals || b.assists - a.assists);
+    const bootWinner = rankedScorers[0] || { name: "Erling Haaland", club: "Manchester City", goals: 8, assists: 2 };
+    const bootTop5 = rankedScorers.slice(0, 5).map((p, idx) => ({
+      rank: idx + 1,
+      player: p.name,
+      club: p.club,
+      goals: p.goals,
+      assists: p.assists,
+      position: p.position
+    }));
+
+    // 4. PLAYMAKER AWARD (Assists)
+    const rankedAssists = [...allPlayers].sort((a, b) => b.assists - a.assists || b.avgRating - a.avgRating);
+    const assistWinner = rankedAssists[0] || { name: "Kevin De Bruyne", club: "Manchester City", assists: 8 };
+    const assistTop5 = rankedAssists.slice(0, 5).map((p, idx) => ({
+      rank: idx + 1,
+      player: p.name,
+      club: p.club,
+      assists: p.assists,
+      goals: p.goals
+    }));
+
+    // 5. GOLDEN BOY (Best U-21 Star)
+    const youngPlayers = allPlayers.filter(p => (p.age || 25) <= 21);
+    const rankedYoung = [...youngPlayers].sort((a, b) => {
+      const scoreA = (a.avgRating * 12) + (a.goals * 4) + (a.assists * 3);
+      const scoreB = (b.avgRating * 12) + (b.goals * 4) + (b.assists * 3);
+      return scoreB - scoreA;
+    });
+    const goldenBoyWinner = rankedYoung[0] || { name: "Lamine Yamal", club: "Barcelona", age: 17, goals: 5, assists: 7 };
+    const goldenBoyTop3 = rankedYoung.slice(0, 3).map((p, idx) => ({
+      rank: idx + 1,
+      player: p.name,
+      club: p.club,
+      age: p.age,
+      goals: p.goals,
+      assists: p.assists,
+      rating: p.avgRating
+    }));
+
+    // 6. TEAM OF THE SEASON (TOTS XI in 4-3-3)
+    const totsXI = {
+      formation: "4-3-3",
+      gk: gloveWinner.player || gloveWinner.name,
+      gkClub: gloveWinner.club,
+      lb: allPlayers.find(p => p.position === "LB")?.name || "Théo Hernandez",
+      cb1: allPlayers.find(p => p.position === "CB")?.name || "Virgil van Dijk",
+      cb2: allPlayers.filter(p => p.position === "CB")?.[1]?.name || "Antonio Rüdiger",
+      rb: allPlayers.find(p => p.position === "RB")?.name || "Achraf Hakimi",
+      dmf: allPlayers.find(p => p.position === "DMF")?.name || "Rodri",
+      cmf: assistWinner.player || assistWinner.name,
+      amf: ballonWinner.name || "Jude Bellingham",
+      lwf: allPlayers.find(p => ["LW", "LWF"].includes(p.position))?.name || "Vinicius Junior",
+      cf: bootWinner.player || bootWinner.name,
+      rwf: goldenBoyWinner.player || goldenBoyWinner.name
+    };
+
+    this.seasonAwards = {
+      season: this.season,
+      ballonDor: {
+        winner: ballonWinner,
+        podium: ballonTop5,
+        quote: "Transcendent individual brilliance and commanding leadership across Europe's elite grounds."
+      },
+      goldenGlove: {
+        winner: gloveWinner,
+        podium: gloveTop3,
+        quote: "An impregnable fortress between the posts, defying the laws of physics with jaw-dropping saves."
+      },
+      goldenBoot: {
+        winner: bootWinner,
+        podium: bootTop5
+      },
+      playmaker: {
+        winner: assistWinner,
+        podium: assistTop5
+      },
+      goldenBoy: {
+        winner: goldenBoyWinner,
+        podium: goldenBoyTop3,
+        quote: "The teenage sensation taking world football by storm with daring dribbles and clutch end-product."
+      },
+      teamOfTheSeason: totsXI,
+      calculatedAtRound: this.currentRound
+    };
+
+    return this.seasonAwards;
+  }
+
+  // Save jersey kit design and evaluate aesthetics score
+  saveJerseyDesign(clubName, jerseyData = {}, roomTeams = {}) {
+    if (!clubName) return { error: "Club name is required." };
+    if (!this.jerseys[clubName]) {
+      this.initClubExtras(clubName, 1, 80);
+    }
+    const current = this.jerseys[clubName] || DEFAULT_CLUB_JERSEYS[clubName] || {};
+    const updatedJersey = {
+      kitName: jerseyData.kitName || current.kitName || `${clubName} Kit`,
+      primaryColor: jerseyData.primaryColor || current.primaryColor || "#1e3a8a",
+      secondaryColor: jerseyData.secondaryColor || current.secondaryColor || "#ffffff",
+      accentColor: jerseyData.accentColor || current.accentColor || "#f59e0b",
+      pattern: jerseyData.pattern || current.pattern || "stripes",
+      collarStyle: jerseyData.collarStyle || current.collarStyle || "crew",
+      sponsor: jerseyData.sponsor !== undefined ? jerseyData.sponsor : (current.sponsor || "Fly Emirates"),
+      badgeIcon: jerseyData.badgeIcon || current.badgeIcon || "⚽",
+      numberColor: jerseyData.numberColor || current.numberColor || jerseyData.secondaryColor || "#ffffff"
+    };
+
+    const evalRes = evaluateJerseyAesthetics(updatedJersey);
+    const completeKit = {
+      ...updatedJersey,
+      ...evalRes,
+      updatedAt: new Date().toISOString(),
+      lastUpdatedRound: this.currentRound
+    };
+
+    this.jerseys[clubName] = completeKit;
+
+    return {
+      success: true,
+      clubName,
+      jersey: completeKit
+    };
+  }
+
+  // Get current jersey kit design for a club
+  getJerseyDesign(clubName) {
+    if (!this.jerseys[clubName]) {
+      this.initClubExtras(clubName, 1, 80);
+    }
+    return this.jerseys[clubName];
+  }
+
+  // Get trophy celebration data for champion team
+  getTrophyCeremonyData(roomTeams = {}) {
+    this.sortStandings(1);
+    const div1 = this.divisions[1].standings;
+    const champ = div1[0];
+    const championName = champ?.name || "Real Madrid";
+    const awards = this.calculateSeasonAwards(roomTeams);
+
+    return {
+      season: this.season,
+      champion: championName,
+      championLogo: champ?.logo || "👑",
+      points: champ?.points || 0,
+      played: champ?.played || 0,
+      won: champ?.won || 0,
+      drawn: champ?.drawn || 0,
+      lost: champ?.lost || 0,
+      goalDifference: champ?.goalDifference || 0,
+      trophyName: "Division 1 European Champions Cup",
+      captainName: (roomTeams[championName]?.players?.[0]?.name) || (AI_STARS[championName]?.[0]) || "Team Captain",
+      ballonWinner: awards.ballonDor.winner,
+      goldenBootWinner: awards.goldenBoot.winner,
+      goldenGloveWinner: awards.goldenGlove.winner,
+      ceremonyQuote: "GLORY BECOMES LEGEND! Confetti rains from the stadium rafters as the captain lifts the prestigious trophy into the sky!"
+    };
+  }
+
+  // Calculate promotion and relegation lists based on current standings, plus champion trophy ceremony
+  calculateSeasonSummary(roomTeams = {}) {
     this.sortStandings(1);
     this.sortStandings(2);
     this.sortStandings(3);
@@ -1110,7 +2181,9 @@ class LeagueManager {
     const div2 = this.divisions[2].standings;
     const div3 = this.divisions[3].standings;
 
-    const champion = div1[0]?.name || "None";
+    const champClub = div1[0];
+    const champion = champClub?.name || "None";
+    const awards = this.calculateSeasonAwards(roomTeams);
 
     // Division 1: bottom 2 relegated to Division 2
     const d1Relegated = div1.slice(4, 6).map(s => s.name);
@@ -1122,9 +2195,28 @@ class LeagueManager {
     // Division 3: top 2 promoted to Division 2
     const d3Promoted = div3.slice(0, 2).map(s => s.name);
 
+    const trophyCeremony = {
+      season: this.season,
+      champion,
+      championLogo: champClub?.logo || "👑",
+      championPoints: champClub?.points || 0,
+      championGoalDiff: champClub?.goalDifference || 0,
+      won: champClub?.won || 0,
+      drawn: champClub?.drawn || 0,
+      lost: champClub?.lost || 0,
+      trophyName: "Division 1 European Champions Cup",
+      captainName: (roomTeams[champion]?.players?.[0]?.name) || (AI_STARS[champion]?.[0]) || "Team Captain",
+      ballonWinner: awards.ballonDor.winner,
+      goldenBootWinner: awards.goldenBoot.winner,
+      goldenGloveWinner: awards.goldenGlove.winner,
+      ceremonyQuote: "GLORY BECOMES LEGEND! The crowd erupts into thunderous applause as fireworks illuminate the night sky!"
+    };
+
     return {
       season: this.season,
       champion,
+      trophyCeremony,
+      awards,
       promotions: [
         { from: 2, to: 1, teams: d2Promoted },
         { from: 3, to: 2, teams: d3Promoted }
@@ -1138,7 +2230,7 @@ class LeagueManager {
 
   // Advance to next season: apply promotions & relegations, regenerate fixtures, reset standings
   advanceToNextSeason(newSeasonNumber, roomTeams = {}) {
-    const summary = this.calculateSeasonSummary();
+    const summary = this.calculateSeasonSummary(roomTeams);
 
     // Map existing clubs with their data
     const allClubsMap = new Map();
@@ -1202,6 +2294,9 @@ class LeagueManager {
       seasonAims: this.seasonAims,
       freeAgentManagers: this.freeAgentManagers,
       scoutReports: this.scoutReports,
+      jerseys: this.jerseys,
+      seasonAwards: this.seasonAwards || this.calculateSeasonAwards(),
+      playerSeasonStats: this.playerSeasonStats,
       divisions: {
         1: {
           id: 1,

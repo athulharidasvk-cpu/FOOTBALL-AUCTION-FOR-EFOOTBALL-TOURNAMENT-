@@ -1,6 +1,6 @@
 {
   "name": "Football Auction",
-  "description": "Multiplayer football auction, realistic manager dugout broadcast, 3D stadium gameplay visualizer, arch-rival derby matches, sound effects, and multi-division league championship with AI clubs and promotion/relegation.",
+  "description": "Multiplayer football auction and club management app with custom jersey kit editor, aesthetics-driven merchandise revenue, broadcast match center with team crests and minute-by-minute live statistics, prestigious season awards (Ballon d'Or, Golden Glove, Golden Boot), and animated champion trophy lifting celebrations.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

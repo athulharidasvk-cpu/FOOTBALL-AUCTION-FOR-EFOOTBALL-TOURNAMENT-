@@ -17,6 +17,10 @@
 </script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
 <script src="/match3d.js"></script>
+<link rel="stylesheet" href="/app_experience.css">
+<script src="/jersey_studio.js"></script>
+<script src="/match_center.js"></script>
+<script src="/awards_trophy.js"></script>
 
 <style>
 * {
@@ -2944,6 +2948,229 @@ select {
 
 <div class="container">
 
+  <!-- =====================================================
+       MODERN APP-LIKE HEADER BAR & QUICK ACTIONS
+  ====================================================== -->
+  <div class="app-top-nav-bar">
+    <div class="app-nav-inner">
+      <div class="app-brand-lockup">
+        <div class="app-brand-icon">⚽</div>
+        <div class="app-brand-text">
+          <h1>FOOTBALL AUCTION PRO</h1>
+          <div class="app-sub-status">
+            <span class="live-indicator-dot"></span>
+            <span id="appTopStatusText">MATCHDAY ARENA • SEASON 1</span>
+          </div>
+        </div>
+      </div>
+      <div class="app-header-actions">
+        <button type="button" class="app-pill-btn" onclick="switchAppView('jerseys')" title="Design jerseys & boost kit sales revenue">
+          <span>👕</span><span>Kit Studio</span>
+        </button>
+        <button type="button" class="app-pill-btn gold" onclick="switchAppView('awards')" title="Ballon d'Or & Season Honors">
+          <span>⭐</span><span>Ballon d'Or</span>
+        </button>
+        <button type="button" class="app-pill-btn gold" onclick="triggerTrophyPresentation()" title="Celebrate Champions with Trophy Lifting">
+          <span>🏆</span><span>Lift Trophy</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       FLOATING APP NAVIGATION DOCK
+  ====================================================== -->
+  <div class="app-bottom-dock" id="appBottomDock">
+    <button type="button" class="dock-item-btn active" id="dockBtn_league" onclick="switchAppView('league')">
+      <span class="dock-icon">🏆</span>
+      <span>League</span>
+    </button>
+    <button type="button" class="dock-item-btn" id="dockBtn_match" onclick="switchAppView('match')">
+      <span class="dock-icon">🏟️</span>
+      <span>Match Center</span>
+    </button>
+    <button type="button" class="dock-item-btn" id="dockBtn_jerseys" onclick="switchAppView('jerseys')">
+      <span class="dock-icon">👕</span>
+      <span>Kit Studio</span>
+    </button>
+    <button type="button" class="dock-item-btn" id="dockBtn_awards" onclick="switchAppView('awards')">
+      <span class="dock-icon">⭐</span>
+      <span>Awards</span>
+    </button>
+    <button type="button" class="dock-item-btn" id="dockBtn_hq" onclick="switchAppView('hq')">
+      <span class="dock-icon">🏢</span>
+      <span>Club HQ</span>
+    </button>
+    <button type="button" class="dock-item-btn" id="dockBtn_auction" onclick="switchAppView('auction')">
+      <span class="dock-icon">🔨</span>
+      <span>Auction</span>
+    </button>
+  </div>
+
+  <!-- =====================================================
+       VIEW 2: IN-PAGE BROADCAST MATCH CENTER
+  ====================================================== -->
+  <div class="app-view-container" id="view_match">
+    <div class="league-card" style="margin-bottom: 24px;">
+      <div class="league-header-bar">
+        <div class="league-title-group">
+          <h2>🏟️ Broadcast Match Center</h2>
+          <div class="league-subtitle">Live team logos & crests, minute-by-minute match feed, and real-time statistics tracker</div>
+        </div>
+        <div class="app-header-actions">
+          <button type="button" class="app-pill-btn gold" onclick="open3DMatchArena()" title="Open Fullscreen Broadcast Stadium Arena">
+            <span>📺</span><span>Popout Stadium Arena</span>
+          </button>
+        </div>
+      </div>
+      <div id="inPageMatchCenterStage" style="border-radius: 12px; overflow: hidden; min-height: 520px; background: #050e1a;">
+        <!-- Filled dynamically by MatchCenter -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       VIEW 3: OFFICIAL JERSEY STUDIO & MERCHANDISE REVENUE
+  ====================================================== -->
+  <div class="app-view-container" id="view_jerseys">
+    <div class="jersey-studio-container" id="jerseyStudioSection">
+      <div class="jersey-studio-header">
+        <div class="jersey-studio-title">
+          <h2>👕 Official Kit Studio & Merchandise Sales</h2>
+          <p>Design your club's official matchday kit! Harmonious colors, elegant patterns, and high-contrast typography boost aesthetic ratings up to <strong>10/10</strong> and trigger up to a <strong>2.27x merchandise sales multiplier</strong> on every home matchday!</p>
+        </div>
+        <button type="button" class="btn-deploy-kit" id="btnSaveJerseyKit" onclick="JerseyStudio.saveCurrentJersey()">
+          💾 Save & Launch Official Kit
+        </button>
+      </div>
+
+      <div class="jersey-layout-grid">
+        <!-- LEFT: DUO SVG VIEWPORT & AESTHETIC SCORE -->
+        <div class="jersey-left-col">
+          <div id="jerseyPreviewStage">
+            <!-- Front & Back SVG rendered by JerseyStudio -->
+          </div>
+
+          <!-- AESTHETIC SCORE CARD -->
+          <div class="aesthetic-score-card">
+            <div class="aesthetic-header-row">
+              <span style="font-size: 13px; font-weight: 800; color: #ffffff;">AESTHETIC RATING</span>
+              <span class="aesthetic-tier-badge s-tier" id="jerseyTierBadge">Masterpiece S-Tier</span>
+            </div>
+            <div class="aesthetic-bar-track">
+              <div class="aesthetic-bar-fill s-tier" id="jerseyScoreFill" style="width: 88%;"></div>
+            </div>
+            <div class="aesthetic-impact-row">
+              <div>Score: <strong style="font-size: 16px; color: #facc15;" id="jerseyScoreValue">8.8 / 10</strong></div>
+              <div id="jerseyMultTag" style="font-weight: 800; color: #10b981;">1.85x Merchandise Sales</div>
+              <div id="jerseyEstRevenue" style="color: #94a3b8; font-size: 11px;">+₹2.8M - ₹5.5M Merch Revenue per Home Match</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- RIGHT: CONTROLS & PRESET PALETTES -->
+        <div class="jersey-controls-card">
+          <div class="controls-section-title">🎨 PALETTE & ACCENTS</div>
+          <div class="color-pickers-grid">
+            <div class="color-input-item">
+              <label>Primary</label>
+              <input type="color" id="kitPrimaryColor" value="#ffffff" onchange="JerseyStudio.setField('primary', this.value)">
+            </div>
+            <div class="color-input-item">
+              <label>Secondary</label>
+              <input type="color" id="kitSecondaryColor" value="#1e3a8a" onchange="JerseyStudio.setField('secondary', this.value)">
+            </div>
+            <div class="color-input-item">
+              <label>Accent / Trim</label>
+              <input type="color" id="kitAccentColor" value="#eab308" onchange="JerseyStudio.setField('accent', this.value)">
+            </div>
+            <div class="color-input-item">
+              <label>Text & Number</label>
+              <input type="color" id="kitTextColor" value="#0f172a" onchange="JerseyStudio.setField('text', this.value)">
+            </div>
+          </div>
+
+          <div class="form-row-duo">
+            <div class="form-group-item">
+              <label>Pattern Style</label>
+              <select id="kitPatternSelect" onchange="JerseyStudio.setField('pattern', this.value)">
+                <option value="solid">Minimalist Clean Solid</option>
+                <option value="stripes">Vertical Bold Stripes</option>
+                <option value="hoops">Horizontal Hoops</option>
+                <option value="checker">Checkered Grid</option>
+                <option value="half">Half & Half Split</option>
+                <option value="sash">Diagonal Prestige Sash</option>
+                <option value="wave">Gradient Horizon Wave</option>
+              </select>
+            </div>
+            <div class="form-group-item">
+              <label>Collar Type</label>
+              <select id="kitCollarSelect" onchange="JerseyStudio.setField('collar', this.value)">
+                <option value="crew">Modern Crew Neck</option>
+                <option value="vneck">Sharp V-Neck</option>
+                <option value="polo">Classic Button Polo</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row-duo">
+            <div class="form-group-item">
+              <label>Sponsor Logo</label>
+              <input type="text" id="kitSponsorInput" value="FLY EMIRATES" maxlength="16" oninput="JerseyStudio.setField('sponsor', this.value)">
+            </div>
+            <div class="form-group-item">
+              <label>Squad Number</label>
+              <input type="number" id="kitNumberInput" value="7" min="1" max="99" oninput="JerseyStudio.setField('number', this.value)">
+            </div>
+          </div>
+
+          <div class="form-group-item">
+            <label>Player Name (Back)</label>
+            <input type="text" id="kitPlayerNameInput" value="MBAPPÉ" maxlength="15" oninput="JerseyStudio.setField('player', this.value)">
+          </div>
+
+          <div class="controls-section-title" style="margin-top: 6px;">⚡ PRESTIGE PRESETS</div>
+          <div class="presets-pill-row">
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('royal')">👑 Royal Gold</button>
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('blaugrana')">🔵🔴 Blaugrana</button>
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('sky')">🏙️ Sky Blue</button>
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('rossoneri')">🔴⚫ Rossoneri</button>
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('champions_gold')">🏆 Champion Noir</button>
+            <button type="button" class="preset-chip" onclick="JerseyStudio.applyPreset('stealth')">🌌 Stealth Cyan</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       VIEW 4: OFFICIAL SEASON AWARDS & BALLON D'OR GALA
+  ====================================================== -->
+  <div class="app-view-container" id="view_awards">
+    <div class="league-card" id="awardsSection">
+      <div class="league-header-bar">
+        <div class="league-title-group">
+          <h2>⭐ Official Season Awards Gala</h2>
+          <div class="league-subtitle">Ballon d'Or, Yashin Trophy, Golden Boot, Playmaker of Year, Golden Boy, and Team of the Season (TOTS XI)</div>
+        </div>
+        <div class="app-header-actions">
+          <button type="button" class="app-pill-btn gold" onclick="triggerTrophyPresentation()">
+            <span>🏆</span><span>Celebrate Champions</span>
+          </button>
+        </div>
+      </div>
+
+      <div id="awardsSectionContent">
+        <!-- Rendered dynamically by AwardsTrophy.renderSeasonAwards -->
+      </div>
+    </div>
+  </div>
+
+  <!-- =====================================================
+       VIEW 6 (PART 1): LIVE SQUAD AUCTION & DUGOUT
+  ====================================================== -->
+  <div class="app-view-container view-auction-part" id="view_auction_main">
+
   <!-- =========================
        REALISTIC MANAGER DUGOUT
   ========================== -->
@@ -3258,6 +3485,13 @@ select {
 
   </div>
 
+  </div> <!-- /#view_auction_main -->
+
+  <!-- =====================================================
+       VIEW 1: LEAGUE CHAMPIONSHIP & STANDINGS
+  ====================================================== -->
+  <div class="app-view-container active" id="view_league">
+
   <!-- =========================
        LEAGUE CHAMPIONSHIP (DIV 1, 2, 3)
   ========================== -->
@@ -3302,8 +3536,11 @@ select {
         <button class="btn-sim" id="btnSimRound" onclick="simulateLeagueRound()">
           ⚽ SIMULATE ROUND <span id="simRoundNum">1</span>
         </button>
-        <button class="btn-3d-arena" id="btnOpen3DArena" onclick="open3DMatchArena()" title="Watch 3D Match Simulation with broadcast camera, players & stadium">
-          🎮 3D MATCHDAY ARENA
+        <button class="btn-3d-arena" id="btnOpen3DArena" onclick="open3DMatchArena()" title="Watch Broadcast Match with team logos, minute-by-minute live feed & statistics">
+          🏟️ MATCH CENTER
+        </button>
+        <button class="btn-trophy-lift" id="btnOpenTrophyCeremony" onclick="triggerTrophyPresentation()" style="background: linear-gradient(135deg, #ca8a04, #eab308); color: #000; font-weight: 900; padding: 9px 16px; border-radius: 8px;" title="Celebrate Champions with Trophy Lifting">
+          🏆 CELEBRATE CHAMPIONS
         </button>
         <button class="btn-sim-full" id="btnSimSeason" onclick="simulateFullSeason()">
           ⏩ SIMULATE ALL ROUNDS
@@ -3368,7 +3605,14 @@ select {
       🤖 <strong>AI Clubs:</strong> Real Madrid, Man City, Bayern, Arsenal, PSG, Liverpool, Dortmund, Juventus, Ajax, etc. are simulated league clubs that compete for the title, promotion, and relegation. AI clubs do NOT participate in the player auction. Online user clubs build their squad via the live auction, and their squad rating directly influences match simulation!
     </div>
 
-  </div>
+  </div> <!-- /#leagueSection -->
+
+  </div> <!-- /#view_league -->
+
+  <!-- =====================================================
+       VIEW 5: CLUB HEADQUARTERS & OPERATIONS
+  ====================================================== -->
+  <div class="app-view-container" id="view_hq">
 
   <!-- =====================================================
        CLUB HEADQUARTERS & OPERATIONS
@@ -3644,7 +3888,14 @@ select {
       </div>
     </div>
 
-  </div>
+  </div> <!-- /#clubHqSection -->
+
+  </div> <!-- /#view_hq -->
+
+  <!-- =====================================================
+       VIEW 6 (PART 2): SQUAD CONTRACTS, TRANSFERS & TEAMS
+  ====================================================== -->
+  <div class="app-view-container view-auction-part" id="view_auction_ops">
 
   <!-- =========================
        CLUB MANAGEMENT
@@ -3863,6 +4114,8 @@ select {
     </div>
 
   </div>
+
+  </div> <!-- /#view_auction_ops -->
 
   <!-- =====================================================
        3D MATCHDAY GAMEPLAY VISUALIZER MODAL
@@ -7377,32 +7630,162 @@ if (savedAudio !== null) {
 }
 
 /* =====================================================
-   3D MATCHDAY ARENA ENGINE CONTROLLER
+   APP VIEW SWITCHER & WORKSPACE DOCK
 ===================================================== */
 
-let match3dEngineInstance = null;
+let currentAppView = "league";
+
+function switchAppView(viewName) {
+  currentAppView = viewName;
+  document.querySelectorAll(".app-view-container").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".dock-item-btn").forEach(el => el.classList.remove("active"));
+
+  const targetBtn = document.getElementById("dockBtn_" + viewName);
+  if (targetBtn) targetBtn.classList.add("active");
+
+  if (viewName === "auction") {
+    document.querySelectorAll(".view-auction-part").forEach(el => el.classList.add("active"));
+  } else {
+    const targetView = document.getElementById("view_" + viewName);
+    if (targetView) targetView.classList.add("active");
+  }
+
+  if (viewName === "jerseys" && typeof JerseyStudio !== "undefined") {
+    JerseyStudio.init(myTeam);
+    JerseyStudio.renderJerseyStudio();
+  }
+  if (viewName === "match") {
+    initInPageMatchCenter();
+  }
+  if (viewName === "awards") {
+    loadAwardsData();
+  }
+}
+
+function initInPageMatchCenter(customFixture = null) {
+  const container = document.getElementById("inPageMatchCenterStage");
+  if (!container || typeof MatchCenter === "undefined") return;
+
+  let targetFixture = customFixture || current3DFixture;
+  if (!targetFixture) {
+    const div = leagueData?.divisions?.[currentDivisionTab];
+    const fixtures = div?.fixtures || [];
+    targetFixture = fixtures.find(f => f.round === currentViewingRound && (f.isRivalry || f.played))
+      || fixtures.find(f => f.round === currentViewingRound)
+      || fixtures[0];
+  }
+
+  if (!targetFixture) {
+    targetFixture = {
+      homeTeam: myTeam || "Real Madrid",
+      awayTeam: "Barcelona",
+      homeScore: 3,
+      awayScore: 2,
+      played: true,
+      isRivalry: true,
+      derbyName: "El Clásico",
+      round: 1,
+      scorers: [
+        { scorer: "Vinícius Jr.", minute: 18, team: myTeam || "Real Madrid" },
+        { scorer: "Robert Lewandowski", minute: 34, team: "Barcelona" },
+        { scorer: "Jude Bellingham", minute: 61, team: myTeam || "Real Madrid" },
+        { scorer: "Lamine Yamal", minute: 74, team: "Barcelona" },
+        { scorer: "Kylian Mbappé", minute: 89, team: myTeam || "Real Madrid" }
+      ]
+    };
+  }
+
+  current3DFixture = targetFixture;
+  const roomTeams = (typeof gameState !== "undefined" && gameState?.teams) ? gameState.teams : {};
+  MatchCenter.renderMatchCenterInto(container, targetFixture, roomTeams);
+}
+
+async function triggerTrophyPresentation() {
+  if (typeof AwardsTrophy === "undefined") return;
+  
+  try {
+    const res = await fetch("/api/league-trophy?division=" + (currentDivisionTab || 1));
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.champion) {
+        AwardsTrophy.openTrophyCeremony(data);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn("Falling back to local standings for trophy presentation:", err);
+  }
+
+  const div = leagueData?.divisions?.[currentDivisionTab || 1];
+  const champion = div?.standings?.[0] || {
+    name: myTeam || "Real Madrid",
+    logo: "👑",
+    points: 24,
+    won: 7,
+    drawn: 3,
+    lost: 0,
+    goalsFor: 22,
+    goalsAgainst: 6,
+    goalDifference: 16
+  };
+
+  const ceremonyData = {
+    division: currentDivisionTab || 1,
+    divisionName: (currentDivisionTab || 1) === 1 ? "Division 1 (Premier Tier)" : `Division ${currentDivisionTab}`,
+    champion: champion.name,
+    logo: champion.logo || "👑",
+    points: champion.points || 24,
+    record: `${champion.won || 7}W - ${champion.drawn || 3}D - ${champion.lost || 0}L`,
+    goalDiff: champion.goalDifference || 16,
+    prizeMoney: (currentDivisionTab || 1) === 1 ? 50 : 25,
+    captain: champion.name.includes("Madrid") ? "Luka Modrić" : (champion.name.includes("City") ? "Kevin De Bruyne" : "Team Captain"),
+    primaryColor: champion.name.includes("Madrid") ? "#f59e0b" : "#38bdf8"
+  };
+
+  AwardsTrophy.openTrophyCeremony(ceremonyData);
+}
+
+async function loadAwardsData() {
+  const container = document.getElementById("awardsSectionContent");
+  if (!container || typeof AwardsTrophy === "undefined") return;
+
+  try {
+    const res = await fetch("/api/league-awards?division=" + (currentDivisionTab || 1));
+    if (res.ok) {
+      const data = await res.json();
+      AwardsTrophy.renderSeasonAwards(data, container);
+      return;
+    }
+  } catch (err) {
+    console.warn("Could not fetch awards from server, generating dynamically:", err);
+  }
+
+  const div = leagueData?.divisions?.[currentDivisionTab || 1];
+  const awards = AwardsTrophy.generateFallbackAwards(div);
+  AwardsTrophy.renderSeasonAwards(awards, container);
+}
+
+/* =====================================================
+   BROADCAST MATCH CENTER CONTROLLER (WITH TEAM LOGOS & MINUTE STATS)
+===================================================== */
+
 let current3DFixture = null;
 let current3DSimSpeed = 1;
 
-// Initialize or open 3D Matchday Arena
+// Initialize or open Broadcast Match Center
 function open3DMatchArena(customFixture = null) {
   const modal = document.getElementById("match3dModal");
   if (!modal) return;
   modal.style.display = "flex";
   document.body.style.overflow = "hidden";
 
-  // Play referee whistle upon entering stadium
   playWhistleSound();
-
-  // Populate fixture dropdown
   populate3DFixtureDropdown();
 
-  // Select target fixture
   let targetFixture = customFixture;
   if (!targetFixture) {
     const div = leagueData?.divisions?.[currentDivisionTab];
     const fixtures = div?.fixtures || [];
-    // Prioritize played fixture of current round, or user derby, or first fixture
     targetFixture = fixtures.find(f => f.round === currentViewingRound && (f.isRivalry || f.played))
       || fixtures.find(f => f.round === currentViewingRound)
       || fixtures[0];
@@ -7411,7 +7794,6 @@ function open3DMatchArena(customFixture = null) {
   if (targetFixture) {
     load3DMatch(targetFixture);
   } else {
-    // Generate an exciting showcase match if league has no fixtures yet
     const showcaseFixture = {
       homeTeam: myTeam || "Real Madrid",
       awayTeam: "Barcelona",
@@ -7438,9 +7820,8 @@ function close3DMatchArena() {
   if (modal) modal.style.display = "none";
   document.body.style.overflow = "";
 
-  if (match3dEngineInstance) {
-    match3dEngineInstance.destroy();
-    match3dEngineInstance = null;
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.pause();
   }
 }
 
@@ -7489,7 +7870,6 @@ function launch3DMatchByIndex(divisionTab, round, fixtureIndex) {
 function load3DMatch(fixture) {
   current3DFixture = fixture;
 
-  // Update HUD
   const titleEl = document.getElementById("hudMatchTitle");
   if (titleEl) {
     titleEl.innerText = `${fixture.isRivalry ? "🔥 " + (fixture.derbyName || "Derby") : "League Match"} • Round ${fixture.round || 1}`;
@@ -7513,7 +7893,6 @@ function load3DMatch(fixture) {
     }
   }
 
-  // Update logos
   const div = leagueData?.divisions?.[currentDivisionTab];
   const homeClub = (div?.standings || []).find(s => s.name === fixture.homeTeam);
   const awayClub = (div?.standings || []).find(s => s.name === fixture.awayTeam);
@@ -7522,74 +7901,59 @@ function load3DMatch(fixture) {
   if (logoHome) logoHome.innerText = homeClub?.logo || "⚽";
   if (logoAway) logoAway.innerText = awayClub?.logo || "⚽";
 
-  // Select dropdown option if exists
   const select = document.getElementById("match3dFixtureSelect");
   if (select && div?.fixtures) {
     const fIdx = div.fixtures.findIndex(f => f.homeTeam === fixture.homeTeam && f.awayTeam === fixture.awayTeam && f.round === fixture.round);
     if (fIdx !== -1) select.value = fIdx;
   }
 
-  // Init or reload engine
   const container = document.getElementById("match3dCanvasContainer");
   if (!container) return;
 
-  if (!match3dEngineInstance) {
-    if (typeof Match3DEngine !== "undefined") {
-      match3dEngineInstance = new Match3DEngine(container);
-    } else {
-      console.error("Match3DEngine not loaded yet");
-      return;
-    }
-  }
-
   const roomTeams = (typeof gameState !== "undefined" && gameState?.teams) ? gameState.teams : {};
-  match3dEngineInstance.loadMatch(fixture, roomTeams);
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.renderMatchCenterInto(container, fixture, roomTeams);
+  }
 }
 
 function set3DCameraMode(mode) {
-  if (match3dEngineInstance) {
-    match3dEngineInstance.setCameraMode(mode);
-  }
   document.querySelectorAll(".cam-btn").forEach(btn => {
     btn.classList.toggle("active", btn.dataset.mode === mode);
   });
 }
 
 function toggle3DPlayPause() {
-  if (!match3dEngineInstance) return;
-  const isPlaying = match3dEngineInstance.togglePlayPause();
-  const btn = document.getElementById("btnMatch3dPlay");
-  if (btn) {
-    btn.innerText = isPlaying ? "⏸️ Pause" : "▶️ Play";
+  if (typeof MatchCenter !== "undefined") {
+    const isPlaying = MatchCenter.togglePlayPause();
+    const btn = document.getElementById("btnMatch3dPlay");
+    if (btn) {
+      btn.innerText = isPlaying ? "⏸️ Pause" : "▶️ Play";
+    }
   }
 }
 
 function next3DHighlight() {
-  if (match3dEngineInstance) {
-    match3dEngineInstance.nextHighlight();
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.nextHighlight();
   }
 }
 
 function prev3DHighlight() {
-  if (match3dEngineInstance) {
-    match3dEngineInstance.prevHighlight();
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.prevHighlight();
   }
 }
 
 function replay3DGoal() {
-  if (match3dEngineInstance) {
-    if (typeof match3dEngineInstance.replayCurrentHighlight === "function") {
-      match3dEngineInstance.replayCurrentHighlight();
-    } else if (typeof match3dEngineInstance.instantReplay === "function") {
-      match3dEngineInstance.instantReplay();
-    }
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.replayMatch();
   }
 }
 
 function set3DSimSpeed(speed) {
   current3DSimSpeed = speed;
-  if (match3dEngineInstance) {
-    match3dEngineInstance.setSpeed(speed);
+  if (typeof MatchCenter !== "undefined") {
+    MatchCenter.setSpeed(speed);
   }
   document.querySelectorAll(".speed-btn").forEach(btn => {
     btn.classList.toggle("active", parseInt(btn.dataset.speed, 10) === speed);
@@ -7604,7 +7968,7 @@ function toggle3DSound() {
   }
 }
 
-// Keyboard navigation for 3D Arena
+// Keyboard navigation for Match Arena
 window.addEventListener("keydown", (e) => {
   const modal = document.getElementById("match3dModal");
   if (!modal || modal.style.display !== "flex") return;
@@ -7620,11 +7984,13 @@ window.addEventListener("keydown", (e) => {
     prev3DHighlight();
   } else if (e.key.toLowerCase() === "r") {
     replay3DGoal();
-  } else if (e.key.toLowerCase() === "c") {
-    const modes = ["broadcast", "action", "goal", "tactical"];
-    const current = match3dEngineInstance?.cameraMode || "broadcast";
-    const nextIdx = (modes.indexOf(current) + 1) % modes.length;
-    set3DCameraMode(modes[nextIdx]);
+  }
+});
+
+// Auto-initialize Jersey Studio and initial load
+window.addEventListener("DOMContentLoaded", () => {
+  if (typeof JerseyStudio !== "undefined") {
+    JerseyStudio.init(myTeam);
   }
 });
 

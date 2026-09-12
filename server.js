@@ -2487,6 +2487,52 @@ io.on("connection", socket => {
     socket.emit("scoutReportsReceived", res);
     socket.emit("userMessage", `🔍 Chief Scout returned with ${res.dossiers.length} targets on ${missionType.toUpperCase()} mission!`);
   });
+
+  // ===================================================
+  // JERSEY CUSTOMIZATION & MERCHANDISE
+  // ===================================================
+  socket.on("saveJerseyDesign", (data) => {
+    const room = getRoom(socket);
+    if (!room) {
+      socket.emit("errorMessage", "Join a team first.");
+      return;
+    }
+    const teamName = (data && data.teamName) || socket.teamName;
+    if (!teamName) {
+      socket.emit("errorMessage", "No club specified.");
+      return;
+    }
+    const res = league.saveJerseyDesign(teamName, data.jersey || {}, room.teams);
+    if (res.error) {
+      socket.emit("errorMessage", res.error);
+      return;
+    }
+    broadcastLeagueState(GLOBAL_ROOM);
+    socket.emit("jerseySavedSuccess", res);
+    socket.emit("userMessage", `🎨 ${teamName} kit updated! Aesthetic Rating: ${res.jersey.aestheticScore}/10 (${res.jersey.tier}) - Sales Multiplier: ${res.jersey.salesMultiplier}x!`);
+  });
+
+  socket.on("getJerseyDesign", (data) => {
+    const teamName = (data && data.teamName) || socket.teamName;
+    if (!teamName) return;
+    const jersey = league.getJerseyDesign(teamName);
+    socket.emit("jerseyDesignData", { teamName, jersey });
+  });
+
+  // ===================================================
+  // INDIVIDUAL AWARDS & TROPHY CEREMONY
+  // ===================================================
+  socket.on("getSeasonAwards", () => {
+    const room = getRoom(socket);
+    const awards = league.calculateSeasonAwards(room?.teams || {});
+    socket.emit("seasonAwardsData", awards);
+  });
+
+  socket.on("getTrophyCeremony", () => {
+    const room = getRoom(socket);
+    const ceremony = league.getTrophyCeremonyData(room?.teams || {});
+    socket.emit("trophyCeremonyData", ceremony);
+  });
 });
 
 // =====================================================
@@ -2726,6 +2772,24 @@ app.get("/api/league/:division", (req, res) => {
     });
   }
   res.json(data);
+});
+
+app.get("/api/league-jerseys", (req, res) => {
+  const room = rooms[GLOBAL_ROOM];
+  if (room) league.syncUserClubs(room.teams);
+  res.json({ jerseys: league.jerseys || {} });
+});
+
+app.get("/api/league-awards", (req, res) => {
+  const room = rooms[GLOBAL_ROOM];
+  const awards = league.calculateSeasonAwards(room?.teams || {});
+  res.json(awards);
+});
+
+app.get("/api/league-trophy", (req, res) => {
+  const room = rooms[GLOBAL_ROOM];
+  const trophy = league.getTrophyCeremonyData(room?.teams || {});
+  res.json(trophy);
 });
 
 // =====================================================

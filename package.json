@@ -3,10 +3,15 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "dev": "node server.js",
+    "build": "echo 'Build complete'",
+    "lint": "node --check server.js public/players.js && node -e 'const fs=require(\"fs\"),vm=require(\"vm\");const html=fs.readFileSync(\"public/index.html\",\"utf8\");for(const m of html.matchAll(/<script[\\s\\S]*?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new vm.Script(m[1]);}'",
     "start": "node server.js"
   },
   "dependencies": {
+    "d3": "^7.9.0",
     "express": "^5.1.0",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "three": "^0.186.0"
   }
 }

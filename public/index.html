@@ -4,8 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Football Auction</title>
+<meta name="description" content="Multiplayer football auction, realistic manager dugout broadcast, 3D stadium gameplay visualizer, arch-rival derby matches, sound effects, and multi-division league championship with AI clubs and promotion/relegation.">
+<meta property="og:title" content="Football Auction">
+<meta property="og:description" content="Multiplayer football auction, realistic manager dugout broadcast, 3D stadium gameplay visualizer, arch-rival derby matches, sound effects, and multi-division league championship with AI clubs and promotion/relegation.">
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/d3/d3.min.js"></script>
+<script>
+  if (typeof d3 === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/d3@7"><\/script>');
+  }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script src="/match3d.js"></script>
 
 <style>
 * {
@@ -15,9 +26,10 @@
 }
 
 body {
-  font-family: Arial, sans-serif;
-  background: #07111f;
-  color: white;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: radial-gradient(ellipse at 50% 0%, #15325b 0%, #081527 50%, #030811 100%);
+  background-attachment: fixed;
+  color: #f1f5f9;
   min-height: 100vh;
 }
 
@@ -25,22 +37,117 @@ button {
   border: none;
   cursor: pointer;
   font-weight: bold;
+  font-family: inherit;
+  transition: transform 0.1s ease, filter 0.2s ease;
+}
+
+button:active {
+  transform: scale(0.97);
 }
 
 .header {
-  background: #0d1b2a;
-  padding: 15px;
-  text-align: center;
-  border-bottom: 2px solid #1d3557;
+  background: linear-gradient(180deg, #0f233a 0%, #081626 100%);
+  padding: 14px 20px;
+  border-bottom: 2px solid #1e3a5f;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+}
+
+.header-inner {
+  max-width: 1100px;
+  margin: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.header-title-box {
+  text-align: left;
+}
+
+.live-stadium-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 3px 8px;
+  border-radius: 20px;
+  margin-bottom: 4px;
 }
 
 .header h1 {
-  font-size: 25px;
+  font-size: 24px;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.4);
 }
 
 .header p {
-  color: #9fb3c8;
-  margin-top: 5px;
+  color: #94a3b8;
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.header-audio-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.audio-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #0d2238;
+  border: 1px solid #2a4c73;
+  color: #f1c40f;
+  padding: 8px 15px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.audio-toggle-btn:hover {
+  background: #143152;
+  border-color: #f1c40f;
+  box-shadow: 0 0 14px rgba(241, 196, 15, 0.35);
+}
+
+.audio-toggle-btn.muted {
+  color: #64748b;
+  border-color: #334155;
+  background: #091320;
+  box-shadow: none;
+}
+
+.sound-wave-anim {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+
+.sound-wave-anim i {
+  display: block;
+  width: 2px;
+  background: #f1c40f;
+  border-radius: 1px;
+  animation: waveBar 0.9s ease-in-out infinite alternate;
+}
+.sound-wave-anim i:nth-child(1) { height: 4px; animation-delay: 0.1s; }
+.sound-wave-anim i:nth-child(2) { height: 11px; animation-delay: 0.3s; }
+.sound-wave-anim i:nth-child(3) { height: 7px; animation-delay: 0.2s; }
+
+@keyframes waveBar {
+  0% { height: 3px; }
+  100% { height: 12px; }
 }
 
 .container {
@@ -51,35 +158,1094 @@ button {
 }
 
 /* =========================
-   MANAGER
+   REALISTIC MANAGER DUGOUT (BROADCAST DESK)
 ========================= */
 
-.manager {
-  background: linear-gradient(135deg, #132a44, #0b1726);
+.dugout-station {
+  background: linear-gradient(135deg, rgba(17, 38, 64, 0.95), rgba(7, 19, 34, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.28);
   border-radius: 18px;
-  padding: 15px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+
+.dugout-station::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #38bdf8, #f1c40f, #38bdf8, transparent);
+  opacity: 0.8;
+}
+
+.dugout-top-bar {
   display: flex;
   align-items: center;
-  gap: 15px;
-  margin-bottom: 15px;
-  border: 1px solid #294866;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 10px;
 }
 
-.manager img {
-  width: 90px;
-  height: 90px;
-  object-fit: cover;
+.broadcast-badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #f87171;
+  text-transform: uppercase;
+}
+
+.broadcast-dot {
+  width: 9px;
+  height: 9px;
+  background: #ef4444;
   border-radius: 50%;
-  border: 3px solid #f1c40f;
+  box-shadow: 0 0 10px #ef4444;
+  animation: pulseDot 1.4s ease-in-out infinite;
 }
 
-.manager-text h2 {
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.85); }
+}
+
+.dugout-mood {
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dugout-time {
+  font-size: 11px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.dugout-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+
+@media (max-width: 680px) {
+  .dugout-main {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+.manager-avatar-pod {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.avatar-ring-glow {
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  padding: 3px;
+  background: linear-gradient(135deg, #38bdf8, #0284c7);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.4);
+  transition: all 0.4s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatar-ring-glow.ring-crimson {
+  background: linear-gradient(135deg, #ef4444, #f59e0b);
+  box-shadow: 0 0 22px rgba(239, 68, 68, 0.75);
+  animation: glowPulse 1.1s infinite alternate;
+}
+
+.avatar-ring-glow.ring-gold {
+  background: linear-gradient(135deg, #f1c40f, #e67e22);
+  box-shadow: 0 0 22px rgba(241, 196, 15, 0.75);
+  animation: glowPulse 1.1s infinite alternate;
+}
+
+.avatar-ring-glow.ring-emerald {
+  background: linear-gradient(135deg, #10b981, #059669);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.6);
+}
+
+.avatar-ring-glow.ring-amber {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.6);
+}
+
+@keyframes glowPulse {
+  0% { transform: scale(1); filter: brightness(1); }
+  100% { transform: scale(1.05); filter: brightness(1.25); }
+}
+
+.manager-avatar-art {
+  width: 100%;
+  height: 100%;
+  background: #0a1829;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  font-size: 38px;
+}
+
+.manager-headset {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  font-size: 16px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6));
+}
+
+.manager-credentials {
+  text-align: center;
+}
+
+.manager-name {
+  display: block;
+  font-size: 13px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.manager-title {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.voice-waveform {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 16px;
+  margin-top: 2px;
+}
+
+.voice-waveform .wave-bar {
+  display: block;
+  width: 3px;
+  height: 4px;
+  background: #38bdf8;
+  border-radius: 2px;
+  transition: height 0.15s ease;
+}
+
+.voice-waveform.talking .wave-bar:nth-child(1) { animation: barHop 0.4s ease-in-out infinite alternate; }
+.voice-waveform.talking .wave-bar:nth-child(2) { animation: barHop 0.5s ease-in-out infinite alternate 0.1s; }
+.voice-waveform.talking .wave-bar:nth-child(3) { animation: barHop 0.35s ease-in-out infinite alternate 0.2s; }
+.voice-waveform.talking .wave-bar:nth-child(4) { animation: barHop 0.45s ease-in-out infinite alternate 0.15s; }
+.voice-waveform.talking .wave-bar:nth-child(5) { animation: barHop 0.38s ease-in-out infinite alternate 0.05s; }
+
+@keyframes barHop {
+  0% { height: 4px; background: #38bdf8; }
+  100% { height: 16px; background: #f1c40f; }
+}
+
+.dugout-speech-bubble {
+  flex: 1;
+  background: rgba(11, 23, 38, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 14px;
+  padding: 16px 20px;
+  position: relative;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  transition: all 0.25s ease;
+}
+
+.dugout-speech-bubble.pop-active {
+  animation: speechPop 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border-color: rgba(241, 196, 15, 0.6);
+}
+
+@keyframes speechPop {
+  0% { transform: scale(0.98); opacity: 0.8; }
+  50% { transform: scale(1.015); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.speech-quote-mark {
+  position: absolute;
+  top: -4px;
+  left: 14px;
+  font-size: 32px;
+  line-height: 1;
+  color: rgba(56, 189, 248, 0.25);
+  font-family: Georgia, serif;
+}
+
+.speech-body {
+  font-size: 15px;
+  line-height: 1.55;
+  color: #e2e8f0;
+  min-height: 44px;
+  position: relative;
+  z-index: 1;
+}
+
+.dugout-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.dugout-chip {
+  background: rgba(30, 58, 95, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #bae6fd;
+  padding: 6px 13px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.dugout-chip:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+}
+
+.dugout-chip.chip-derby {
+  background: rgba(185, 28, 28, 0.45);
+  border-color: rgba(239, 68, 68, 0.55);
+  color: #fca5a5;
+}
+
+.dugout-chip.chip-derby:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #f87171;
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.4);
+}
+
+/* =====================================================
+   PEP'S D3 TACTICAL BOARD DRAWER
+===================================================== */
+
+.dugout-tactical-drawer {
+  margin-top: 14px;
+  background: linear-gradient(165deg, rgba(6, 18, 33, 0.96) 0%, rgba(3, 10, 20, 0.98) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 14px;
+  padding: 16px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  animation: tacticalSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+@keyframes tacticalSlideIn {
+  0% { opacity: 0; transform: translateY(-8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.tactical-board-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.tactical-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tactical-title-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+
+.tactical-title-tag .board-icon {
+  font-size: 14px;
+}
+
+.tactical-title-tag .board-label {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #38bdf8;
+  text-transform: uppercase;
+}
+
+.badge-live-d3 {
+  background: linear-gradient(90deg, #f59e0b, #ef4444);
+  color: #ffffff;
+  font-size: 9px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.tactical-formation-pills {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.form-pill {
+  background: rgba(15, 34, 56, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #94a3b8;
+  padding: 5px 11px;
+  border-radius: 16px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.form-pill:hover {
+  background: rgba(56, 189, 248, 0.2);
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.5);
+}
+
+.form-pill.active {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(2, 132, 199, 0.5);
+}
+
+.tactical-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tactical-action-btn {
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid #f59e0b;
+  color: #fbbf24;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tactical-action-btn:hover {
+  background: #f59e0b;
+  color: #030a14;
+}
+
+.tactical-action-btn.active {
+  background: #f59e0b;
+  color: #030a14;
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+}
+
+.tactical-close-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tactical-close-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.tactical-pitch-stage-wrapper {
+  position: relative;
+  background: #092014;
+  border-radius: 10px;
+  border: 1px solid rgba(74, 222, 128, 0.25);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.6);
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.tactical-pitch-stage {
+  width: 100%;
+  min-height: 310px;
+  height: 380px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tactical-pitch-stage svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Passing animation dashed pulse */
+.flowing-lane {
+  animation: flowDash 0.8s linear infinite;
+}
+
+@keyframes flowDash {
+  from { stroke-dashoffset: 18; }
+  to { stroke-dashoffset: 0; }
+}
+
+.radar-pulse-ring {
+  animation: radarPulse 2s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+  transform-origin: center;
+}
+
+@keyframes radarPulse {
+  0% { transform: scale(0.9); opacity: 0.8; }
+  60% { transform: scale(1.6); opacity: 0; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+
+.tactical-pitch-legend {
+  background: rgba(4, 14, 25, 0.9);
+  padding: 7px 14px;
+  border-top: 1px solid rgba(56, 189, 248, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+  color: #94a3b8;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.legend-dot.dot-player {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+.legend-dot.dot-target {
+  background: #f59e0b;
+  border: 1px dashed #ffffff;
+}
+
+.legend-line {
+  width: 16px;
+  height: 2px;
+  display: inline-block;
+}
+
+.legend-line.line-pass {
+  background: repeating-linear-gradient(90deg, #38bdf8, #38bdf8 4px, transparent 4px, transparent 8px);
+}
+
+.legend-line.line-run {
+  background: #f43f5e;
+}
+
+.legend-direction {
   color: #f1c40f;
-  margin-bottom: 7px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  margin-left: auto;
 }
 
-.manager-text p {
-  line-height: 1.4;
+.tactical-intel-footer {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .tactical-intel-footer {
+    grid-template-columns: 1fr;
+  }
+}
+
+.intel-card {
+  background: rgba(11, 23, 38, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.intel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.intel-badge {
+  font-size: 9px;
+  font-weight: 900;
+  background: rgba(56, 189, 248, 0.18);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.intel-card h4 {
+  font-size: 13px;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.intel-card p {
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: #cbd5e1;
+  margin: 0 0 8px 0;
+}
+
+.intel-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.intel-tag {
+  background: rgba(30, 58, 95, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #bae6fd;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+}
+
+.squad-fit-meter {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.fit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+.fit-bar-container {
+  flex: 1;
+  margin: 0 10px;
+  height: 6px;
+  background: rgba(15, 34, 56, 0.8);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fit-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #38bdf8);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+
+.selected-role-box {
+  background: rgba(8, 18, 32, 0.9);
+  border: 1px dashed rgba(241, 196, 15, 0.45);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: #fef08a;
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  line-height: 1.45;
+}
+
+.selected-role-box .role-hint-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+/* =====================================================
+   3D MATCHDAY GAMEPLAY VISUALIZER STYLES
+===================================================== */
+
+.btn-3d-arena {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  border: 1px solid #38bdf8;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-3d-arena:hover {
+  background: linear-gradient(135deg, #0369a1 0%, #1d4ed8 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(2, 132, 199, 0.5);
+}
+
+.fixture-actions {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.fixture-btn-3d {
+  background: rgba(30, 58, 138, 0.6);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.18s ease;
+}
+
+.fixture-btn-3d:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #7dd3fc;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.45);
+  transform: translateY(-1px);
+}
+
+.dugout-chip.chip-3d {
+  background: rgba(14, 165, 233, 0.2);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #7dd3fc;
+}
+
+.dugout-chip.chip-3d:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+}
+
+#match3dModal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: rgba(3, 7, 18, 0.96);
+  backdrop-filter: blur(10px);
+  display: none;
+  flex-direction: column;
+  overflow: hidden;
+  animation: match3dFadeIn 0.3s ease-out;
+}
+
+@keyframes match3dFadeIn {
+  0% { opacity: 0; transform: scale(0.98); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.match3d-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 18px;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(10, 16, 30, 0.95) 100%);
+  border-bottom: 1px solid rgba(56, 189, 248, 0.2);
+  gap: 12px;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.match3d-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.match3d-badge {
+  background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 4px 10px;
+  border-radius: 5px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.match3d-title {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.match3d-header-center {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.match3d-fixture-select {
+  background: #0f172a;
+  color: #f8fafc;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  max-width: 320px;
+  outline: none;
+}
+
+.match3d-fixture-select:focus {
+  border-color: #38bdf8;
+}
+
+.match3d-close-btn {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.match3d-close-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #f87171;
+}
+
+/* TV Broadcast Scoreboard Bar */
+.match3d-scoreboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  background: linear-gradient(180deg, #070e1b 0%, #030812 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 16px;
+  font-weight: 700;
+  z-index: 10;
+  flex-wrap: wrap;
+}
+
+.scoreboard-club {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: #f8fafc;
+}
+
+.scoreboard-club.home {
+  justify-content: flex-end;
+}
+
+.scoreboard-score-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #020617;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 8px;
+  padding: 4px 14px;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+.score-num {
+  font-size: 20px;
+  color: #facc15;
+  font-family: monospace;
+  font-weight: 800;
+  min-width: 16px;
+  text-align: center;
+}
+
+.score-divider {
+  color: #64748b;
+  font-size: 16px;
+}
+
+.scoreboard-clock {
+  background: #1e293b;
+  color: #38bdf8;
+  padding: 3px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 800;
+  font-family: monospace;
+  letter-spacing: 0.5px;
+}
+
+.scoreboard-derby-badge {
+  background: linear-gradient(135deg, #b91c1c 0%, #dc2626 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  animation: pulseDerby 1.5s infinite alternate;
+}
+
+@keyframes pulseDerby {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
+/* 3D Viewport */
+.match3d-viewport {
+  flex: 1;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 380px;
+  overflow: hidden;
+  background: #050b14;
+}
+
+#match3dCanvasContainer {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+/* Floating Goal Celebration Banner */
+.match3d-goal-banner {
+  position: absolute;
+  top: 25%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.85);
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  background: linear-gradient(135deg, rgba(234, 179, 8, 0.95), rgba(249, 115, 22, 0.95));
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 35px rgba(234, 179, 8, 0.8), 0 10px 25px rgba(0, 0, 0, 0.7);
+  border-radius: 16px;
+  padding: 16px 32px;
+  text-align: center;
+  color: #ffffff;
+  z-index: 25;
+}
+
+.match3d-goal-banner.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.banner-fire {
+  font-size: 24px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.banner-scorer {
+  font-size: 16px;
+  font-weight: 800;
+  margin-top: 4px;
+  color: #111827;
+}
+
+.banner-sub {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 2px;
+  color: #fffbeb;
+}
+
+/* Replay Badge */
+.match3d-replay-badge {
+  position: absolute;
+  top: 16px;
+  left: 20px;
+  background: #dc2626;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 4px 12px;
+  border-radius: 5px;
+  box-shadow: 0 0 14px rgba(220, 38, 38, 0.7);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.replay-rec-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  animation: blinkRec 0.8s infinite;
+}
+
+@keyframes blinkRec {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+/* Floating Commentary Box */
+.match3d-commentary {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(8, 16, 28, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 30px;
+  padding: 8px 22px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 20;
+  max-width: 90%;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  pointer-events: none;
+}
+
+.match3d-commentary.pop {
+  animation: commentaryPop 0.3s ease-out;
+}
+
+@keyframes commentaryPop {
+  0% { transform: translateX(-50%) translateY(6px); opacity: 0.4; }
+  100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+/* Bottom Controls Bar */
+.match3d-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: rgba(10, 18, 32, 0.98);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+  gap: 12px;
+  z-index: 10;
+}
+
+.match3d-control-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cam-btn,
+.pback-btn,
+.speed-btn,
+.sound-btn {
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.cam-btn:hover,
+.pback-btn:hover,
+.speed-btn:hover,
+.sound-btn:hover {
+  background: #1e293b;
+  color: #f8fafc;
+  border-color: #38bdf8;
+}
+
+.cam-btn.active,
+.speed-btn.active {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+}
+
+.pback-btn.accent {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border-color: #fcd34d;
+}
+
+.pback-btn.accent:hover {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
 }
 
 /* =========================
@@ -530,41 +1696,1379 @@ select {
     grid-column: auto;
   }
 }
+
+/* =========================
+   LEAGUE & FIXTURES STYLES
+========================= */
+
+.league-card {
+  background: #102238;
+  border-radius: 18px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid #1d3557;
+}
+
+.league-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid #1d3557;
+  padding-bottom: 14px;
+}
+
+.league-title-group h2 {
+  color: #f1c40f;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.league-subtitle {
+  color: #9fb3c8;
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.league-season-badge {
+  background: #071827;
+  border: 1px solid #294866;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  color: #38bdf8;
+  white-space: nowrap;
+}
+
+.division-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.division-tab-btn {
+  flex: 1;
+  min-width: 140px;
+  background: #0b1726;
+  border: 1px solid #1f3a58;
+  color: #9fb3c8;
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.division-tab-btn:hover {
+  background: #14263b;
+  color: #ffffff;
+}
+
+.division-tab-btn.active {
+  background: linear-gradient(135deg, #1b3d63, #132a44);
+  color: #f1c40f;
+  border-color: #f1c40f;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.division-tab-tier {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.8;
+}
+
+.host-league-panel {
+  background: #071827;
+  border: 1px solid #294866;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.host-panel-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.host-badge {
+  background: #e67e22;
+  color: white;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+
+.host-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-sim {
+  background: #16a085;
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.btn-sim-full {
+  background: #2980b9;
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.btn-advance-season {
+  background: #8e44ad;
+  color: white;
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.league-table-wrap {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  border-radius: 10px;
+  border: 1px solid #1a324b;
+}
+
+.league-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+  min-width: 620px;
+}
+
+.league-table th {
+  background: #091726;
+  color: #9fb3c8;
+  padding: 12px 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 11px;
+  border-bottom: 2px solid #1d3557;
+}
+
+.league-table td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #14273c;
+  background: #0d1e32;
+}
+
+.league-table tr:hover td {
+  background: #122841;
+}
+
+.league-table tr.user-club-row td {
+  background: #15324e;
+  font-weight: 600;
+}
+
+.league-table tr.zone-champ td:first-child {
+  border-left: 4px solid #f1c40f;
+}
+
+.league-table tr.zone-promo td:first-child {
+  border-left: 4px solid #2ecc71;
+}
+
+.league-table tr.zone-releg td:first-child {
+  border-left: 4px solid #e74c3c;
+}
+
+.club-cell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.club-name {
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.club-tag-ai {
+  background: #1f3a58;
+  color: #7dd3fc;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: normal;
+}
+
+.club-tag-user {
+  background: #166534;
+  color: #bbf7d0;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: normal;
+}
+
+.club-tag-you {
+  background: #854d0e;
+  color: #fef08a;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: bold;
+}
+
+.rating-badge {
+  color: #f1c40f;
+  font-weight: 600;
+}
+
+.form-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.form-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+}
+
+.form-W { background: #16a34a; }
+.form-D { background: #d97706; }
+.form-L { background: #dc2626; }
+
+.zone-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: #9fb3c8;
+  margin-bottom: 20px;
+}
+
+.zone-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.zone-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.zc-champ { background: #f1c40f; }
+.zc-promo { background: #2ecc71; }
+.zc-releg { background: #e74c3c; }
+
+/* FIXTURES SECTION */
+.fixtures-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.round-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.round-nav button {
+  background: #0b1726;
+  color: #9fb3c8;
+  border: 1px solid #1f3a58;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.round-nav button:hover {
+  background: #193452;
+  color: white;
+}
+
+.round-label {
+  font-size: 13px;
+  font-weight: bold;
+  color: #f1c40f;
+  min-width: 90px;
+  text-align: center;
+}
+
+.fixtures-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 15px;
+}
+
+.fixture-card {
+  background: #071827;
+  border: 1px solid #1a324b;
+  border-radius: 12px;
+  padding: 12px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fixture-teams {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.fixture-team {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.fixture-team.home { text-align: left; }
+.fixture-team.away { text-align: right; }
+
+.team-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fixture-team.away .team-title {
+  justify-content: flex-end;
+}
+
+.team-rate {
+  font-size: 11px;
+  color: #f1c40f;
+}
+
+.fixture-score-box {
+  background: #05101d;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 16px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  text-align: center;
+  min-width: 65px;
+  font-family: 'Courier New', Courier, monospace;
+  color: #f1c40f;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.fixture-scorers {
+  font-size: 11px;
+  color: #9fb3c8;
+  border-top: 1px dashed #1a324b;
+  padding-top: 6px;
+  line-height: 1.4;
+}
+
+.ai-notice {
+  background: #0b1726;
+  border-left: 3px solid #38bdf8;
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  color: #9fb3c8;
+  margin-top: 10px;
+}
+
+/* =========================
+   ARCH RIVALS FIXTURE STYLES
+========================= */
+
+.fixture-card.is-rivalry {
+  border: 2px solid transparent !important;
+  background: linear-gradient(#081729, #081729) padding-box, linear-gradient(135deg, #ef4444, #f59e0b, #b91c1c) border-box !important;
+  box-shadow: 0 4px 18px rgba(239, 68, 68, 0.28) !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.rivalry-banner {
+  background: linear-gradient(90deg, #991b1b, #b45309);
+  margin: -14px -14px 10px -14px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #fef08a;
+  text-transform: uppercase;
+}
+
+.rivalry-fire {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #ffffff;
+}
+
+.derby-title {
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.derby-intensity-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.derby-sub {
+  font-size: 10px;
+  color: #fca5a5;
+  font-style: italic;
+  margin-top: 3px;
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.user-derby-tag {
+  display: inline-block;
+  background: rgba(241, 196, 15, 0.2);
+  border: 1px solid #f1c40f;
+  color: #f1c40f;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 800;
+  margin-top: 6px;
+}
+
+/* =====================================================
+   CLUB OPERATIONS & HEADQUARTERS STYLES
+===================================================== */
+.club-hq-card {
+  background: #0d1b2a;
+  border-radius: 14px;
+  padding: 22px;
+  margin-bottom: 24px;
+  border: 1px solid #1f3a58;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.35);
+}
+
+.hq-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #1d3557;
+  margin-bottom: 18px;
+}
+
+.hq-title-group h2 {
+  color: #f1c40f;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hq-subtitle {
+  color: #9fb3c8;
+  font-size: 13px;
+  margin-top: 3px;
+}
+
+.hq-club-selector-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hq-club-selector-wrap label {
+  font-size: 12px;
+  color: #9fb3c8;
+  font-weight: 600;
+}
+
+.hq-club-selector-wrap select {
+  background: #081728;
+  border: 1px solid #2d4f73;
+  color: #f1c40f;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  outline: none;
+}
+
+.hq-nav-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.hq-tab-btn {
+  flex: 1;
+  min-width: 140px;
+  background: #081626;
+  border: 1px solid #1f3a58;
+  color: #9fb3c8;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hq-tab-btn:hover {
+  background: #13273f;
+  color: #ffffff;
+}
+
+.hq-tab-btn.active {
+  background: linear-gradient(135deg, #1b3d63, #152d47);
+  color: #f1c40f;
+  border-color: #f1c40f;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.hq-tab-content {
+  display: none;
+}
+
+.hq-tab-content.active {
+  display: block;
+}
+
+/* STADIUM PANEL */
+.stadium-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .stadium-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stadium-visual-card {
+  background: linear-gradient(180deg, #071525 0%, #0c2138 100%);
+  border: 1px solid #234368;
+  border-radius: 12px;
+  padding: 18px;
+  position: relative;
+  overflow: hidden;
+}
+
+.stadium-visual-badge {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 700;
+}
+
+.stadium-name {
+  font-size: 20px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.stadium-meta {
+  font-size: 12px;
+  color: #9fb3c8;
+  margin-bottom: 16px;
+}
+
+.condition-meter-box {
+  background: #050e18;
+  border: 1px solid #1a324d;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.condition-meter-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.condition-bar-bg {
+  width: 100%;
+  height: 12px;
+  background: #0f243b;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.condition-bar-fill {
+  height: 100%;
+  border-radius: 6px;
+  transition: width 0.4s ease, background-color 0.4s ease;
+}
+
+.condition-bar-fill.healthy {
+  background: linear-gradient(90deg, #10b981, #34d399);
+}
+
+.condition-bar-fill.warning {
+  background: linear-gradient(90deg, #f59e0b, #fbbf24);
+}
+
+.condition-bar-fill.danger {
+  background: linear-gradient(90deg, #ef4444, #f87171);
+}
+
+.stadium-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.stadium-mini-stat {
+  background: #071828;
+  border: 1px solid #1c3653;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.stadium-mini-stat .val {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f1c40f;
+}
+
+.stadium-mini-stat .lbl {
+  font-size: 11px;
+  color: #9fb3c8;
+  margin-top: 3px;
+}
+
+.stadium-actions-card {
+  background: #081626;
+  border: 1px solid #1e3a5a;
+  border-radius: 12px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stadium-action-item {
+  background: #0c1f33;
+  border: 1px solid #23456b;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.stadium-action-info .title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.stadium-action-info .desc {
+  font-size: 11px;
+  color: #9fb3c8;
+  margin-top: 2px;
+}
+
+.stadium-btn {
+  background: #27ae60;
+  border: none;
+  color: white;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.stadium-btn:hover {
+  background: #2ecc71;
+  box-shadow: 0 2px 8px rgba(46, 204, 113, 0.4);
+}
+
+.stadium-btn:disabled {
+  background: #3b5066;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.stadium-btn.orange {
+  background: #d35400;
+}
+.stadium-btn.orange:hover {
+  background: #e67e22;
+}
+.stadium-btn.blue {
+  background: #1e40af;
+}
+.stadium-btn.blue:hover {
+  background: #2563eb;
+}
+
+/* REVENUES & MERCHANDISE */
+.finances-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .finances-kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.finance-tile {
+  background: #081729;
+  border: 1px solid #1e3a5d;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+
+.finance-tile .amount {
+  font-size: 20px;
+  font-weight: 800;
+  color: #2ecc71;
+}
+
+.finance-tile .label {
+  font-size: 11px;
+  color: #9fb3c8;
+  margin-top: 4px;
+}
+
+.merch-spotlight-card {
+  background: linear-gradient(135deg, #091a2e, #132a45);
+  border: 1px solid #2d5580;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.merch-spotlight-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.merch-jersey-icon {
+  font-size: 36px;
+  background: #08182b;
+  border: 1px solid #294c73;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.merch-details .title {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.merch-details .seller {
+  font-size: 13px;
+  color: #f1c40f;
+  font-weight: 700;
+  margin-top: 2px;
+}
+
+.merch-details .sub {
+  font-size: 11px;
+  color: #9fb3c8;
+}
+
+.merch-spotlight-right {
+  text-align: right;
+}
+
+.merch-sold-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+.merch-sold-label {
+  font-size: 11px;
+  color: #9fb3c8;
+}
+
+/* MANAGERS & BOARD AIMS */
+.manager-board-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+@media (max-width: 900px) {
+  .manager-board-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.manager-card-box {
+  background: #081829;
+  border: 1px solid #1f3e62;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.manager-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.manager-avatar-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: #112842;
+  border: 2px solid #f1c40f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+}
+
+.manager-info .name {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.manager-info .role {
+  font-size: 12px;
+  color: #9fb3c8;
+}
+
+.manager-perk-badge {
+  background: rgba(241, 196, 15, 0.12);
+  border: 1px solid #f1c40f;
+  color: #f1c40f;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.board-aims-card {
+  background: #081829;
+  border: 1px solid #1f3e62;
+  border-radius: 12px;
+  padding: 18px;
+}
+
+.board-aims-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #f1c40f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.aim-objective-box {
+  background: #0d2238;
+  border-left: 4px solid #f1c40f;
+  padding: 10px 14px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.aim-objective-box .target {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.aim-objective-box .desc {
+  font-size: 11px;
+  color: #9fb3c8;
+  margin-top: 3px;
+}
+
+.board-ultimatum-banner {
+  background: linear-gradient(90deg, #7f1d1d, #991b1b);
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+  padding: 14px 18px;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 18px;
+  animation: pulseWarning 2s infinite ease-in-out;
+}
+
+@keyframes pulseWarning {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+.free-agents-section {
+  margin-top: 18px;
+}
+
+.free-agents-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.candidate-card {
+  background: #081728;
+  border: 1px solid #203f63;
+  border-radius: 10px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.candidate-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.candidate-avatar {
+  font-size: 24px;
+  width: 42px;
+  height: 42px;
+  background: #112842;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.candidate-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.candidate-rep {
+  font-size: 11px;
+  color: #f1c40f;
+}
+
+.candidate-perk {
+  font-size: 11px;
+  background: #0e243c;
+  padding: 6px 8px;
+  border-radius: 6px;
+  color: #38bdf8;
+  border: 1px solid #1a3c61;
+}
+
+.candidate-desc {
+  font-size: 11px;
+  color: #9fb3c8;
+  line-height: 1.4;
+}
+
+.candidate-hire-btn {
+  background: #2980b9;
+  border: none;
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.candidate-hire-btn:hover {
+  background: #3498db;
+}
+
+/* PLAYER SCOUTING NETWORK */
+.scout-controls-card {
+  background: #081829;
+  border: 1px solid #224368;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 18px;
+}
+
+.scout-mission-selector {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.scout-mission-btn {
+  flex: 1;
+  min-width: 160px;
+  background: #0d2238;
+  border: 1px solid #244973;
+  color: #9fb3c8;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.scout-mission-btn:hover {
+  background: #173659;
+  color: #ffffff;
+}
+
+.scout-mission-btn.active {
+  background: linear-gradient(135deg, #1b4b7a, #133354);
+  color: #f1c40f;
+  border-color: #f1c40f;
+}
+
+.scout-dossiers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+
+.scout-dossier-card {
+  background: linear-gradient(180deg, #071727, #0c2138);
+  border: 1px solid #23456b;
+  border-radius: 12px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.scout-grade-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: #27ae60;
+  color: white;
+  font-weight: 900;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.scout-grade-badge.a-plus {
+  background: linear-gradient(135deg, #f59e0b, #ef4444);
+}
+
+.scout-player-name {
+  font-size: 16px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 2px;
+}
+
+.scout-player-meta {
+  font-size: 11px;
+  color: #9fb3c8;
+  margin-bottom: 12px;
+}
+
+.scout-ratings-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.scout-rating-box {
+  flex: 1;
+  background: #050f1a;
+  border: 1px solid #1a3654;
+  border-radius: 6px;
+  padding: 6px 8px;
+  text-align: center;
+}
+
+.scout-rating-box .val {
+  font-size: 16px;
+  font-weight: 800;
+  color: #f1c40f;
+}
+
+.scout-rating-box .val.pot {
+  color: #38bdf8;
+}
+
+.scout-rating-box .lbl {
+  font-size: 10px;
+  color: #9fb3c8;
+  text-transform: uppercase;
+}
+
+.scout-verdict-quote {
+  font-size: 11px;
+  color: #cbd5e1;
+  font-style: italic;
+  background: #0a1b2d;
+  border-left: 3px solid #38bdf8;
+  padding: 8px 10px;
+  border-radius: 4px;
+  line-height: 1.4;
+  margin-bottom: 12px;
+}
+
+.fixture-matchday-pill {
+  background: #061321;
+  border: 1px solid #1b3552;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 10.5px;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.fixture-matchday-pill strong {
+  color: #2ecc71;
+}
 </style>
 </head>
 
 <body>
 
 <div class="header">
-  <h1>⚽ FOOTBALL AUCTION</h1>
-  <p>Build your ultimate squad</p>
+  <div class="header-inner">
+    <div class="header-title-box">
+      <span class="live-stadium-badge">⚡ MATCHDAY LIVE • SQUAD AUCTION</span>
+      <h1>⚽ FOOTBALL AUCTION</h1>
+      <p>Multiplayer Football Auction, Realistic Manager Dugout & Multi-Division League</p>
+    </div>
+    <div class="header-audio-controls">
+      <button id="audioToggleBtn" class="audio-toggle-btn" onclick="toggleAudio()" title="Toggle realistic sound effects">
+        <span id="audioIcon">🔊</span>
+        <span id="audioStatusText">AUDIO: ON</span>
+        <span class="sound-wave-anim" id="soundWaveIndicator">
+          <i></i><i></i><i></i>
+        </span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <div class="container">
 
   <!-- =========================
-       MANAGER
+       REALISTIC MANAGER DUGOUT
   ========================== -->
 
-  <div class="manager">
-
-    <img
-      src="/manager.png"
-      onerror="this.style.display='none'"
-      alt="Manager"
-    >
-
-    <div class="manager-text">
-
-      <h2>🧑‍💼 Manager's Advice</h2>
-
-      <p>
-        Build the best team you can build with your budget
-        and beat them all!
-      </p>
-
+  <div class="dugout-station" id="managerDugout">
+    <div class="dugout-top-bar">
+      <div class="broadcast-badge">
+        <span class="broadcast-dot"></span>
+        <span>LIVE DUGOUT TRANSMISSION</span>
+      </div>
+      <div class="dugout-mood" id="managerMoodBadge">
+        <span class="mood-icon">💡</span>
+        <span id="managerMoodText">TACTICAL BRIEF</span>
+      </div>
+      <div class="dugout-time" id="managerTimeTag">Just now</div>
     </div>
 
+    <div class="dugout-main">
+      <div class="manager-avatar-pod">
+        <div class="avatar-ring-glow ring-cyan" id="managerRingGlow">
+          <div class="manager-avatar-art">
+            <span class="manager-emoji">🧑‍💼</span>
+            <span class="manager-headset">🎧</span>
+          </div>
+        </div>
+        <div class="manager-credentials">
+          <strong class="manager-name">Pep Guardiola</strong>
+          <span class="manager-title">Head Tactician & Auctioneer</span>
+        </div>
+        <div class="voice-waveform" id="voiceWaveform" title="Radio transmission active">
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+          <span class="wave-bar"></span>
+        </div>
+      </div>
+
+      <div class="dugout-speech-bubble" id="dugoutSpeechBubble">
+        <div class="speech-quote-mark">“</div>
+        <div class="speech-body" id="managerMessage">
+          Welcome to the auction room, boss! Build a formidable squad within your ₹500M budget, watch out for arch-rival derbies, and lead our club to the Division 1 championship!
+        </div>
+        <div class="dugout-quick-actions">
+          <button type="button" class="dugout-chip" onclick="askManagerAdvice('tactics')">💬 Pep's Advice</button>
+          <button type="button" class="dugout-chip chip-derby" onclick="askManagerAdvice('rivalry')">🔥 Arch Rival Intel</button>
+          <button type="button" class="dugout-chip" onclick="askManagerAdvice('squad')">📋 Squad Balance</button>
+          <button type="button" class="dugout-chip chip-3d" onclick="open3DMatchArena()" title="Launch 3D Matchday Stadium gameplay simulation">🎮 3D Gameplay Visual</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =====================================================
+         PEP'S ANIMATED TACTICAL BOARD (D3 ENGINE)
+    ===================================================== -->
+    <div class="dugout-tactical-drawer" id="dugoutTacticalDrawer" style="display: none;">
+      <div class="tactical-board-header">
+        <div class="tactical-header-left">
+          <div class="tactical-title-tag">
+            <span class="board-icon">📋</span>
+            <span class="board-label">PEP'S TACTICAL CHALKBOARD</span>
+            <span class="badge-live-d3">D3 ENGINE</span>
+          </div>
+          <div class="tactical-formation-pills" id="formationPills">
+            <button type="button" class="form-pill active" data-formation="433" onclick="selectTacticalFormation('433')">4-3-3 Tiki-Taka</button>
+            <button type="button" class="form-pill" data-formation="3241" onclick="selectTacticalFormation('3241')">3-2-4-1 Inverted Box</button>
+            <button type="button" class="form-pill" data-formation="4231" onclick="selectTacticalFormation('4231')">4-2-3-1 Control</button>
+            <button type="button" class="form-pill" data-formation="343" onclick="selectTacticalFormation('343')">3-4-3 Total Football</button>
+          </div>
+        </div>
+        <div class="tactical-header-right">
+          <button type="button" class="tactical-action-btn" id="btnToggleAnimation" onclick="toggleTacticalDrill()" title="Animate passing patterns and runs">
+            <span id="drillIcon">⚡</span>
+            <span id="drillText">Animate Drills</span>
+          </button>
+          <button type="button" class="tactical-close-btn" onclick="closeTacticalBoard()" title="Minimize Tactical Board">
+            ✕ Close
+          </button>
+        </div>
+      </div>
+
+      <!-- D3 Pitch Stage -->
+      <div class="tactical-pitch-stage-wrapper">
+        <div class="tactical-pitch-stage" id="tacticalPitchStage"></div>
+        <div class="tactical-pitch-legend">
+          <span class="legend-item"><span class="legend-dot dot-player"></span> Active Player</span>
+          <span class="legend-item"><span class="legend-dot dot-target"></span> Target Auction Signing</span>
+          <span class="legend-item"><span class="legend-line line-pass"></span> Passing Triangle</span>
+          <span class="legend-item"><span class="legend-line line-run"></span> Overload Run</span>
+          <span class="legend-direction">ATTACKING DIRECTION ➔</span>
+        </div>
+      </div>
+
+      <!-- Tactical Breakdown & Role Inspector -->
+      <div class="tactical-intel-footer">
+        <div class="intel-card intel-blueprint">
+          <div class="intel-header">
+            <span class="intel-badge">TACTICAL BLUEPRINT</span>
+            <h4 id="blueprintTitle">4-3-3 Tiki-Taka Masterclass</h4>
+          </div>
+          <p id="blueprintDesc">
+            Dominate possession through rapid triangular passing sequences and positional overloads. Wingers pin opposing full-backs wide, creating space for interior 8s to exploit the half-spaces.
+          </p>
+          <div class="intel-tags" id="blueprintTags">
+            <span class="intel-tag">High Line</span>
+            <span class="intel-tag">Single Pivot</span>
+            <span class="intel-tag">Inverted Fullbacks</span>
+          </div>
+        </div>
+
+        <div class="intel-card intel-squad-fit">
+          <div class="intel-header">
+            <span class="intel-badge">SQUAD INTEGRATION</span>
+            <h4 id="squadFitTitle">Live Squad Audit</h4>
+          </div>
+          <div class="squad-fit-meter" id="squadFitMeter">
+            <!-- Dynamic fit bars & advice -->
+          </div>
+          <div class="selected-role-box" id="selectedRoleBox">
+            <span class="role-hint-icon">💡</span>
+            <span id="selectedRoleText">Click any player circle on the pitch to inspect Pep's specific tactical instruction for that role.</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ERROR -->
@@ -592,22 +3096,6 @@ select {
     >
       JOIN AUCTION
     </button>
-
-  </div>
-
-  <!-- =========================
-       MANAGER MESSAGE
-  ========================== -->
-
-  <div class="message">
-
-    <div class="message-title">
-      🧑‍💼 MANAGER
-    </div>
-
-    <div id="managerMessage">
-      Welcome manager! Join the auction to begin.
-    </div>
 
   </div>
 
@@ -766,6 +3254,394 @@ select {
         SKIP PLAYER
       </button>
 
+    </div>
+
+  </div>
+
+  <!-- =========================
+       LEAGUE CHAMPIONSHIP (DIV 1, 2, 3)
+  ========================== -->
+
+  <div class="league-card" id="leagueSection">
+
+    <div class="league-header-bar">
+      <div class="league-title-group">
+        <h2>🏆 Football League Championship</h2>
+        <div class="league-subtitle">
+          Division 1, Division 2, Division 3 • Home & Away Fixtures • Ratings-based Match Simulation
+        </div>
+      </div>
+      <div class="league-season-badge" id="leagueSeasonBadge">
+        Season 1 • Round 1 / 10
+      </div>
+    </div>
+
+    <!-- DIVISION TABS -->
+    <div class="division-tabs" id="divisionTabs">
+      <button class="division-tab-btn active" id="divTab1" onclick="switchDivision(1)">
+        <span>⭐ Division 1</span>
+        <span class="division-tab-tier">Premier Tier</span>
+      </button>
+      <button class="division-tab-btn" id="divTab2" onclick="switchDivision(2)">
+        <span>⚔️ Division 2</span>
+        <span class="division-tab-tier">Championship</span>
+      </button>
+      <button class="division-tab-btn" id="divTab3" onclick="switchDivision(3)">
+        <span>🛡️ Division 3</span>
+        <span class="division-tab-tier">League One</span>
+      </button>
+    </div>
+
+    <!-- HOST-ONLY SIMULATION CONTROLS -->
+    <div class="host-league-panel" id="hostLeaguePanel">
+      <div class="host-panel-info">
+        <span class="host-badge">👑 HOST SIMULATION</span>
+        <span id="hostSimulationStatus">Host controls round simulation for all divisions.</span>
+      </div>
+      <div class="host-actions">
+        <button class="btn-sim" id="btnSimRound" onclick="simulateLeagueRound()">
+          ⚽ SIMULATE ROUND <span id="simRoundNum">1</span>
+        </button>
+        <button class="btn-3d-arena" id="btnOpen3DArena" onclick="open3DMatchArena()" title="Watch 3D Match Simulation with broadcast camera, players & stadium">
+          🎮 3D MATCHDAY ARENA
+        </button>
+        <button class="btn-sim-full" id="btnSimSeason" onclick="simulateFullSeason()">
+          ⏩ SIMULATE ALL ROUNDS
+        </button>
+        <button class="btn-advance-season hidden" id="btnAdvanceLeagueSeason" onclick="advanceLeagueSeason()">
+          🔄 NEXT SEASON (APPLY PROMO/RELEG)
+        </button>
+      </div>
+    </div>
+
+    <!-- STANDINGS TABLE -->
+    <div class="league-table-wrap">
+      <table class="league-table">
+        <thead>
+          <tr>
+            <th style="width: 40px; text-align: center;">#</th>
+            <th>Club</th>
+            <th style="width: 75px; text-align: center;">Rating</th>
+            <th style="width: 45px; text-align: center;">P</th>
+            <th style="width: 45px; text-align: center;">W</th>
+            <th style="width: 45px; text-align: center;">D</th>
+            <th style="width: 45px; text-align: center;">L</th>
+            <th style="width: 45px; text-align: center;">GF</th>
+            <th style="width: 45px; text-align: center;">GA</th>
+            <th style="width: 50px; text-align: center;">GD</th>
+            <th style="width: 55px; text-align: center;">PTS</th>
+            <th style="width: 120px; text-align: center;">Form</th>
+          </tr>
+        </thead>
+        <tbody id="leagueTableBody">
+          <tr>
+            <td colspan="12" style="text-align: center; color: #9fb3c8; padding: 20px;">
+              Loading league standings...
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- PROMOTION / RELEGATION LEGEND -->
+    <div class="zone-legend" id="zoneLegend">
+      <!-- Dynamic legend -->
+    </div>
+
+    <!-- FIXTURES & RESULTS -->
+    <div class="fixtures-header">
+      <h3 style="color: #f1c40f; font-size: 17px;">📅 Home & Away Fixtures</h3>
+      <div class="round-nav">
+        <button id="btnPrevRound" onclick="prevRound()">◀ Prev</button>
+        <span class="round-label" id="fixtureRoundLabel">Round 1</span>
+        <button id="btnNextRound" onclick="nextRound()">Next ▶</button>
+      </div>
+    </div>
+
+    <div class="fixtures-grid" id="fixturesGrid">
+      <div style="color: #9fb3c8; padding: 15px; grid-column: 1 / -1; text-align: center;">
+        Loading fixtures...
+      </div>
+    </div>
+
+    <div class="ai-notice">
+      🤖 <strong>AI Clubs:</strong> Real Madrid, Man City, Bayern, Arsenal, PSG, Liverpool, Dortmund, Juventus, Ajax, etc. are simulated league clubs that compete for the title, promotion, and relegation. AI clubs do NOT participate in the player auction. Online user clubs build their squad via the live auction, and their squad rating directly influences match simulation!
+    </div>
+
+  </div>
+
+  <!-- =====================================================
+       CLUB HEADQUARTERS & OPERATIONS
+       (Stadium, Finances & Merch, Managers & Aims, Scouting)
+  ===================================================== -->
+
+  <div class="club-hq-card" id="clubHqSection">
+
+    <div class="hq-header-bar">
+      <div class="hq-title-group">
+        <h2>🏢 Club Headquarters & Operations</h2>
+        <div class="hq-subtitle">
+          Stadium Condition • Matchday Revenue & Merchandise • Manager & Season Aims • Global Scouting Network
+        </div>
+      </div>
+
+      <div class="hq-club-selector-wrap">
+        <label for="hqClubSelect">Inspecting Club:</label>
+        <select id="hqClubSelect" onchange="onHqClubChanged()">
+          <option value="">Loading clubs...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- HQ NAVIGATION TABS -->
+    <div class="hq-nav-tabs">
+      <button class="hq-tab-btn active" id="hqTabStadium" onclick="switchHqTab('stadium')">
+        <span>🏟️ Stadium & Pitch</span>
+      </button>
+      <button class="hq-tab-btn" id="hqTabFinances" onclick="switchHqTab('finances')">
+        <span>💰 Revenue & Merch</span>
+      </button>
+      <button class="hq-tab-btn" id="hqTabManager" onclick="switchHqTab('manager')">
+        <span>👔 Manager & Board Aims</span>
+      </button>
+      <button class="hq-tab-btn" id="hqTabScouting" onclick="switchHqTab('scouting')">
+        <span>🔍 Scouting Network</span>
+      </button>
+    </div>
+
+    <!-- 1. STADIUM & FACILITIES TAB -->
+    <div class="hq-tab-content active" id="hqContentStadium">
+      <div class="stadium-grid">
+        <div class="stadium-visual-card">
+          <span class="stadium-visual-badge" id="hqStadiumTierBadge">TIER 1 VENUE</span>
+          <div class="stadium-name" id="hqStadiumName">Santiago Bernabéu</div>
+          <div class="stadium-meta" id="hqStadiumMeta">Madrid, Spain • Grassmaster Hybrid Pitch</div>
+
+          <div class="condition-meter-box">
+            <div class="condition-meter-header">
+              <span>🌱 Pitch Condition</span>
+              <span id="hqConditionValue" style="color: #2ecc71;">97% • Pristine</span>
+            </div>
+            <div class="condition-bar-bg">
+              <div class="condition-bar-fill healthy" id="hqConditionFill" style="width: 97%;"></div>
+            </div>
+          </div>
+
+          <div class="stadium-stats-row">
+            <div class="stadium-mini-stat">
+              <div class="val" id="hqStadiumCapacity">84,000</div>
+              <div class="lbl">Seating Capacity</div>
+            </div>
+            <div class="stadium-mini-stat">
+              <div class="val" id="hqFacilitiesLevel">⭐⭐⭐⭐⭐</div>
+              <div class="lbl">Club Facilities</div>
+            </div>
+            <div class="stadium-mini-stat">
+              <div class="val" id="hqTicketPrice">₹65</div>
+              <div class="lbl">Ticket Price</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="stadium-actions-card">
+          <h3 style="color: #f1c40f; font-size: 15px; margin-bottom: 4px;">🛠️ Ground & Facility Operations</h3>
+          <p style="font-size: 11px; color: #9fb3c8; margin-bottom: 10px;">
+            Well-maintained pitches boost home performance. Upgraded facilities supercharge merchandise sales.
+          </p>
+
+          <div class="stadium-action-item">
+            <div class="stadium-action-info">
+              <div class="title">🌱 Renovate Pitch</div>
+              <div class="desc">Restore pitch to 100% pristine hybrid turf</div>
+            </div>
+            <button class="stadium-btn" id="btnRepairPitch" onclick="doRepairPitch()">
+              Renovate (₹5M)
+            </button>
+          </div>
+
+          <div class="stadium-action-item">
+            <div class="stadium-action-info">
+              <div class="title">🏗️ Expand Stadium</div>
+              <div class="desc">Add +5,000 seats to boost matchday ticket sales</div>
+            </div>
+            <button class="stadium-btn orange" id="btnExpandStadium" onclick="doExpandStadium()">
+              Expand (₹15M)
+            </button>
+          </div>
+
+          <div class="stadium-action-item">
+            <div class="stadium-action-info">
+              <div class="title">⭐ Upgrade Facilities</div>
+              <div class="desc">+15% Merch multiplier & improved VIP hospitality</div>
+            </div>
+            <button class="stadium-btn blue" id="btnUpgradeFacilities" onclick="doUpgradeFacilities()">
+              Upgrade (₹10M)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. REVENUES & MERCHANDISE TAB -->
+    <div class="hq-tab-content" id="hqContentFinances">
+      <div class="finances-kpi-grid">
+        <div class="finance-tile">
+          <div class="amount" id="hqFinTotalRev">₹0.0M</div>
+          <div class="label">Total Commercial Revenue</div>
+        </div>
+        <div class="finance-tile">
+          <div class="amount" id="hqFinGateRev" style="color: #38bdf8;">₹0.0M</div>
+          <div class="label">Gate Receipts / Tickets</div>
+        </div>
+        <div class="finance-tile">
+          <div class="amount" id="hqFinMerchRev" style="color: #f59e0b;">₹0.0M</div>
+          <div class="label">Merchandise & Jersey Sales</div>
+        </div>
+        <div class="finance-tile">
+          <div class="amount" id="hqFinNetProfit" style="color: #2ecc71;">₹0.0M</div>
+          <div class="label">Total Matchday Net Profit</div>
+        </div>
+      </div>
+
+      <!-- MERCHANDISE SPOTLIGHT -->
+      <div class="merch-spotlight-card">
+        <div class="merch-spotlight-left">
+          <div class="merch-jersey-icon">👕</div>
+          <div class="merch-details">
+            <div class="title">Official Club Kit & Merchandise Operations</div>
+            <div class="seller" id="hqTopJerseySeller">Top Jersey Seller: Kylian Mbappé #9</div>
+            <div class="sub" id="hqMerchSubDetails">Global kit demand driven by star squad rating & facility level.</div>
+          </div>
+        </div>
+        <div class="merch-spotlight-right">
+          <div class="merch-sold-num" id="hqJerseysSoldCount">0</div>
+          <div class="merch-sold-label">Total Jerseys Sold This Season</div>
+        </div>
+      </div>
+
+      <div style="background: #081829; border: 1px solid #1f3b5c; border-radius: 10px; padding: 14px; font-size: 12px; color: #9fb3c8; line-height: 1.6;">
+        💡 <strong>Financial Economics Note:</strong> Matchday profits are automatically calculated and credited directly to the host and user club bank balances after every simulated round. Revenue scales with squad rating, attendance, ticket pricing, and facility tiers.
+      </div>
+    </div>
+
+    <!-- 3. MANAGERS & SEASON AIMS TAB -->
+    <div class="hq-tab-content" id="hqContentManager">
+      <div id="boardUltimatumBanner" class="board-ultimatum-banner" style="display: none;">
+        <div>
+          <strong style="font-size: 14px;">🚨 BOARD ULTIMATUM: Underperformance Alert!</strong>
+          <div style="font-size: 11px; opacity: 0.9; margin-top: 2px;">
+            The club is currently trailing behind the board's season target. Board confidence is in jeopardy! Review elite candidate managers below to salvage the campaign.
+          </div>
+        </div>
+        <button onclick="scrollToFreeAgents()" style="background: #ffffff; color: #991b1b; font-weight: 800; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer;">
+          View Candidates
+        </button>
+      </div>
+
+      <div class="manager-board-grid">
+        <!-- CURRENT MANAGER CARD -->
+        <div class="manager-card-box">
+          <div class="manager-header">
+            <div class="manager-avatar-circle" id="hqManagerAvatar">👔</div>
+            <div class="manager-info">
+              <div class="name" id="hqManagerName">Carlo Ancelotti</div>
+              <div class="role" id="hqManagerRole">Tactical Mastermind • 4-3-3 Attacking</div>
+            </div>
+          </div>
+
+          <div class="manager-perk-badge" id="hqManagerPerk">
+            ✨ Tactical Perk: Positional Mastery (+18% Ball Retention)
+          </div>
+
+          <div class="condition-meter-box" style="margin-bottom: 0;">
+            <div class="condition-meter-header">
+              <span>Board Confidence</span>
+              <span id="hqConfidenceText" style="color: #2ecc71;">90% • Untouchable</span>
+            </div>
+            <div class="condition-bar-bg">
+              <div class="condition-bar-fill healthy" id="hqConfidenceFill" style="width: 90%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- BOARD SEASON AIMS CARD -->
+        <div class="board-aims-card">
+          <div class="board-aims-title">
+            <span>🎯 Board Season Aims & Expectations</span>
+          </div>
+
+          <div class="aim-objective-box">
+            <div class="target" id="hqSeasonAimTarget">🏆 Win the Division 1 Championship</div>
+            <div class="desc" id="hqSeasonAimDesc">The board and supporters demand nothing less than lifting the title.</div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+            <div style="background: #061423; border: 1px solid #1a3654; border-radius: 6px; padding: 8px; text-align: center;">
+              <div style="font-size: 13px; font-weight: 700; color: #f1c40f;" id="hqAimMinRank">Top 1</div>
+              <div style="font-size: 10px; color: #9fb3c8;">Target Table Finish</div>
+            </div>
+            <div style="background: #061423; border: 1px solid #1a3654; border-radius: 6px; padding: 8px; text-align: center;">
+              <div style="font-size: 13px; font-weight: 700; color: #2ecc71;" id="hqAimMinRev">₹50M+</div>
+              <div style="font-size: 10px; color: #9fb3c8;">Revenue Target</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 10px; font-size: 11px; color: #9fb3c8;">
+            Board Satisfaction Status: <strong id="hqBoardSatisfaction" style="color: #2ecc71;">Delighted 🌟</strong>
+          </div>
+        </div>
+      </div>
+
+      <!-- FREE AGENT MANAGERS MARKET -->
+      <div class="free-agents-section" id="freeAgentsSection">
+        <h3 style="color: #f1c40f; font-size: 16px; margin-bottom: 6px;">
+          👔 Elite Free-Agent Managers Market
+        </h3>
+        <p style="font-size: 11px; color: #9fb3c8; margin-bottom: 12px;">
+          Available world-class tacticians ready to take the helm. Appointing a new manager resets board confidence and activates their game-changing tactical perk!
+        </p>
+
+        <div class="free-agents-grid" id="freeAgentsGrid">
+          <!-- Dynamically populated free agents -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. PLAYER SCOUTING NETWORK TAB -->
+    <div class="hq-tab-content" id="hqContentScouting">
+      <div class="scout-controls-card">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <div>
+            <h3 style="color: #f1c40f; font-size: 16px;">🔍 Global Scouting Network</h3>
+            <div style="font-size: 11px; color: #9fb3c8;">Dispatch scouting expeditions to unearth elite wonderkids, lethal attackers, and hidden transfer gems.</div>
+          </div>
+          <button class="stadium-btn orange" id="btnDispatchScout" onclick="doDispatchScout()" style="padding: 10px 18px; font-size: 13px;">
+            📡 Dispatch Scout (₹1.5M)
+          </button>
+        </div>
+
+        <div class="scout-mission-selector">
+          <button class="scout-mission-btn active" id="scoutMission_wonderkids" onclick="selectScoutMission('wonderkids')">
+            🌟 Wonderkids (U-21 Potential)
+          </button>
+          <button class="scout-mission-btn" id="scoutMission_attackers" onclick="selectScoutMission('attackers')">
+            ⚽ Elite Goalscorers
+          </button>
+          <button class="scout-mission-btn" id="scoutMission_defenders" onclick="selectScoutMission('defenders')">
+            🛡️ Defensive Titans & GKs
+          </button>
+          <button class="scout-mission-btn" id="scoutMission_bargains" onclick="selectScoutMission('bargains')">
+            🏷️ Value Release Clauses
+          </button>
+        </div>
+      </div>
+
+      <!-- SCOUT DOSSIERS -->
+      <div class="scout-dossiers-grid" id="scoutDossiersGrid">
+        <div style="grid-column: 1 / -1; text-align: center; color: #9fb3c8; padding: 24px; background: #081728; border-radius: 10px;">
+          Click <strong>"📡 Dispatch Scout (₹1.5M)"</strong> to commission your Chief Scout for transfer dossiers!
+        </div>
+      </div>
     </div>
 
   </div>
@@ -986,6 +3862,105 @@ select {
       No teams have joined yet.
     </div>
 
+  </div>
+
+  <!-- =====================================================
+       3D MATCHDAY GAMEPLAY VISUALIZER MODAL
+  ===================================================== -->
+  <div id="match3dModal" role="dialog" aria-modal="true">
+    <!-- Top Broadcast Header -->
+    <div class="match3d-header">
+      <div class="match3d-header-left">
+        <span class="match3d-badge">3D MATCH ENGINE</span>
+        <span class="match3d-title" id="hudMatchTitle">Round 1 • 3D Match Stadium</span>
+      </div>
+
+      <div class="match3d-header-center">
+        <label style="font-size: 11px; color: #94a3b8; font-weight: 600;">MATCHUP:</label>
+        <select class="match3d-fixture-select" id="match3dFixtureSelect" onchange="onSelect3DFixture(this.value)">
+          <!-- Populated dynamically with all fixtures -->
+        </select>
+      </div>
+
+      <button type="button" class="match3d-close-btn" onclick="close3DMatchArena()" title="Exit 3D Matchday">
+        ✕ EXIT ARENA
+      </button>
+    </div>
+
+    <!-- Live Broadcast Scoreboard -->
+    <div class="match3d-scoreboard">
+      <div class="scoreboard-club home">
+        <span id="hudTeamLogoHome">👑</span>
+        <span id="hudTeamNameHome">Real Madrid</span>
+      </div>
+
+      <div class="scoreboard-score-box">
+        <span class="score-num" id="hudScoreHome">0</span>
+        <span class="score-divider">-</span>
+        <span class="score-num" id="hudScoreAway">0</span>
+      </div>
+
+      <div class="scoreboard-club away">
+        <span id="hudTeamNameAway">Manchester City</span>
+        <span id="hudTeamLogoAway">🏙️</span>
+      </div>
+
+      <div class="scoreboard-clock" id="hudMatchClock">1'</div>
+      <div class="scoreboard-derby-badge" id="hudDerbyTag" style="display: none;">🔥 ARCH RIVALS</div>
+    </div>
+
+    <!-- 3D Stadium Canvas Viewport -->
+    <div class="match3d-viewport">
+      <div id="match3dCanvasContainer"></div>
+
+      <!-- Replay Tag -->
+      <div class="match3d-replay-badge hidden" id="match3dReplayBadge">
+        <span class="replay-rec-dot"></span>
+        <span>SLOW-MOTION REPLAY</span>
+      </div>
+
+      <!-- Celebratory Goal Banner -->
+      <div class="match3d-goal-banner" id="match3dGoalBanner">
+        <div class="banner-fire">⚽ GOOOOOAL!</div>
+        <div class="banner-scorer">Erling Haaland (34')</div>
+        <div class="banner-sub">What a breathtaking finish!</div>
+      </div>
+
+      <!-- Live Commentary Box -->
+      <div class="match3d-commentary" id="match3dCommentary">
+        <span class="comm-icon">📢</span>
+        <span class="comm-text">Kick-off! Match simulation is running...</span>
+      </div>
+    </div>
+
+    <!-- Bottom Controls & Camera Selector -->
+    <div class="match3d-controls">
+      <!-- Camera Angles -->
+      <div class="match3d-control-group">
+        <span style="font-size: 11px; color: #64748b; font-weight: 700; margin-right: 4px;">CAM:</span>
+        <button type="button" class="cam-btn active" data-mode="broadcast" onclick="set3DCameraMode('broadcast')">🎥 Broadcast</button>
+        <button type="button" class="cam-btn" data-mode="action" onclick="set3DCameraMode('action')">⚽ Action Tracker</button>
+        <button type="button" class="cam-btn" data-mode="goal" onclick="set3DCameraMode('goal')">🥅 Behind-Goal</button>
+        <button type="button" class="cam-btn" data-mode="tactical" onclick="set3DCameraMode('tactical')">🦅 Tactical 3D</button>
+      </div>
+
+      <!-- Playback Controls -->
+      <div class="match3d-control-group">
+        <button type="button" class="pback-btn" onclick="prev3DHighlight()" title="Previous highlight">⏮️ Prev</button>
+        <button type="button" class="pback-btn accent" id="btnMatch3dPlay" onclick="toggle3DPlayPause()">⏸️ Pause</button>
+        <button type="button" class="pback-btn" onclick="next3DHighlight()" title="Next highlight">⏭️ Next Highlight</button>
+        <button type="button" class="pback-btn" onclick="replay3DGoal()" title="Instant replay in slow motion">🔄 Replay</button>
+      </div>
+
+      <!-- Speed & Sound -->
+      <div class="match3d-control-group">
+        <span style="font-size: 11px; color: #64748b; font-weight: 700; margin-right: 4px;">SPEED:</span>
+        <button type="button" class="speed-btn active" data-speed="1" onclick="set3DSimSpeed(1)">1x</button>
+        <button type="button" class="speed-btn" data-speed="2" onclick="set3DSimSpeed(2)">2x</button>
+        <button type="button" class="speed-btn" data-speed="4" onclick="set3DSimSpeed(4)">4x</button>
+        <button type="button" class="sound-btn" id="btnMatch3dSound" onclick="toggle3DSound()">🔊 Sound: ON</button>
+      </div>
+    </div>
   </div>
 
 </div>
@@ -1213,6 +4188,8 @@ socket.on(
 
     updateSellerTeams();
 
+    renderLeague();
+
     if (
       state.currentPlayer
     ) {
@@ -1318,7 +4295,7 @@ function showPlayer(
 
   document.getElementById(
     "playerPosition"
-  .innerText =
+  ).innerText =
     player.position ||
     "CF";
 
@@ -1348,9 +4325,18 @@ function showPlayer(
 socket.on(
   "timerUpdate",
   time => {
-    document.getElementById(
-      "timer"
-    ).innerText = time;
+    const timerEl = document.getElementById("timer");
+    if (timerEl) {
+      timerEl.innerText = time;
+      if (time <= 5 && time > 0) {
+        timerEl.style.color = "#ef4444";
+        timerEl.style.textShadow = "0 0 20px rgba(239, 68, 68, 0.8)";
+        playTickSound();
+      } else {
+        timerEl.style.color = "#f1c40f";
+        timerEl.style.textShadow = "0 0 16px rgba(241, 196, 15, 0.5)";
+      }
+    }
   }
 );
 
@@ -1372,6 +4358,8 @@ socket.on(
       "timer"
     ).innerText =
       data.timer;
+
+    playBidSound();
   }
 );
 
@@ -1382,9 +4370,7 @@ socket.on(
 socket.on(
   "managerMessage",
   message => {
-    document.getElementById(
-      "managerMessage"
-    ).innerText = message;
+    updateManagerPop(message);
   }
 );
 
@@ -1406,20 +4392,23 @@ socket.on(
 socket.on(
   "playerSold",
   data => {
-    document.getElementById(
-      "managerMessage"
-    ).innerText =
-      `🔨 SOLD! ${data.player.name} → ${data.team} for ₹${data.price}M`;
+    playCashSound();
+    playGavelSound();
+    updateManagerPop(
+      `🔨 SOLD! ${data.player.name} → ${data.team} for ₹${data.price}M`,
+      "🔨 AUCTION HAMMER"
+    );
   }
 );
 
 socket.on(
   "playerUnsold",
   data => {
-    document.getElementById(
-      "managerMessage"
-    ).innerText =
-      `❌ ${data.player.name} was unsold.`;
+    playGavelSound();
+    updateManagerPop(
+      `❌ ${data.player.name} was unsold.`,
+      "⚠️ UNSOLD"
+    );
   }
 );
 
@@ -2101,18 +5090,14 @@ socket.on(
 socket.on(
   "transferCompleted",
   data => {
-
-    document.getElementById(
-      "managerMessage"
-    ).innerText =
-      `🔁 TRANSFER COMPLETE: ${data.player.name} → ${data.to} for ₹${data.fee}M`;
+    playCashSound();
+    updateManagerPop(
+      `🔁 TRANSFER COMPLETE: ${data.player.name} → ${data.to} for ₹${data.fee}M`,
+      "💰 TRANSFER SIGNING"
+    );
 
     setTimeout(() => {
-
-      socket.emit(
-        "requestState"
-      );
-
+      socket.emit("requestState");
     }, 300);
   }
 );
@@ -2120,16 +5105,13 @@ socket.on(
 socket.on(
   "contractRenewed",
   data => {
-
-    document.getElementById(
-      "managerMessage"
-    ).innerText =
-      `📝 ${data.player.name} renewed for ${data.player.contract.years} season(s).`;
-
-    socket.emit(
-      "requestState"
+    playCashSound();
+    updateManagerPop(
+      `📝 ${data.player.name} renewed for ${data.player.contract.years} season(s).`,
+      "✍️ CONTRACT SECURED"
     );
 
+    socket.emit("requestState");
     loadContracts();
   }
 );
@@ -2262,6 +5244,2389 @@ document
 socket.emit(
   "requestState"
 );
+
+socket.emit(
+  "requestLeagueState"
+);
+
+/* =====================================================
+   LEAGUE CHAMPIONSHIP LOGIC (DIV 1, 2, 3)
+===================================================== */
+
+let leagueData = null;
+let currentDivisionTab = 1;
+let currentViewingRound = 1;
+
+socket.on("leagueState", data => {
+  leagueData = data;
+  if (leagueData) {
+    if (leagueData.currentRound && !leagueData.isSeasonComplete) {
+      currentViewingRound = leagueData.currentRound;
+    }
+  }
+  renderLeague();
+});
+
+socket.on("leagueRoundSimulated", data => {
+  if (data && data.round) {
+    currentViewingRound = data.round;
+    updateManagerPop(`Round ${data.round} has been simulated! Check the fixtures or click "🎮 3D MATCHDAY ARENA" to watch full 3D gameplay highlights.`);
+  }
+  playWhistleSound();
+  if (data && data.rivalryMatches && data.rivalryMatches.length > 0) {
+    setTimeout(() => playRivalrySound(), 350);
+  } else {
+    setTimeout(() => playGoalSound(), 300);
+  }
+  socket.emit("requestLeagueState");
+});
+
+function switchDivision(divId) {
+  currentDivisionTab = divId;
+  for (let i = 1; i <= 3; i++) {
+    const tab = document.getElementById("divTab" + i);
+    if (tab) {
+      if (i === divId) tab.classList.add("active");
+      else tab.classList.remove("active");
+    }
+  }
+  renderLeague();
+}
+
+function prevRound() {
+  if (currentViewingRound > 1) {
+    currentViewingRound--;
+    renderFixtures();
+  }
+}
+
+function nextRound() {
+  const maxRounds = leagueData?.totalRounds || 10;
+  if (currentViewingRound < maxRounds) {
+    currentViewingRound++;
+    renderFixtures();
+  }
+}
+
+function simulateLeagueRound() {
+  socket.emit("simulateLeagueRound");
+}
+
+function simulateFullSeason() {
+  if (confirm("Simulate all remaining rounds of Season " + (leagueData?.season || 1) + "?")) {
+    socket.emit("simulateFullSeason");
+  }
+}
+
+function advanceLeagueSeason() {
+  if (confirm("Advance to the next season and apply promotions & relegations?")) {
+    socket.emit("advanceLeagueSeason");
+  }
+}
+
+function renderLeague() {
+  if (!leagueData || !leagueData.divisions) return;
+
+  const currentRound = leagueData.currentRound || 1;
+  const totalRounds = leagueData.totalRounds || 10;
+  const isComplete = leagueData.isSeasonComplete;
+  const season = leagueData.season || 1;
+
+  // Header badge
+  const seasonBadge = document.getElementById("leagueSeasonBadge");
+  if (seasonBadge) {
+    if (isComplete) {
+      seasonBadge.innerHTML = `Season ${season} • <span style="color:#2ecc71">Season Complete</span>`;
+    } else {
+      seasonBadge.innerText = `Season ${season} • Round ${currentRound} / ${totalRounds}`;
+    }
+  }
+
+  // Host buttons & info
+  const simBtn = document.getElementById("btnSimRound");
+  const simFullBtn = document.getElementById("btnSimSeason");
+  const advBtn = document.getElementById("btnAdvanceLeagueSeason");
+  const simNum = document.getElementById("simRoundNum");
+  const hostInfo = document.getElementById("hostSimulationStatus");
+
+  if (simNum) simNum.innerText = currentRound;
+
+  // Check if current user is host
+  const amHost = Boolean(gameState?.host && myTeam && gameState.host === myTeam);
+
+  if (simBtn) simBtn.disabled = !amHost || isComplete;
+  if (simFullBtn) simFullBtn.disabled = !amHost || isComplete;
+  if (advBtn) {
+    if (isComplete && amHost) {
+      advBtn.classList.remove("hidden");
+    } else {
+      advBtn.classList.add("hidden");
+    }
+  }
+
+  if (hostInfo) {
+    if (amHost) {
+      hostInfo.innerHTML = `You are the <strong>Host</strong>. Click below to simulate league rounds.`;
+    } else {
+      hostInfo.innerHTML = `Simulation is controlled by room host: <strong>${gameState?.host || "Host"}</strong>.`;
+    }
+  }
+
+  renderStandings();
+  renderFixtures();
+  renderClubHq();
+}
+
+function renderStandings() {
+  const div = leagueData?.divisions?.[currentDivisionTab];
+  if (!div) return;
+
+  const tbody = document.getElementById("leagueTableBody");
+  if (!tbody) return;
+
+  let html = "";
+  const standings = div.standings || [];
+
+  standings.forEach((team, index) => {
+    const pos = index + 1;
+    let zoneClass = "";
+    if (currentDivisionTab === 1) {
+      if (pos === 1) zoneClass = "zone-champ";
+      else if (pos >= 5) zoneClass = "zone-releg";
+    } else if (currentDivisionTab === 2) {
+      if (pos <= 2) zoneClass = "zone-promo";
+      else if (pos >= 5) zoneClass = "zone-releg";
+    } else if (currentDivisionTab === 3) {
+      if (pos <= 2) zoneClass = "zone-promo";
+    }
+
+    const isMyClub = Boolean(myTeam && team.name.toLowerCase() === myTeam.toLowerCase());
+    const rowClass = `${zoneClass} ${isMyClub ? "user-club-row" : ""}`.trim();
+
+    const gdFormatted = team.goalDifference > 0 ? `+${team.goalDifference}` : team.goalDifference;
+
+    let clubTag = "";
+    if (isMyClub) {
+      clubTag = `<span class="club-tag-you">YOU</span>`;
+    } else if (team.isAi) {
+      clubTag = `<span class="club-tag-ai">AI</span>`;
+    } else {
+      clubTag = `<span class="club-tag-user">USER</span>`;
+    }
+
+    const formHtml = (team.form || []).map(f => `<span class="form-dot form-${f}">${f}</span>`).join("") || `<span style="color:#64748b">-</span>`;
+
+    html += `
+      <tr class="${rowClass}">
+        <td style="font-weight: bold; text-align: center;">${pos}</td>
+        <td>
+          <div class="club-cell">
+            <span>${team.logo || "⚽"}</span>
+            <span class="club-name">${team.name}</span>
+            ${clubTag}
+          </div>
+        </td>
+        <td style="text-align: center;"><span class="rating-badge">⭐ ${team.rating}</span></td>
+        <td style="text-align: center;">${team.played}</td>
+        <td style="text-align: center;">${team.won}</td>
+        <td style="text-align: center;">${team.drawn}</td>
+        <td style="text-align: center;">${team.lost}</td>
+        <td style="text-align: center;">${team.goalsFor}</td>
+        <td style="text-align: center;">${team.goalsAgainst}</td>
+        <td style="text-align: center; color: ${team.goalDifference > 0 ? '#2ecc71' : team.goalDifference < 0 ? '#e74c3c' : '#9fb3c8'}; font-weight: 600;">${gdFormatted}</td>
+        <td style="text-align: center; font-weight: bold; color: #f1c40f; font-size: 14px;">${team.points}</td>
+        <td style="text-align: center;"><div class="form-dots">${formHtml}</div></td>
+      </tr>
+    `;
+  });
+
+  tbody.innerHTML = html;
+
+  // Render legend
+  const legend = document.getElementById("zoneLegend");
+  if (legend) {
+    if (currentDivisionTab === 1) {
+      legend.innerHTML = `
+        <div class="zone-legend-item"><div class="zone-color zc-champ"></div><span>Champion (Pos 1)</span></div>
+        <div class="zone-legend-item"><div class="zone-color zc-releg"></div><span>Relegation to Division 2 (Pos 5-6)</span></div>
+      `;
+    } else if (currentDivisionTab === 2) {
+      legend.innerHTML = `
+        <div class="zone-legend-item"><div class="zone-color zc-promo"></div><span>Promotion to Division 1 (Pos 1-2)</span></div>
+        <div class="zone-legend-item"><div class="zone-color zc-releg"></div><span>Relegation to Division 3 (Pos 5-6)</span></div>
+      `;
+    } else {
+      legend.innerHTML = `
+        <div class="zone-legend-item"><div class="zone-color zc-promo"></div><span>Promotion to Division 2 (Pos 1-2)</span></div>
+      `;
+    }
+  }
+}
+
+function renderFixtures() {
+  const div = leagueData?.divisions?.[currentDivisionTab];
+  if (!div) return;
+
+  const label = document.getElementById("fixtureRoundLabel");
+  if (label) label.innerText = `Round ${currentViewingRound} / ${leagueData.totalRounds || 10}`;
+
+  const container = document.getElementById("fixturesGrid");
+  if (!container) return;
+
+  const roundFixtures = (div.fixtures || []).filter(f => f.round === currentViewingRound);
+  if (roundFixtures.length === 0) {
+    container.innerHTML = `<div style="color: #9fb3c8; padding: 15px; grid-column: 1 / -1; text-align: center;">No fixtures found for this round.</div>`;
+    return;
+  }
+
+  // Lookup club ratings
+  const standingsMap = new Map();
+  (div.standings || []).forEach(s => standingsMap.set(s.name, s));
+
+  let html = "";
+  roundFixtures.forEach((fix, fixIndex) => {
+    const homeClub = standingsMap.get(fix.homeTeam);
+    const awayClub = standingsMap.get(fix.awayTeam);
+
+    const isHomeUser = Boolean(myTeam && fix.homeTeam.toLowerCase() === myTeam.toLowerCase());
+    const isAwayUser = Boolean(myTeam && fix.awayTeam.toLowerCase() === myTeam.toLowerCase());
+    const isRivalry = Boolean(fix.isRivalry);
+
+    let rivalryBanner = "";
+    if (isRivalry) {
+      rivalryBanner = `
+        <div class="rivalry-banner">
+          <div class="rivalry-fire">🔥 ARCH RIVALS</div>
+          <div class="derby-title">${fix.derbyName || "GRUDGE DERBY"}</div>
+          <div class="derby-intensity-badge">${fix.intensity || "HIGH"} INTENSITY</div>
+        </div>
+        ${fix.derbyChant ? `<div class="derby-sub">"${fix.derbyChant}"</div>` : ''}
+      `;
+    }
+
+    let scoreHtml = "";
+    if (fix.played) {
+      scoreHtml = `<div class="fixture-score-box">${fix.homeScore} - ${fix.awayScore}</div>`;
+    } else {
+      scoreHtml = `<div class="fixture-score-box" style="font-size: 13px; color: #9fb3c8;">VS</div>`;
+    }
+
+    let scorersHtml = "";
+    if (fix.played && fix.scorers && fix.scorers.length > 0) {
+      const scorerTexts = fix.scorers.map(s => `⚽ ${s.scorer} (${s.minute}')`).join(" • ");
+      scorersHtml = `<div class="fixture-scorers">${scorerTexts}</div>`;
+    }
+
+    let userDerbyTag = "";
+    if (isRivalry && (isHomeUser || isAwayUser)) {
+      userDerbyTag = `<div style="text-align:center;"><span class="user-derby-tag">⚔️ YOUR DERBY MATCH</span></div>`;
+    }
+
+    let matchdayPillHtml = "";
+    if (fix.played && fix.matchdayStats) {
+      matchdayPillHtml = `
+        <div class="fixture-matchday-pill">
+          <span>🏟️ ${escapeHtml(fix.matchdayStats.stadiumName)} (${fix.matchdayStats.attendance ? fix.matchdayStats.attendance.toLocaleString() : "Full"} fans • ${fix.matchdayStats.pitchCondition || 95}% pitch)</span>
+          <span>Net: <strong>+₹${fix.matchdayStats.netProfit || 0}M</strong></span>
+        </div>
+      `;
+    }
+
+    html += `
+      <div class="fixture-card ${isRivalry ? 'is-rivalry' : ''}" style="${(isHomeUser || isAwayUser) ? 'border-color: #f1c40f; background: #0c223a;' : ''}">
+        ${rivalryBanner}
+        <div class="fixture-teams">
+          <div class="fixture-team home">
+            <div class="team-title">
+              <span>${homeClub?.logo || "⚽"}</span>
+              <span style="${isHomeUser ? 'color: #f1c40f; font-weight: bold;' : ''}">${fix.homeTeam}</span>
+            </div>
+            <div class="team-rate">⭐ ${homeClub?.rating || 78}</div>
+          </div>
+          ${scoreHtml}
+          <div class="fixture-team away">
+            <div class="team-title">
+              <span style="${isAwayUser ? 'color: #f1c40f; font-weight: bold;' : ''}">${fix.awayTeam}</span>
+              <span>${awayClub?.logo || "⚽"}</span>
+            </div>
+            <div class="team-rate">⭐ ${awayClub?.rating || 78}</div>
+          </div>
+        </div>
+        ${scorersHtml}
+        ${matchdayPillHtml}
+        ${userDerbyTag}
+        <div class="fixture-actions">
+          <button type="button" class="fixture-btn-3d" onclick="launch3DMatchByIndex(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})">
+            🎮 Watch 3D Match
+          </button>
+        </div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+/* =====================================================
+   CLUB HEADQUARTERS & OPERATIONS JAVASCRIPT
+   (Stadium, Finances, Manager & Aims, Player Scouting)
+===================================================== */
+
+let currentHqTab = 'stadium';
+let selectedHqClub = null;
+let currentScoutMission = 'wonderkids';
+let cachedScoutDossiers = [];
+
+function switchHqTab(tabName) {
+  currentHqTab = tabName;
+  playClickSound();
+  const tabs = ['stadium', 'finances', 'manager', 'scouting'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('hqTab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const content = document.getElementById('hqContent' + t.charAt(0).toUpperCase() + t.slice(1));
+    if (btn) {
+      if (t === tabName) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+    if (content) {
+      if (t === tabName) content.classList.add('active');
+      else content.classList.remove('active');
+    }
+  });
+}
+
+function onHqClubChanged() {
+  const select = document.getElementById('hqClubSelect');
+  if (select && select.value) {
+    selectedHqClub = select.value;
+    playClickSound();
+    renderClubHq();
+  }
+}
+
+function scrollToFreeAgents() {
+  switchHqTab('manager');
+  setTimeout(() => {
+    const el = document.getElementById('freeAgentsSection');
+    if (el) el.scrollIntoView({ behavior: 'smooth' });
+  }, 100);
+}
+
+function renderClubHq() {
+  if (!leagueData) return;
+
+  // 1. Gather all clubs in the league
+  const allClubs = [];
+  [1, 2, 3].forEach(divId => {
+    const div = leagueData.divisions?.[divId];
+    if (div && div.standings) {
+      div.standings.forEach(s => {
+        if (!allClubs.some(c => c.name === s.name)) {
+          allClubs.push({ name: s.name, div: divId, isUser: !s.isAi });
+        }
+      });
+    }
+  });
+
+  // 2. Populate club selector dropdown
+  const selector = document.getElementById('hqClubSelect');
+  if (selector && allClubs.length > 0) {
+    const currentVal = selector.value;
+    let optionsHtml = "";
+    allClubs.forEach(c => {
+      const isMyTeam = Boolean(myTeam && c.name.toLowerCase() === myTeam.toLowerCase());
+      const label = `${c.name} (Div ${c.div}${isMyTeam ? ' • YOU' : c.isUser ? ' • USER' : ''})`;
+      optionsHtml += `<option value="${escapeHtml(c.name)}">${escapeHtml(label)}</option>`;
+    });
+    selector.innerHTML = optionsHtml;
+
+    if (selectedHqClub && allClubs.some(c => c.name === selectedHqClub)) {
+      selector.value = selectedHqClub;
+    } else if (myTeam && allClubs.some(c => c.name.toLowerCase() === myTeam.toLowerCase())) {
+      const match = allClubs.find(c => c.name.toLowerCase() === myTeam.toLowerCase());
+      selectedHqClub = match.name;
+      selector.value = match.name;
+    } else if (allClubs.length > 0) {
+      selectedHqClub = allClubs[0].name;
+      selector.value = allClubs[0].name;
+    }
+  }
+
+  const targetClub = selectedHqClub || myTeam || (allClubs[0] ? allClubs[0].name : "Real Madrid");
+
+  // 3. Render Stadium Data
+  const stadiums = leagueData.stadiums || {};
+  const stadium = stadiums[targetClub] || {
+    name: targetClub + " Stadium",
+    capacity: 50000,
+    condition: 95,
+    pitchType: "Hybrid Desso Turf",
+    facilitiesLevel: 3,
+    ticketPrice: 50
+  };
+
+  const nameEl = document.getElementById('hqStadiumName');
+  const metaEl = document.getElementById('hqStadiumMeta');
+  const tierBadge = document.getElementById('hqStadiumTierBadge');
+  const condVal = document.getElementById('hqConditionValue');
+  const condFill = document.getElementById('hqConditionFill');
+  const capEl = document.getElementById('hqStadiumCapacity');
+  const facEl = document.getElementById('hqFacilitiesLevel');
+  const priceEl = document.getElementById('hqTicketPrice');
+
+  if (nameEl) nameEl.innerText = stadium.name;
+  if (metaEl) metaEl.innerText = `${stadium.pitchType} • Seating Capacity: ${stadium.capacity.toLocaleString()} fans`;
+  if (tierBadge) tierBadge.innerText = stadium.capacity > 70000 ? "TIER 1 VENUE" : stadium.capacity > 50000 ? "TIER 2 ARENA" : "COMPACT GROUND";
+
+  const cond = Math.round(stadium.condition || 100);
+  if (condVal) {
+    const statusText = cond >= 90 ? "Pristine" : cond >= 75 ? "Good" : cond >= 60 ? "Worn" : "Degraded";
+    const color = cond >= 90 ? "#2ecc71" : cond >= 75 ? "#f1c40f" : "#ef4444";
+    condVal.innerHTML = `<span style="color: ${color};">${cond}% • ${statusText}</span>`;
+  }
+  if (condFill) {
+    condFill.style.width = cond + "%";
+    condFill.className = "condition-bar-fill " + (cond >= 85 ? "healthy" : cond >= 65 ? "warning" : "danger");
+  }
+
+  if (capEl) capEl.innerText = stadium.capacity.toLocaleString();
+  if (facEl) facEl.innerText = "⭐".repeat(Math.max(1, Math.min(5, stadium.facilitiesLevel || 3)));
+  if (priceEl) priceEl.innerText = `₹${stadium.ticketPrice || 50}`;
+
+  // 4. Render Finances & Merch Data
+  const finances = leagueData.finances || {};
+  const fin = finances[targetClub] || {
+    totalCommercialRevenue: 0,
+    totalGateReceipts: 0,
+    totalMerchRevenue: 0,
+    totalNetProfit: 0,
+    jerseysSold: 0,
+    topSellingJersey: targetClub + " Star"
+  };
+
+  const finTotal = document.getElementById('hqFinTotalRev');
+  const finGate = document.getElementById('hqFinGateRev');
+  const finMerch = document.getElementById('hqFinMerchRev');
+  const finNet = document.getElementById('hqFinNetProfit');
+  const jerseysCount = document.getElementById('hqJerseysSoldCount');
+  const topJersey = document.getElementById('hqTopJerseySeller');
+  const merchSub = document.getElementById('hqMerchSubDetails');
+
+  if (finTotal) finTotal.innerText = `₹${(fin.totalCommercialRevenue || 0).toFixed(1)}M`;
+  if (finGate) finGate.innerText = `₹${(fin.totalGateReceipts || 0).toFixed(1)}M`;
+  if (finMerch) finMerch.innerText = `₹${(fin.totalMerchRevenue || 0).toFixed(1)}M`;
+  if (finNet) finNet.innerText = `₹${(fin.totalNetProfit || 0).toFixed(1)}M`;
+  if (jerseysCount) jerseysCount.innerText = (fin.jerseysSold || 0).toLocaleString();
+  if (topJersey) topJersey.innerText = `Top Jersey Seller: ${fin.topSellingJersey || targetClub + ' Talisman'}`;
+  if (merchSub) merchSub.innerText = `Commercial boost: Level ${stadium.facilitiesLevel || 3} VIP merchandise & fan operations active.`;
+
+  // 5. Render Managers & Season Aims
+  const managers = leagueData.managers || {};
+  const manager = managers[targetClub] || {
+    name: "Head Coach",
+    nationality: "Domestic",
+    formation: "4-3-3",
+    tacticalStyle: "Balanced Football",
+    boardConfidence: 80,
+    status: "Secure",
+    perk: { name: "Tactical Discipline", description: "Balanced performance across all phases." },
+    isUnderperforming: false
+  };
+
+  const aims = leagueData.seasonAims || {};
+  const aim = aims[targetClub] || {
+    title: "Championship Contention",
+    description: "Compete fiercely at the upper half of the league table.",
+    targetDivision: 1,
+    minRank: 3,
+    minRevenue: 40
+  };
+
+  const mgrName = document.getElementById('hqManagerName');
+  const mgrRole = document.getElementById('hqManagerRole');
+  const mgrPerk = document.getElementById('hqManagerPerk');
+  const confText = document.getElementById('hqConfidenceText');
+  const confFill = document.getElementById('hqConfidenceFill');
+  const aimTarget = document.getElementById('hqSeasonAimTarget');
+  const aimDesc = document.getElementById('hqSeasonAimDesc');
+  const aimRank = document.getElementById('hqAimMinRank');
+  const aimRev = document.getElementById('hqAimMinRev');
+  const satisfactionEl = document.getElementById('hqBoardSatisfaction');
+  const ultimatumBanner = document.getElementById('boardUltimatumBanner');
+
+  if (mgrName) mgrName.innerText = manager.name;
+  if (mgrRole) mgrRole.innerText = `${manager.tacticalStyle || 'Tactician'} • ${manager.formation || '4-3-3'}`;
+  if (mgrPerk && manager.perk) {
+    mgrPerk.innerHTML = `✨ <strong>Tactical Perk:</strong> ${escapeHtml(manager.perk.name)} <span style="opacity:0.85">(${escapeHtml(manager.perk.description)})</span>`;
+  }
+
+  const confidence = Math.round(manager.boardConfidence || 80);
+  if (confText) {
+    const statusColor = confidence >= 80 ? "#2ecc71" : confidence >= 65 ? "#f1c40f" : "#ef4444";
+    confText.innerHTML = `<span style="color: ${statusColor};">${confidence}% • ${manager.status || 'Secure'}</span>`;
+  }
+  if (confFill) {
+    confFill.style.width = confidence + "%";
+    confFill.className = "condition-bar-fill " + (confidence >= 75 ? "healthy" : confidence >= 55 ? "warning" : "danger");
+  }
+
+  if (aimTarget) aimTarget.innerText = aim.title;
+  if (aimDesc) aimDesc.innerText = aim.description;
+  if (aimRank) aimRank.innerText = `Top ${aim.minRank || 3}`;
+  if (aimRev) aimRev.innerText = `₹${aim.minRevenue || 40}M+`;
+
+  if (satisfactionEl) {
+    if (confidence >= 85) {
+      satisfactionEl.innerHTML = `<span style="color: #2ecc71;">Delighted 🌟</span>`;
+    } else if (confidence >= 65) {
+      satisfactionEl.innerHTML = `<span style="color: #f1c40f;">Satisfied 👍</span>`;
+    } else if (confidence >= 50) {
+      satisfactionEl.innerHTML = `<span style="color: #e67e22;">Under Pressure ⚠️</span>`;
+    } else {
+      satisfactionEl.innerHTML = `<span style="color: #ef4444;">Crisis / Ultimatum 🚨</span>`;
+    }
+  }
+
+  // Show ultimatum banner if underperforming or confidence < 65
+  if (ultimatumBanner) {
+    if (manager.isUnderperforming || confidence < 65) {
+      ultimatumBanner.style.display = "flex";
+    } else {
+      ultimatumBanner.style.display = "none";
+    }
+  }
+
+  // Render Free Agent Managers
+  const freeAgents = leagueData.freeAgentManagers || [];
+  const freeAgentsContainer = document.getElementById('freeAgentsGrid');
+  if (freeAgentsContainer) {
+    if (freeAgents.length === 0) {
+      freeAgentsContainer.innerHTML = `<div style="color: #9fb3c8; padding: 12px;">No free agent managers currently available.</div>`;
+    } else {
+      freeAgentsContainer.innerHTML = freeAgents.map(cand => {
+        return `
+          <div class="candidate-card">
+            <div>
+              <div class="candidate-header">
+                <div class="candidate-avatar">👔</div>
+                <div>
+                  <div class="candidate-name">${escapeHtml(cand.name)}</div>
+                  <div class="candidate-rep">⭐ ${cand.reputation || 90} Rating • ${escapeHtml(cand.tacticalStyle || 'Tactician')}</div>
+                </div>
+              </div>
+              <div style="font-size: 11px; color: #9fb3c8; margin: 8px 0;">
+                System: <strong>${escapeHtml(cand.formation || '4-3-3')}</strong> • Wage: <strong>₹${cand.wageDemand || 12}M/yr</strong>
+              </div>
+              <div class="candidate-perk">
+                ⚡ ${escapeHtml(cand.perk?.name || 'Tactical Perk')}: ${escapeHtml(cand.perk?.description || '')}
+              </div>
+            </div>
+            <button type="button" class="candidate-hire-btn" onclick="doHireManager('${escapeHtml(cand.id)}')">
+              👔 HIRE MANAGER (₹${cand.wageDemand || 12}M)
+            </button>
+          </div>
+        `;
+      }).join("");
+    }
+  }
+
+  // 6. Render Scouting Dossiers
+  const reports = leagueData.scoutReports || {};
+  const clubDossiers = cachedScoutDossiers.length > 0 ? cachedScoutDossiers : (reports[targetClub] || []);
+  renderScoutDossiers(clubDossiers);
+}
+
+function selectScoutMission(missionType) {
+  currentScoutMission = missionType;
+  playClickSound();
+  const missions = ['wonderkids', 'attackers', 'defenders', 'bargains'];
+  missions.forEach(m => {
+    const btn = document.getElementById('scoutMission_' + m);
+    if (btn) {
+      if (m === missionType) btn.classList.add('active');
+      else btn.classList.remove('active');
+    }
+  });
+}
+
+function renderScoutDossiers(dossiers) {
+  const container = document.getElementById('scoutDossiersGrid');
+  if (!container) return;
+
+  if (!dossiers || dossiers.length === 0) {
+    container.innerHTML = `
+      <div style="grid-column: 1 / -1; text-align: center; color: #9fb3c8; padding: 24px; background: #081728; border-radius: 10px;">
+        Chief Scout awaiting assignment. Select a mission and click <strong>"📡 Dispatch Scout (₹1.5M)"</strong> to discover talent!
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = dossiers.map(d => {
+    const gradeClass = d.scoutGrade === "A+" ? "scout-grade-badge a-plus" : "scout-grade-badge";
+    return `
+      <div class="scout-dossier-card">
+        <span class="${gradeClass}">${escapeHtml(d.scoutGrade || 'A')}</span>
+        <div class="scout-player-name">${escapeHtml(d.name)}</div>
+        <div class="scout-player-meta">
+          <strong style="color: #f1c40f;">${escapeHtml(d.position || 'CF')}</strong> • ${escapeHtml(d.club || 'Club')} • Age ${d.age || 22}
+        </div>
+
+        <div class="scout-ratings-row">
+          <div class="scout-rating-box">
+            <div class="val">${d.rating || 82}</div>
+            <div class="lbl">Current</div>
+          </div>
+          <div class="scout-rating-box">
+            <div class="val pot">${d.potentialRating || 88}</div>
+            <div class="lbl">Potential</div>
+          </div>
+          <div class="scout-rating-box">
+            <div class="val" style="color: #2ecc71;">₹${d.estimatedValue || 50}M</div>
+            <div class="lbl">Valuation</div>
+          </div>
+        </div>
+
+        <div class="scout-verdict-quote">
+          "${escapeHtml(d.scoutVerdict || 'Promising talent with elite ceiling.')}"
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; margin-top: 8px;">
+          <span style="color: #9fb3c8;">Clause: <strong style="color:#ffffff;">₹${d.releaseClause || 60}M</strong></span>
+          <button type="button" class="stadium-btn blue" style="padding: 4px 10px; font-size: 11px;" onclick="copyPlayerToTransfer('${escapeHtml(d.name)}', ${d.releaseClause || 60})">
+            Transfer Inquire
+          </button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function copyPlayerToTransfer(name, clause) {
+  playClickSound();
+  const input = document.getElementById('releasePlayer');
+  if (input) {
+    input.value = name;
+  }
+  const transSection = document.getElementById('transferSection');
+  if (transSection && transSection.classList.contains('hidden')) {
+    toggleTransferMarket();
+  }
+  if (transSection) {
+    transSection.scrollIntoView({ behavior: 'smooth' });
+  }
+  updateManagerPop(`Scout Target Selected: "${name}" has a release clause of ₹${clause}M. Activate via Transfer Market!`);
+}
+
+// OPERATIONAL ACTIONS TRIGGERED FROM UI
+function doRepairPitch() {
+  const club = selectedHqClub || myTeam;
+  if (!club) {
+    showError("Please select a club to renovate.");
+    return;
+  }
+  playConstructionSound();
+  socket.emit("repairPitch", { teamName: club });
+}
+
+function doExpandStadium() {
+  const club = selectedHqClub || myTeam;
+  if (!club) {
+    showError("Please select a club to expand.");
+    return;
+  }
+  if (!confirm(`Authorize ₹15M stadium expansion (+5,000 seats) for ${club}?`)) return;
+  playConstructionSound();
+  socket.emit("expandStadium", { teamName: club });
+}
+
+function doUpgradeFacilities() {
+  const club = selectedHqClub || myTeam;
+  if (!club) {
+    showError("Please select a club to upgrade.");
+    return;
+  }
+  if (!confirm(`Authorize ₹10M club facility upgrade for ${club}?`)) return;
+  playConstructionSound();
+  socket.emit("upgradeFacilities", { teamName: club });
+}
+
+function doHireManager(managerId) {
+  const club = selectedHqClub || myTeam;
+  if (!club) {
+    showError("Please select a club to appoint a manager.");
+    return;
+  }
+  if (!confirm(`Appoint this manager to lead ${club}? Board confidence will reset and tactical perk will be activated!`)) return;
+  playFanfareSound();
+  socket.emit("hireManager", { teamName: club, managerId: managerId });
+}
+
+function doDispatchScout() {
+  const club = selectedHqClub || myTeam;
+  if (!club) {
+    showError("Please select a club to dispatch scouts.");
+    return;
+  }
+  playRadarSound();
+  socket.emit("dispatchScout", { teamName: club, missionType: currentScoutMission });
+}
+
+// SOCKET RESPONSE LISTENERS
+socket.on("stadiumActionSuccess", res => {
+  if (res && res.message) {
+    updateManagerPop(res.message);
+  }
+  playConstructionSound();
+  socket.emit("requestLeagueState");
+});
+
+socket.on("managerHiredSuccess", res => {
+  if (res && res.manager) {
+    updateManagerPop(`👔 Welcome ${res.manager.name}! Tactical perk "${res.manager.perk?.name}" is now active!`);
+  }
+  playFanfareSound();
+  socket.emit("requestLeagueState");
+});
+
+socket.on("scoutReportsReceived", res => {
+  if (res && res.dossiers) {
+    cachedScoutDossiers = res.dossiers;
+    renderScoutDossiers(res.dossiers);
+    updateManagerPop(`🔍 Chief Scout returned with ${res.dossiers.length} scouting dossiers on ${res.missionType?.toUpperCase()} mission!`);
+  }
+  playRadarSound();
+});
+
+/* =====================================================
+   REALISTIC SOUND SYNTHESIZER & AUDIO ENGINE
+===================================================== */
+
+let soundEnabled = true;
+let audioCtx = null;
+
+function getAudioCtx() {
+  if (!audioCtx) {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) {
+      audioCtx = new Ctx();
+    }
+  }
+  if (audioCtx && audioCtx.state === "suspended") {
+    audioCtx.resume().catch(() => {});
+  }
+  return audioCtx;
+}
+
+// 1. Referee Whistle (Fox 40 pea flutter double tone)
+function playWhistleSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  function burst(startTime, duration) {
+    const osc1 = ctx.createOscillator();
+    const osc2 = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    const lfo = ctx.createOscillator();
+    const lfoGain = ctx.createGain();
+    lfo.frequency.setValueAtTime(28, startTime);
+    lfoGain.gain.setValueAtTime(80, startTime);
+    lfo.connect(osc1.frequency);
+    lfo.connect(osc2.frequency);
+
+    osc1.frequency.setValueAtTime(2800, startTime);
+    osc2.frequency.setValueAtTime(3150, startTime);
+
+    gain.gain.setValueAtTime(0.001, startTime);
+    gain.gain.exponentialRampToValueAtTime(0.25, startTime + 0.02);
+    gain.gain.setValueAtTime(0.25, startTime + duration - 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+
+    osc1.connect(gain);
+    osc2.connect(gain);
+    gain.connect(ctx.destination);
+
+    lfo.start(startTime);
+    osc1.start(startTime);
+    osc2.start(startTime);
+    lfo.stop(startTime + duration);
+    osc1.stop(startTime + duration);
+    osc2.stop(startTime + duration);
+  }
+
+  burst(now, 0.12);
+  burst(now + 0.18, 0.28);
+}
+
+// 2. Wooden Auction Gavel (Resonant double strike)
+function playGavelSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  function strike(time, vol) {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(340, time);
+    osc.frequency.exponentialRampToValueAtTime(60, time + 0.09);
+
+    gain.gain.setValueAtTime(vol, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.12);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(time);
+    osc.stop(time + 0.12);
+  }
+
+  strike(now, 0.35);
+  strike(now + 0.09, 0.45);
+}
+
+// 3. Electronic Auction Bid Bell
+function playBidSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(920, now);
+  osc.frequency.exponentialRampToValueAtTime(1840, now + 0.14);
+
+  gain.gain.setValueAtTime(0.22, now);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.35);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.35);
+}
+
+// 4. Stadium Goal Horn & Roar
+function playGoalSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [146.83, 185.0, 220.0].forEach(freq => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(freq, now);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(900, now);
+
+    gain.gain.setValueAtTime(0.001, now);
+    gain.gain.linearRampToValueAtTime(0.18, now + 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.9);
+  });
+}
+
+// 5. Clock Tick (Final 5 seconds of auction)
+function playTickSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(1400, now);
+  osc.frequency.exponentialRampToValueAtTime(400, now + 0.025);
+
+  gain.gain.setValueAtTime(0.18, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.025);
+}
+
+// 6. Cash / Coin Transfer Ding
+function playCashSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [987.77, 1318.51].forEach((f, idx) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const time = now + (idx * 0.08);
+
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(f, time);
+
+    gain.gain.setValueAtTime(0.24, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(time);
+    osc.stop(time + 0.4);
+  });
+}
+
+// 7. Arch Rival Derby Hit (Cinematic sub-bass boom + ominous minor brass chord)
+function playRivalrySound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const kick = ctx.createOscillator();
+  const kickGain = ctx.createGain();
+  kick.frequency.setValueAtTime(120, now);
+  kick.frequency.exponentialRampToValueAtTime(35, now + 0.35);
+  kickGain.gain.setValueAtTime(0.45, now);
+  kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+  kick.connect(kickGain);
+  kickGain.connect(ctx.destination);
+  kick.start(now);
+  kick.stop(now + 0.4);
+
+  [65.41, 77.78, 98.0].forEach(f => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(f, now);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(450, now);
+
+    gain.gain.setValueAtTime(0.12, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.7);
+  });
+}
+
+// 8. Dugout Radio Walkie-Talkie Intercom Chirp
+function playManagerPopSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(1760, now);
+  osc.frequency.exponentialRampToValueAtTime(2640, now + 0.05);
+
+  gain.gain.setValueAtTime(0.12, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.08);
+}
+
+// 9. Tactile Click Sound
+function playClickSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.type = "triangle";
+  osc.frequency.setValueAtTime(600, now);
+  gain.gain.setValueAtTime(0.05, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02);
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.02);
+}
+
+// 10. 3D Matchday Ball Kick Strike (Resonant punchy boot impact)
+function playKickSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(160, now);
+  osc.frequency.exponentialRampToValueAtTime(36, now + 0.12);
+
+  filter.type = "lowpass";
+  filter.frequency.setValueAtTime(380, now);
+
+  gain.gain.setValueAtTime(0.35, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.14);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.start(now);
+  osc.stop(now + 0.14);
+}
+
+// 11. 3D Matchday Goal Net Rustle (Bandpassed organic ripple noise)
+function playNetSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const bufferSize = Math.floor(ctx.sampleRate * 0.22);
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    data[i] = (Math.random() * 2 - 1) * 0.7;
+  }
+
+  const noise = ctx.createBufferSource();
+  noise.buffer = buffer;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = "bandpass";
+  filter.frequency.setValueAtTime(1400, now);
+  filter.Q.setValueAtTime(1.8, now);
+
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.26, now);
+  gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+  noise.connect(filter);
+  filter.connect(gain);
+  gain.connect(ctx.destination);
+
+  noise.start(now);
+  noise.stop(now + 0.22);
+}
+
+// Audio Toggle Button
+function toggleAudio() {
+  soundEnabled = !soundEnabled;
+  localStorage.setItem("football_auction_audio", soundEnabled ? "1" : "0");
+  updateAudioUi();
+  if (soundEnabled) {
+    playWhistleSound();
+  }
+}
+
+function updateAudioUi() {
+  const icon = document.getElementById("audioIcon");
+  const text = document.getElementById("audioStatusText");
+  const wave = document.getElementById("soundWaveIndicator");
+  const btn = document.getElementById("audioToggleBtn");
+  if (soundEnabled) {
+    if (icon) icon.innerText = "🔊";
+    if (text) text.innerText = "AUDIO: ON";
+    if (wave) wave.style.display = "inline-flex";
+    if (btn) btn.classList.remove("muted");
+  } else {
+    if (icon) icon.innerText = "🔇";
+    if (text) text.innerText = "MUTED";
+    if (wave) wave.style.display = "none";
+    if (btn) btn.classList.add("muted");
+  }
+}
+
+// Global click delegator
+document.addEventListener("click", e => {
+  getAudioCtx();
+  const btn = e.target.closest("button");
+  if (btn && btn.id !== "audioToggleBtn") {
+    playClickSound();
+  }
+});
+
+/* =====================================================
+   REALISTIC MANAGER DUGOUT CONTROLLER
+===================================================== */
+
+function updateManagerPop(text, customMood = null) {
+  const el = document.getElementById("managerMessage");
+  if (!el) return;
+  el.innerText = text;
+
+  // Animate speech bubble with smooth pop
+  const bubble = document.getElementById("dugoutSpeechBubble");
+  if (bubble) {
+    bubble.classList.remove("pop-active");
+    void bubble.offsetWidth;
+    bubble.classList.add("pop-active");
+  }
+
+  // Voice wave active dance
+  const waves = document.getElementById("voiceWaveform");
+  if (waves) {
+    waves.classList.add("talking");
+    clearTimeout(window._waveTimeout);
+    window._waveTimeout = setTimeout(() => {
+      waves.classList.remove("talking");
+    }, 2600);
+  }
+
+  // Timestamp
+  const timeTag = document.getElementById("managerTimeTag");
+  if (timeTag) timeTag.innerText = "Just now";
+
+  // Dynamic mood badge and tactical aura ring
+  const moodBadge = document.getElementById("managerMoodBadge");
+  const moodText = document.getElementById("managerMoodText");
+  const ring = document.getElementById("managerRingGlow");
+
+  let mood = "💡 TACTICAL BRIEF";
+  let ringClass = "ring-cyan";
+
+  const upper = String(text).toUpperCase();
+  if (customMood) {
+    mood = customMood;
+    if (customMood.includes("RIVAL") || customMood.includes("🔥")) ringClass = "ring-crimson";
+  } else if (upper.includes("RIVAL") || upper.includes("DERBY") || upper.includes("🔥")) {
+    mood = "🔥 ARCH RIVAL DRAMA";
+    ringClass = "ring-crimson";
+  } else if (upper.includes("SOLD") || upper.includes("🔨")) {
+    mood = "🔨 AUCTION HAMMER";
+    ringClass = "ring-gold";
+  } else if (upper.includes("GOAL") || upper.includes("⚽")) {
+    mood = "⚽ GOOOAAAL!";
+    ringClass = "ring-emerald";
+  } else if (upper.includes("BID") || upper.includes("₹")) {
+    mood = "⚡ BIDDING WAR";
+    ringClass = "ring-amber";
+  } else if (upper.includes("CHAMPION") || upper.includes("🏆")) {
+    mood = "🏆 CHAMPIONS HONOUR";
+    ringClass = "ring-gold";
+  }
+
+  if (moodText) moodText.innerText = mood;
+  if (ring) {
+    ring.className = "avatar-ring-glow " + ringClass;
+  }
+
+  // Authentic sound
+  if (upper.includes("RIVAL") || upper.includes("DERBY")) {
+    playRivalrySound();
+  } else {
+    playManagerPopSound();
+  }
+}
+
+// Manager Quick Tactical Triggers
+function askManagerAdvice(topic) {
+  if (topic === "tactics") {
+    showTacticalBoard(true);
+
+    const team = gameState?.teams?.[myTeam];
+    const budget = team?.budget ?? 500;
+    const squad = team?.players || [];
+
+    if (!myTeam) {
+      updateManagerPop(
+        "Welcome to our tactical chalkboard, boss! Here is our 4-3-3 positional play blueprint. Study these triangular passing lanes and player duties. Join your club, and your signed stars will instantly slot into the masterclass!",
+        "💡 TACTICAL MASTERCLASS"
+      );
+    } else if (squad.length === 0) {
+      updateManagerPop(
+        `Tactical board is live for ${myTeam}! With ₹${budget}M in our warchest, use this tactical formation to target our spine: 1 elite GK, 2 ball-playing CBs, a deep pivot DM, and a clinical striker!`,
+        "💡 TACTICAL SPINE"
+      );
+    } else if (budget < 60) {
+      updateManagerPop(
+        `Tactical board initialized! We have ${squad.length} players on the board, but only ₹${budget}M left. Inspect the dashed target positions to scout bargain signings in the upcoming auction!`,
+        "⚠️ BUDGET TACTICS"
+      );
+    } else {
+      updateManagerPop(
+        `Tactical chalkboard deployed, boss! We currently have ${squad.length} players mapped into our system with ₹${budget}M in the bank. Toggle between my 4 masterclass formations above!`,
+        "📋 TACTICAL BLUEPRINT"
+      );
+    }
+    return;
+  } else if (topic === "rivalry") {
+    const div = leagueData?.divisions?.[currentDivisionTab || 1];
+    const upcomingDerbies = (div?.fixtures || []).filter(f => f.isRivalry && !f.played);
+
+    if (upcomingDerbies.length > 0) {
+      const derby = upcomingDerbies[0];
+      const isMyMatch = Boolean(myTeam && (derby.homeTeam.toLowerCase() === myTeam.toLowerCase() || derby.awayTeam.toLowerCase() === myTeam.toLowerCase()));
+      if (isMyMatch) {
+        updateManagerPop(`🔥 URGENT DERBY ALERT: We face our arch-rivals ${derby.homeTeam === myTeam ? derby.awayTeam : derby.homeTeam} in Round ${derby.round} (${derby.derbyName})! Passion will be boiling — our ratings must peak!`, "🔥 ARCH RIVALS");
+      } else {
+        updateManagerPop(`🔥 ARCH RIVALS ON DECK: In Round ${derby.round}, ${derby.homeTeam} clash against ${derby.awayTeam} in ${derby.derbyName}! Expect an intense, high-scoring slugfest!`, "🔥 DERBY WATCH");
+      }
+    } else {
+      updateManagerPop("All high-intensity derbies for this division have concluded for now! Focus on closing points in the remaining standard league matches.", "⚽ LEAGUE FOCUS");
+    }
+  } else if (topic === "squad") {
+    if (!myTeam) {
+      updateManagerPop("Join a team to assess our squad composition!", "📋 SQUAD BALANCE");
+      return;
+    }
+    const team = gameState?.teams?.[myTeam];
+    const squad = team?.players || [];
+    if (squad.length === 0) {
+      updateManagerPop("Our squad is currently vacant. Enter the auction room and place bids on the live card to bring world-class talent to the club!", "📋 VACANT SQUAD");
+      return;
+    }
+    const fwds = squad.filter(p => ["CF", "ST", "LW", "RW", "LWF", "RWF", "SS"].includes(p.position)).length;
+    const mids = squad.filter(p => ["CMF", "DMF", "AMF", "LMF", "RMF", "CM"].includes(p.position)).length;
+    const defs = squad.filter(p => ["CB", "LB", "RB"].includes(p.position)).length;
+    const gks = squad.filter(p => p.position === "GK").length;
+
+    updateManagerPop(`Squad Breakdown: ${fwds} Attackers, ${mids} Midfielders, ${defs} Defenders, ${gks} Goalkeepers. ${gks === 0 ? '⚠️ We urgently need a goalkeeper!' : fwds === 0 ? '⚠️ Sign a clinical finisher!' : 'Balanced roster ready for competition!'}`, "📋 SQUAD ANALYSIS");
+  }
+}
+
+/* =====================================================
+   PEP'S D3 TACTICAL BOARD VISUALIZATION ENGINE
+===================================================== */
+
+let currentTacticalFormation = "433";
+let isDrillActive = false;
+let drillInterval = null;
+let drillBallSelection = null;
+let tacticalPitchSvg = null;
+
+const TACTICAL_FORMATIONS = {
+  "433": {
+    id: "433",
+    name: "4-3-3 Tiki-Taka Masterclass",
+    subtitle: "Pep's Signature Positional Dominance",
+    desc: "Dominate possession through rapid triangular passing sequences and positional overloads. Wingers pin opposing full-backs wide, creating space for interior 8s to exploit the half-spaces and feed the central finisher.",
+    tags: ["Positional Play", "Single Pivot", "Half-Space Overloads", "High Pressing"],
+    roles: [
+      { id: "gk", role: "GK", title: "Sweeper Keeper", x: 55, y: 190, posType: "GK", duty: "Acts as an 11th outfield player. Sweeps through-balls outside the box and starts vertical buildup." },
+      { id: "lb", role: "LB", title: "Attacking Full-Back", x: 160, y: 65, posType: "DEF", duty: "Provides touchline width and combines with the left winger to generate 2v1 wing overloads." },
+      { id: "lcb", role: "LCB", title: "Ball-Playing CB", x: 135, y: 140, posType: "DEF", duty: "Steps out with the ball and delivers crisp vertical line-breaking passes into the midfield." },
+      { id: "rcb", role: "RCB", title: "Covering CB", x: 135, y: 240, posType: "DEF", duty: "Marshals the defensive line, tracks diagonal runner runs, and covers behind the high line." },
+      { id: "rb", role: "RB", title: "Inverted Full-Back", x: 160, y: 315, posType: "DEF", duty: "Tucks into midfield during the build-up phase to construct a 3-2 rest defense." },
+      { id: "dm", role: "DM", title: "Single Pivot Controller", x: 245, y: 190, posType: "MID", duty: "The metronome of the team. Dictates tempo, switches play, and extinguishes counter-attacks.", isPivot: true },
+      { id: "lcm", role: "LCM", title: "Free 8 (Creator)", x: 345, y: 125, posType: "MID", duty: "Floats between the lines in the left half-space to execute killer through-balls and cutbacks." },
+      { id: "rcm", role: "RCM", title: "Box-to-Box Interior", x: 345, y: 255, posType: "MID", duty: "Makes late penetrating surges into the penalty box and initiates immediate counter-pressing." },
+      { id: "lw", role: "LW", title: "Inside Forward", x: 445, y: 70, posType: "ATT", duty: "Hugs the touchline before cutting inside onto the right foot to test the goalkeeper." },
+      { id: "st", role: "CF", title: "Clinical Finisher", x: 495, y: 190, posType: "ATT", duty: "Pins both center-backs, makes incisive diagonal runs in behind, and converts in the box." },
+      { id: "rw", role: "RW", title: "Inverted Winger", x: 445, y: 310, posType: "ATT", duty: "Isolates the opposing full-back 1v1 and delivers pinpoint curling deliveries to the back post." }
+    ],
+    lanes: [
+      ["gk", "lcb"], ["gk", "rcb"], ["lcb", "lb"], ["lcb", "dm"], ["rcb", "rb"], ["rcb", "dm"],
+      ["lb", "lcm"], ["lb", "lw"], ["dm", "lcm"], ["dm", "rcm"], ["rcm", "rb"], ["rcm", "rw"],
+      ["lcm", "lw"], ["lcm", "st"], ["rcm", "st"], ["rcm", "rw"], ["lw", "st"], ["rw", "st"]
+    ],
+    runs: [
+      { d: "M 160 65 Q 260 45 375 52", label: "LB Overlap" },
+      { d: "M 345 125 Q 405 130 460 145", label: "LCM Half-Space Run" },
+      { d: "M 345 255 Q 405 250 460 235", label: "RCM Box Surge" },
+      { d: "M 445 310 Q 475 280 480 240", label: "RW Cut Inside" }
+    ],
+    dreamLineup: [
+      { name: "Ederson", rating: 88, roleId: "gk" },
+      { name: "J. Gvardiol", rating: 87, roleId: "lb" },
+      { name: "R. Dias", rating: 89, roleId: "lcb" },
+      { name: "J. Stones", rating: 88, roleId: "rcb" },
+      { name: "K. Walker", rating: 85, roleId: "rb" },
+      { name: "Rodri", rating: 91, roleId: "dm" },
+      { name: "K. De Bruyne", rating: 91, roleId: "lcm" },
+      { name: "B. Silva", rating: 88, roleId: "rcm" },
+      { name: "P. Foden", rating: 89, roleId: "lw" },
+      { name: "E. Haaland", rating: 91, roleId: "st" },
+      { name: "J. Grealish", rating: 86, roleId: "rw" }
+    ]
+  },
+
+  "3241": {
+    id: "3241",
+    name: "3-2-4-1 Inverted Box Midfield",
+    subtitle: "Pep's Champions League Treble Blueprint",
+    desc: "Pep's revolutionary treble system. A central defender steps seamlessly into the midfield pivot alongside the DM, establishing a 3-2 rest defense and a dominant central 4-man box to suffocate opponents.",
+    tags: ["Midfield Box 3-2", "Rest Defense", "Central Overload", "Half-Space Dominance"],
+    roles: [
+      { id: "gk", role: "GK", title: "Sweeper Keeper", x: 55, y: 190, posType: "GK", duty: "Proactive positioning high outside the 18-yard box to extinguish transitions." },
+      { id: "lcb", role: "LCB", title: "Wide CB (Left)", x: 140, y: 95, posType: "DEF", duty: "Covers wide transitions in 1v1 ground duels and pushes into left flank pockets." },
+      { id: "ccb", role: "CCB", title: "Central Anchor CB", x: 120, y: 190, posType: "DEF", duty: "Aerial dominator who anchors the defensive back three and marshals the offside line." },
+      { id: "rcb", role: "RCB", title: "Wide CB (Right)", x: 140, y: 285, posType: "DEF", duty: "Covers wide right transitions and plays diagonal cross-field switches." },
+      { id: "ldm", role: "LDM", title: "Deep Anchor Pivot", x: 235, y: 140, posType: "MID", duty: "Shields the back three, regulates game tempo, and intercepts second balls.", isPivot: true },
+      { id: "rdm", role: "RDM", title: "Inverted Hybrid Pivot", x: 235, y: 240, posType: "MID", duty: "Inverted CB/DM hybrid: steps up from defense to orchestrate the midfield box.", isPivot: true },
+      { id: "lam", role: "LAM", title: "Left Half-Space 10", x: 365, y: 140, posType: "MID", duty: "Floats between the lines, receives on the half-turn, and slides through-balls." },
+      { id: "ram", role: "RAM", title: "Right Half-Space 10", x: 365, y: 240, posType: "MID", duty: "World-class vision in the half-space, delivering laser assists and entering the box." },
+      { id: "lm", role: "LM", title: "Touchline Winger", x: 420, y: 55, posType: "ATT", duty: "Maintains maximum pitch width to stretch low-blocks and create cutback lanes." },
+      { id: "st", role: "ST", title: "Target Powerhouse", x: 505, y: 190, posType: "ATT", duty: "Physical goal machine: dominates center-backs, attacks crosses, and converts chances." },
+      { id: "rm", role: "RM", title: "Touchline Winger", x: 420, y: 325, posType: "ATT", duty: "Holds width on the right, slows tempo to freeze defenders, and slips through-balls." }
+    ],
+    lanes: [
+      ["gk", "ccb"], ["ccb", "lcb"], ["ccb", "rcb"], ["lcb", "ldm"], ["rcb", "rdm"],
+      ["ldm", "rdm"], ["ldm", "lam"], ["rdm", "ram"], ["ldm", "lm"], ["rdm", "rm"],
+      ["lam", "ram"], ["lam", "lm"], ["ram", "rm"], ["lam", "st"], ["ram", "st"],
+      ["lm", "st"], ["rm", "st"]
+    ],
+    runs: [
+      { d: "M 140 285 Q 185 260 235 240", label: "Stones Hybrid Step" },
+      { d: "M 365 140 Q 425 145 475 165", label: "LAM Penetration" },
+      { d: "M 365 240 Q 425 235 475 215", label: "RAM Penetration" }
+    ],
+    dreamLineup: [
+      { name: "Ederson", rating: 88, roleId: "gk" },
+      { name: "N. Aké", rating: 85, roleId: "lcb" },
+      { name: "R. Dias", rating: 89, roleId: "ccb" },
+      { name: "M. Akanji", rating: 86, roleId: "rcb" },
+      { name: "Rodri", rating: 91, roleId: "ldm" },
+      { name: "J. Stones", rating: 88, roleId: "rdm" },
+      { name: "K. De Bruyne", rating: 91, roleId: "lam" },
+      { name: "P. Foden", rating: 89, roleId: "ram" },
+      { name: "J. Grealish", rating: 86, roleId: "lm" },
+      { name: "E. Haaland", rating: 91, roleId: "st" },
+      { name: "B. Silva", rating: 88, roleId: "rm" }
+    ]
+  },
+
+  "4231": {
+    id: "4231",
+    name: "4-2-3-1 High Press & Control",
+    subtitle: "Solid Double Pivot Balance",
+    desc: "Combines a rigid double pivot in central midfield with four attacking outlets to press relentlessly, force opponent turnovers, and launch incisive counter-attacks.",
+    tags: ["Double Pivot", "High Press", "Number 10 Playmaker", "Flank Overloads"],
+    roles: [
+      { id: "gk", role: "GK", title: "Goalkeeper", x: 55, y: 190, posType: "GK", duty: "Solid distribution with quick throws to ignite rapid counter-offensives." },
+      { id: "lb", role: "LB", title: "Left-Back", x: 155, y: 65, posType: "DEF", duty: "Solid defensive containment with timed surges into the attacking third." },
+      { id: "lcb", role: "LCB", title: "Center-Back", x: 135, y: 140, posType: "DEF", duty: "Central Defender: Strong tackling and aerial authority in the box." },
+      { id: "rcb", role: "RCB", title: "Center-Back", x: 135, y: 240, posType: "DEF", duty: "Central Defender: Organizes the offside trap and distributes cleanly." },
+      { id: "rb", role: "RB", title: "Right-Back", x: 155, y: 315, posType: "DEF", duty: "Right-Back: Overlaps to deliver high-quality crosses into the danger zone." },
+      { id: "ldm", role: "LDM", title: "Ball Winner", x: 240, y: 140, posType: "MID", duty: "Aggressive tackler who recovers loose balls and breaks up counters.", isPivot: true },
+      { id: "rdm", role: "RDM", title: "Deep Playmaker", x: 240, y: 240, posType: "MID", duty: "Holding midfielder who distributes with high precision and switches angles.", isPivot: true },
+      { id: "cam", role: "CAM", title: "Number 10 Maestro", x: 360, y: 190, posType: "MID", duty: "Central Playmaker: The creative fulcrum who unlocks stubborn backlines." },
+      { id: "lw", role: "LW", title: "Inverted Winger", x: 440, y: 75, posType: "ATT", duty: "Left Winger: Attacks the half-space diagonally and shoots from distance." },
+      { id: "st", role: "ST", title: "Complete Forward", x: 495, y: 190, posType: "ATT", duty: "Striker: Holds up the ball, brings teammates into play, and leads the counter-press." },
+      { id: "rw", role: "RW", title: "Direct Winger", x: 440, y: 305, posType: "ATT", duty: "Right Winger: Blistering pace down the flank to beat fullbacks on the outside." }
+    ],
+    lanes: [
+      ["gk", "lcb"], ["gk", "rcb"], ["lcb", "ldm"], ["rcb", "rdm"], ["ldm", "rdm"],
+      ["lb", "ldm"], ["rb", "rdm"], ["ldm", "cam"], ["rdm", "cam"], ["lb", "lw"],
+      ["rb", "rw"], ["cam", "lw"], ["cam", "st"], ["cam", "rw"], ["lw", "st"], ["rw", "st"]
+    ],
+    runs: [
+      { d: "M 360 190 Q 425 190 465 190", label: "CAM Central Attack" },
+      { d: "M 155 65 Q 260 45 375 50", label: "LB Overlap" },
+      { d: "M 155 315 Q 260 335 375 330", label: "RB Overlap" }
+    ],
+    dreamLineup: [
+      { name: "Ederson", rating: 88, roleId: "gk" },
+      { name: "J. Gvardiol", rating: 87, roleId: "lb" },
+      { name: "R. Dias", rating: 89, roleId: "lcb" },
+      { name: "W. Saliba", rating: 89, roleId: "rcb" },
+      { name: "K. Walker", rating: 85, roleId: "rb" },
+      { name: "Rodri", rating: 91, roleId: "ldm" },
+      { name: "D. Rice", rating: 89, roleId: "rdm" },
+      { name: "K. De Bruyne", rating: 91, roleId: "cam" },
+      { name: "Vinicius Jr", rating: 90, roleId: "lw" },
+      { name: "K. Mbappé", rating: 91, roleId: "st" },
+      { name: "B. Saka", rating: 88, roleId: "rw" }
+    ]
+  },
+
+  "343": {
+    id: "343",
+    name: "3-4-3 Total Football",
+    subtitle: "Cruyffian Triangles & Wing-Back Width",
+    desc: "Inspired by Johan Cruyff's dream team philosophy. Endless geometric passing triangles, aggressive high-intensity pressing, and dual wing-backs providing maximum pitch width.",
+    tags: ["Total Football", "Cruyffian Triangles", "Wing-Back Overloads", "Aggressive Front 3"],
+    roles: [
+      { id: "gk", role: "GK", title: "Sweeper Keeper", x: 55, y: 190, posType: "GK", duty: "Sweeps behind the aggressive 3-man backline with proactive positioning." },
+      { id: "lcb", role: "LCB", title: "Left Stopper", x: 135, y: 105, posType: "DEF", duty: "Steps out aggressively to challenge wingers before they can turn." },
+      { id: "ccb", role: "CCB", title: "Libero / Sweeper", x: 115, y: 190, posType: "DEF", duty: "Reads game intelligence, orchestrates the defensive line, and steps forward." },
+      { id: "rcb", role: "RCB", title: "Right Stopper", x: 135, y: 275, posType: "DEF", duty: "Physical stopper who dominates 1v1 ground and aerial duels." },
+      { id: "lwb", role: "LWB", title: "Dynamic Wing-Back", x: 295, y: 45, posType: "MID", duty: "Endless stamina, covering the entire left touchline from box to box." },
+      { id: "lcm", role: "LCM", title: "Central Controller", x: 275, y: 145, posType: "MID", duty: "Rotates possession with one-touch passing and covers wing-back transitions.", isPivot: true },
+      { id: "rcm", role: "RCM", title: "High-Press Interior", x: 275, y: 235, posType: "MID", duty: "Drives forward with the ball and presses aggressively upon ball loss.", isPivot: true },
+      { id: "rwb", role: "RWB", title: "Dynamic Wing-Back", x: 295, y: 335, posType: "MID", duty: "Provides constant attacking width and delivers dangerous crosses into the box." },
+      { id: "lw", role: "LW", title: "Inside Forward", x: 445, y: 90, posType: "ATT", duty: "Tucks inside to form a narrow attacking trident with the striker." },
+      { id: "st", role: "CF", title: "Center Forward", x: 495, y: 190, posType: "ATT", duty: "Drops deep to link play before making explosive runs into the six-yard box." },
+      { id: "rw", role: "RW", title: "Inside Forward", x: 445, y: 290, posType: "ATT", duty: "Combines with the right wing-back and attacks the back post." }
+    ],
+    lanes: [
+      ["gk", "ccb"], ["ccb", "lcb"], ["ccb", "rcb"], ["lcb", "lwb"], ["rcb", "rwb"],
+      ["lcb", "lcm"], ["rcb", "rcm"], ["lcm", "rcm"], ["lwb", "lcm"], ["rwb", "rcm"],
+      ["lcm", "lw"], ["rcm", "rw"], ["lcm", "st"], ["rcm", "st"], ["lwb", "lw"],
+      ["rwb", "rw"], ["lw", "st"], ["rw", "st"]
+    ],
+    runs: [
+      { d: "M 295 45 Q 370 40 455 45", label: "LWB Wing Storm" },
+      { d: "M 295 335 Q 370 340 455 335", label: "RWB Wing Storm" },
+      { d: "M 445 90 Q 470 120 485 145", label: "LW Narrow Cut" }
+    ],
+    dreamLineup: [
+      { name: "Alisson", rating: 89, roleId: "gk" },
+      { name: "A. Bastoni", rating: 87, roleId: "lcb" },
+      { name: "V. van Dijk", rating: 90, roleId: "ccb" },
+      { name: "R. Dias", rating: 89, roleId: "rcb" },
+      { name: "F. Dimarco", rating: 86, roleId: "lwb" },
+      { name: "Rodri", rating: 91, roleId: "lcm" },
+      { name: "J. Bellingham", rating: 90, roleId: "rcm" },
+      { name: "J. Frimpong", rating: 87, roleId: "rwb" },
+      { name: "Vinicius Jr", rating: 90, roleId: "lw" },
+      { name: "E. Haaland", rating: 91, roleId: "st" },
+      { name: "M. Salah", rating: 89, roleId: "rw" }
+    ]
+  }
+};
+
+function showTacticalBoard(autoScroll = false) {
+  const drawer = document.getElementById("dugoutTacticalDrawer");
+  if (!drawer) return;
+  drawer.style.display = "block";
+
+  renderTacticalBoard(currentTacticalFormation);
+
+  if (autoScroll) {
+    drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+function closeTacticalBoard() {
+  const drawer = document.getElementById("dugoutTacticalDrawer");
+  if (drawer) {
+    drawer.style.display = "none";
+  }
+  if (isDrillActive) {
+    toggleTacticalDrill();
+  }
+}
+
+function selectTacticalFormation(formationKey) {
+  if (!TACTICAL_FORMATIONS[formationKey]) return;
+  currentTacticalFormation = formationKey;
+
+  const pills = document.querySelectorAll("#formationPills .form-pill");
+  pills.forEach(btn => {
+    if (btn.getAttribute("data-formation") === formationKey) {
+      btn.classList.add("active");
+    } else {
+      btn.classList.remove("active");
+    }
+  });
+
+  const form = TACTICAL_FORMATIONS[formationKey];
+  updateManagerPop(
+    `Switching tactical structure to ${form.name}. ${form.desc}`,
+    "📋 " + form.name
+  );
+
+  renderTacticalBoard(formationKey);
+  playClickSound();
+}
+
+function toggleTacticalDrill() {
+  isDrillActive = !isDrillActive;
+  const btn = document.getElementById("btnToggleAnimation");
+  const icon = document.getElementById("drillIcon");
+  const text = document.getElementById("drillText");
+
+  if (btn) {
+    if (isDrillActive) {
+      btn.classList.add("active");
+      if (icon) icon.innerText = "⏹";
+      if (text) text.innerText = "Stop Drills";
+      playWhistleSound();
+      startBallCirculation();
+    } else {
+      btn.classList.remove("active");
+      if (icon) icon.innerText = "⚡";
+      if (text) text.innerText = "Animate Drills";
+      stopBallCirculation();
+      playClickSound();
+    }
+  }
+
+  // Toggle flowing lane css on passing paths
+  const svg = d3.select("#tacticalPitchStage svg");
+  if (!svg.empty()) {
+    svg.selectAll(".tactical-lane")
+      .classed("flowing-lane", isDrillActive);
+  }
+}
+
+function stopBallCirculation() {
+  if (drillInterval) {
+    clearInterval(drillInterval);
+    drillInterval = null;
+  }
+  if (drillBallSelection) {
+    drillBallSelection.remove();
+    drillBallSelection = null;
+  }
+}
+
+function startBallCirculation() {
+  stopBallCirculation();
+  const form = TACTICAL_FORMATIONS[currentTacticalFormation];
+  if (!form || !form.lanes.length) return;
+
+  const svg = d3.select("#tacticalPitchStage svg");
+  if (svg.empty()) return;
+
+  let drillG = svg.select(".tactical-drill-layer");
+  if (drillG.empty()) {
+    drillG = svg.append("g").attr("class", "tactical-drill-layer");
+  }
+
+  const roleMap = {};
+  form.roles.forEach(r => { roleMap[r.id] = r; });
+
+  function passSequence() {
+    if (!isDrillActive) return;
+
+    // Pick 4-pass combination circuit (e.g. GK -> CB -> DM -> Interior -> Winger/Striker)
+    const sequences = [
+      ["gk", "lcb", "dm", "lcm", "st"],
+      ["gk", "rcb", "rb", "rcm", "rw"],
+      ["lcb", "lb", "lcm", "lw", "st"],
+      ["rcb", "rdm", "ram", "rm", "st"],
+      ["dm", "rcm", "rw", "st"]
+    ];
+
+    const validSeq = sequences.filter(seq => seq.every(id => roleMap[id]));
+    const seq = validSeq.length > 0 ? validSeq[Math.floor(Math.random() * validSeq.length)] : form.lanes[0];
+
+    let currentStep = 0;
+    const ball = drillG.append("circle")
+      .attr("r", 5)
+      .attr("fill", "#ffffff")
+      .attr("stroke", "#f59e0b")
+      .attr("stroke-width", 2)
+      .attr("cx", roleMap[seq[0]].x)
+      .attr("cy", roleMap[seq[0]].y)
+      .attr("filter", "url(#glowFilter)");
+
+    drillBallSelection = ball;
+
+    function stepPass() {
+      if (!isDrillActive || currentStep >= seq.length - 1) {
+        ball.transition()
+          .duration(300)
+          .attr("opacity", 0)
+          .remove();
+        return;
+      }
+      const nextRole = roleMap[seq[currentStep + 1]];
+      currentStep++;
+      ball.transition()
+        .duration(550)
+        .ease(d3.easeCubicInOut)
+        .attr("cx", nextRole.x)
+        .attr("cy", nextRole.y)
+        .on("end", () => {
+          setTimeout(stepPass, 120);
+        });
+    }
+
+    stepPass();
+  }
+
+  passSequence();
+  drillInterval = setInterval(passSequence, 2800);
+}
+
+function inspectTacticalRole(roleData) {
+  const box = document.getElementById("selectedRoleBox");
+  if (!box) return;
+
+  const playerDisplay = roleData.playerName ? `<strong>${roleData.playerName} (${roleData.rating})</strong>` : `<strong style="color:#f59e0b;">${roleData.title}</strong>`;
+  box.innerHTML = `
+    <span class="role-hint-icon">🎯</span>
+    <div>
+      <span style="font-weight:bold; color:#38bdf8;">${roleData.role} — ${roleData.title} • ${playerDisplay}:</span>
+      <div style="margin-top:2px; color:#e2e8f0;">${roleData.duty}</div>
+    </div>
+  `;
+
+  // Highlight player on D3 canvas
+  const svg = d3.select("#tacticalPitchStage svg");
+  if (!svg.empty()) {
+    svg.selectAll(".player-node-circle")
+      .attr("stroke", d => d.id === roleData.id ? "#f1c40f" : (d.isTarget ? "#f59e0b" : "#38bdf8"))
+      .attr("stroke-width", d => d.id === roleData.id ? 3.5 : 2);
+  }
+
+  playClickSound();
+}
+
+function renderTacticalBoard(formationKey) {
+  if (typeof d3 === "undefined") {
+    console.warn("D3 is not loaded yet");
+    return;
+  }
+
+  const form = TACTICAL_FORMATIONS[formationKey] || TACTICAL_FORMATIONS["433"];
+  const stage = document.getElementById("tacticalPitchStage");
+  if (!stage) return;
+
+  // 1. Process squad and map players into formation
+  const mySquad = gameState?.teams?.[myTeam]?.players || [];
+  const gks = mySquad.filter(p => p.position === "GK");
+  const defs = mySquad.filter(p => ["CB", "LB", "RB"].includes(p.position));
+  const mids = mySquad.filter(p => ["CMF", "DMF", "AMF", "LMF", "RMF", "CM"].includes(p.position));
+  const fwds = mySquad.filter(p => ["CF", "ST", "LW", "RW", "LWF", "RWF", "SS"].includes(p.position));
+
+  let gkIdx = 0, defIdx = 0, midIdx = 0, fwdIdx = 0;
+  let filledCount = 0;
+
+  const rolesData = form.roles.map(r => {
+    let assignedPlayer = null;
+    let isTarget = false;
+
+    if (myTeam && mySquad.length > 0) {
+      if (r.posType === "GK" && gkIdx < gks.length) {
+        assignedPlayer = gks[gkIdx++];
+      } else if (r.posType === "DEF" && defIdx < defs.length) {
+        assignedPlayer = defs[defIdx++];
+      } else if (r.posType === "MID" && midIdx < mids.length) {
+        assignedPlayer = mids[midIdx++];
+      } else if (r.posType === "ATT" && fwdIdx < fwds.length) {
+        assignedPlayer = fwds[fwdIdx++];
+      }
+
+      if (assignedPlayer) {
+        filledCount++;
+      } else {
+        isTarget = true;
+      }
+    } else {
+      // Default reference dream lineup
+      const dream = form.dreamLineup.find(p => p.roleId === r.id);
+      if (dream) {
+        assignedPlayer = dream;
+        filledCount++;
+      }
+    }
+
+    return {
+      id: r.id,
+      role: r.role,
+      title: r.title,
+      duty: r.duty,
+      posType: r.posType,
+      isPivot: Boolean(r.isPivot),
+      x: r.x,
+      y: r.y,
+      isTarget: isTarget,
+      playerName: assignedPlayer ? assignedPlayer.name : `Scout ${r.role}`,
+      rating: assignedPlayer ? assignedPlayer.rating : "85+"
+    };
+  });
+
+  const roleMap = {};
+  rolesData.forEach(r => { roleMap[r.id] = r; });
+
+  // 2. Prepare SVG container
+  let svg = d3.select("#tacticalPitchStage svg");
+  const width = 600;
+  const height = 380;
+
+  if (svg.empty()) {
+    svg = d3.select("#tacticalPitchStage")
+      .append("svg")
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
+
+    // Defs: filters, gradients, markers
+    const defs = svg.append("defs");
+
+    // Glow filter
+    const filter = defs.append("filter")
+      .attr("id", "glowFilter")
+      .attr("x", "-40%")
+      .attr("y", "-40%")
+      .attr("width", "180%")
+      .attr("height", "180%");
+    filter.append("feGaussianBlur")
+      .attr("stdDeviation", "3.5")
+      .attr("result", "blur");
+    filter.append("feComposite")
+      .attr("in", "SourceGraphic")
+      .attr("in2", "blur")
+      .attr("operator", "over");
+
+    // Player gradient
+    const playerGrad = defs.append("linearGradient")
+      .attr("id", "playerGrad")
+      .attr("x1", "0%").attr("y1", "0%")
+      .attr("x2", "100%").attr("y2", "100%");
+    playerGrad.append("stop").attr("offset", "0%").attr("stop-color", "#0284c7");
+    playerGrad.append("stop").attr("offset", "100%").attr("stop-color", "#082f49");
+
+    // Target gradient
+    const targetGrad = defs.append("linearGradient")
+      .attr("id", "targetGrad")
+      .attr("x1", "0%").attr("y1", "0%")
+      .attr("x2", "100%").attr("y2", "100%");
+    targetGrad.append("stop").attr("offset", "0%").attr("stop-color", "#b45309");
+    targetGrad.append("stop").attr("offset", "100%").attr("stop-color", "#451a03");
+
+    // Arrow markers
+    const runMarker = defs.append("marker")
+      .attr("id", "runArrow")
+      .attr("viewBox", "0 0 10 10")
+      .attr("refX", 6)
+      .attr("refY", 5)
+      .attr("markerWidth", 5)
+      .attr("markerHeight", 5)
+      .attr("orient", "auto");
+    runMarker.append("path")
+      .attr("d", "M 0 1 L 9 5 L 0 9 z")
+      .attr("fill", "#f43f5e");
+
+    // PITCH DRAWING (Pitch lines, markings, center circle, boxes)
+    const pitchG = svg.append("g").attr("class", "tactical-pitch-base");
+
+    // Grass turf
+    pitchG.append("rect")
+      .attr("width", width)
+      .attr("height", height)
+      .attr("fill", "#0a2615");
+
+    // Alternating lawn cut bands (vertical pitch strips)
+    const stripWidth = 60;
+    for (let i = 0; i < 10; i++) {
+      if (i % 2 === 1) {
+        pitchG.append("rect")
+          .attr("x", i * stripWidth)
+          .attr("y", 0)
+          .attr("width", stripWidth)
+          .attr("height", height)
+          .attr("fill", "#0c2c19")
+          .attr("opacity", 0.7);
+      }
+    }
+
+    // Outer boundary
+    pitchG.append("rect")
+      .attr("x", 30).attr("y", 25)
+      .attr("width", 540).attr("height", 330)
+      .attr("fill", "none")
+      .attr("stroke", "rgba(255, 255, 255, 0.65)")
+      .attr("stroke-width", 2);
+
+    // Halfway line
+    pitchG.append("line")
+      .attr("x1", 300).attr("y1", 25)
+      .attr("x2", 300).attr("y2", 355)
+      .attr("stroke", "rgba(255, 255, 255, 0.65)")
+      .attr("stroke-width", 2);
+
+    // Center circle & spot
+    pitchG.append("circle")
+      .attr("cx", 300).attr("cy", 190).attr("r", 50)
+      .attr("fill", "none")
+      .attr("stroke", "rgba(255, 255, 255, 0.65)")
+      .attr("stroke-width", 2);
+    pitchG.append("circle")
+      .attr("cx", 300).attr("cy", 190).attr("r", 3.5)
+      .attr("fill", "rgba(255, 255, 255, 0.85)");
+
+    // Left Penalty Box & Goal
+    pitchG.append("rect")
+      .attr("x", 30).attr("y", 90).attr("width", 95).attr("height", 200)
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("rect")
+      .attr("x", 30).attr("y", 135).attr("width", 35).attr("height", 110)
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("circle")
+      .attr("cx", 85).attr("cy", 190).attr("r", 3)
+      .attr("fill", "rgba(255, 255, 255, 0.85)");
+    pitchG.append("path")
+      .attr("d", "M 125,150 A 50,50 0 0,1 125,230")
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("rect")
+      .attr("x", 20).attr("y", 155).attr("width", 10).attr("height", 70)
+      .attr("fill", "rgba(255, 255, 255, 0.15)").attr("stroke", "rgba(255, 255, 255, 0.7)").attr("stroke-width", 1.5);
+
+    // Right Penalty Box & Goal
+    pitchG.append("rect")
+      .attr("x", 475).attr("y", 90).attr("width", 95).attr("height", 200)
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("rect")
+      .attr("x", 535).attr("y", 135).attr("width", 35).attr("height", 110)
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("circle")
+      .attr("cx", 515).attr("cy", 190).attr("r", 3)
+      .attr("fill", "rgba(255, 255, 255, 0.85)");
+    pitchG.append("path")
+      .attr("d", "M 475,150 A 50,50 0 0,0 475,230")
+      .attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 2);
+    pitchG.append("rect")
+      .attr("x", 570).attr("y", 155).attr("width", 10).attr("height", 70)
+      .attr("fill", "rgba(255, 255, 255, 0.15)").attr("stroke", "rgba(255, 255, 255, 0.7)").attr("stroke-width", 1.5);
+
+    // Corner Arcs
+    pitchG.append("path").attr("d", "M 30,40 A 15,15 0 0,0 45,25").attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 1.5);
+    pitchG.append("path").attr("d", "M 30,340 A 15,15 0 0,1 45,355").attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 1.5);
+    pitchG.append("path").attr("d", "M 555,25 A 15,15 0 0,0 570,40").attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 1.5);
+    pitchG.append("path").attr("d", "M 555,355 A 15,15 0 0,1 570,340").attr("fill", "none").attr("stroke", "rgba(255, 255, 255, 0.65)").attr("stroke-width", 1.5);
+
+    // Subtle pitch grid watermark
+    pitchG.append("text")
+      .attr("x", 300).attr("y", 370)
+      .attr("text-anchor", "middle")
+      .attr("font-size", "10")
+      .attr("font-weight", "800")
+      .attr("letter-spacing", "1.5px")
+      .attr("fill", "rgba(241, 196, 15, 0.5)")
+      .text("ATTACKING DIRECTION ➔");
+
+    // Dynamic layers
+    svg.append("g").attr("class", "tactical-lanes-layer");
+    svg.append("g").attr("class", "tactical-runs-layer");
+    svg.append("g").attr("class", "tactical-players-layer");
+    svg.append("g").attr("class", "tactical-drill-layer");
+  }
+
+  // 3. Render Passing Lanes with D3 Transitions
+  const lanesLayer = svg.select(".tactical-lanes-layer");
+  const lanesData = form.lanes.map(([fromId, toId]) => {
+    const from = roleMap[fromId];
+    const to = roleMap[toId];
+    return {
+      id: `${fromId}-${toId}`,
+      x1: from ? from.x : 0,
+      y1: from ? from.y : 0,
+      x2: to ? to.x : 0,
+      y2: to ? to.y : 0
+    };
+  });
+
+  const laneLines = lanesLayer.selectAll(".tactical-lane")
+    .data(lanesData, d => d.id);
+
+  laneLines.exit()
+    .transition()
+    .duration(400)
+    .attr("opacity", 0)
+    .remove();
+
+  const laneEnter = laneLines.enter()
+    .append("line")
+    .attr("class", `tactical-lane ${isDrillActive ? "flowing-lane" : ""}`)
+    .attr("stroke", "rgba(56, 189, 248, 0.45)")
+    .attr("stroke-width", 1.8)
+    .attr("stroke-dasharray", "4,4")
+    .attr("x1", d => d.x1)
+    .attr("y1", d => d.y1)
+    .attr("x2", d => d.x2)
+    .attr("y2", d => d.y2)
+    .attr("opacity", 0);
+
+  laneEnter.transition()
+    .duration(700)
+    .attr("opacity", 0.7);
+
+  laneLines.transition()
+    .duration(800)
+    .ease(d3.easeCubicInOut)
+    .attr("x1", d => d.x1)
+    .attr("y1", d => d.y1)
+    .attr("x2", d => d.x2)
+    .attr("y2", d => d.y2);
+
+  // 4. Render Attacking Runs
+  const runsLayer = svg.select(".tactical-runs-layer");
+  const runPaths = runsLayer.selectAll(".tactical-run-path")
+    .data(form.runs || [], (d, i) => i);
+
+  runPaths.exit().remove();
+
+  const runEnter = runPaths.enter()
+    .append("path")
+    .attr("class", "tactical-run-path")
+    .attr("fill", "none")
+    .attr("stroke", "#f43f5e")
+    .attr("stroke-width", 2.2)
+    .attr("stroke-dasharray", "6,3")
+    .attr("marker-end", "url(#runArrow)")
+    .attr("opacity", 0)
+    .attr("d", d => d.d);
+
+  runEnter.transition()
+    .duration(700)
+    .attr("opacity", 0.85);
+
+  runPaths.transition()
+    .duration(800)
+    .ease(d3.easeCubicInOut)
+    .attr("d", d => d.d);
+
+  // 5. Render Animated Player Nodes
+  const playersLayer = svg.select(".tactical-players-layer");
+  const playerGroups = playersLayer.selectAll(".player-node-g")
+    .data(rolesData, d => d.id);
+
+  playerGroups.exit()
+    .transition()
+    .duration(500)
+    .attr("opacity", 0)
+    .remove();
+
+  const groupEnter = playerGroups.enter()
+    .append("g")
+    .attr("class", "player-node-g")
+    .attr("transform", d => `translate(${d.x}, ${d.y})`)
+    .attr("opacity", 0)
+    .style("cursor", "pointer")
+    .on("click", (event, d) => inspectTacticalRole(d))
+    .on("mouseenter", (event, d) => inspectTacticalRole(d));
+
+  // Pulse radar ring for anchors/pivots
+  groupEnter.filter(d => d.isPivot)
+    .append("circle")
+    .attr("class", "radar-pulse-ring")
+    .attr("r", 20)
+    .attr("fill", "none")
+    .attr("stroke", "#38bdf8")
+    .attr("stroke-width", 1.5)
+    .attr("opacity", 0.6);
+
+  // Main jersey circle
+  groupEnter.append("circle")
+    .attr("class", "player-node-circle")
+    .attr("r", 15)
+    .attr("fill", d => d.isTarget ? "url(#targetGrad)" : "url(#playerGrad)")
+    .attr("stroke", d => d.isTarget ? "#f59e0b" : "#38bdf8")
+    .attr("stroke-width", 2)
+    .attr("filter", "url(#glowFilter)");
+
+  // Role acronym inside jersey circle
+  groupEnter.append("text")
+    .attr("class", "player-node-role")
+    .attr("text-anchor", "middle")
+    .attr("dy", "4.5")
+    .attr("font-size", "10")
+    .attr("font-weight", "900")
+    .attr("fill", "#ffffff")
+    .text(d => d.role);
+
+  // Name pill background
+  groupEnter.append("rect")
+    .attr("class", "player-name-pill")
+    .attr("x", -36)
+    .attr("y", 18)
+    .attr("width", 72)
+    .attr("height", 14)
+    .attr("rx", 4)
+    .attr("fill", "rgba(5, 14, 25, 0.9)")
+    .attr("stroke", d => d.isTarget ? "rgba(245, 158, 11, 0.6)" : "rgba(56, 189, 248, 0.4)")
+    .attr("stroke-width", 0.8);
+
+  // Name pill text
+  groupEnter.append("text")
+    .attr("class", "player-name-text")
+    .attr("text-anchor", "middle")
+    .attr("x", 0)
+    .attr("y", 28.5)
+    .attr("font-size", "8.5")
+    .attr("font-weight", "700")
+    .attr("fill", d => d.isTarget ? "#fbbf24" : "#f1f5f9")
+    .text(d => {
+      const name = d.playerName || d.role;
+      return name.length > 11 ? name.substring(0, 10) + "…" : name;
+    });
+
+  // Fade-in enter transition
+  groupEnter.transition()
+    .duration(700)
+    .attr("opacity", 1);
+
+  // Smooth position interpolation on formation change!
+  const groupUpdate = groupEnter.merge(playerGroups);
+
+  groupUpdate.transition()
+    .duration(850)
+    .ease(d3.easeCubicInOut)
+    .attr("transform", d => `translate(${d.x}, ${d.y})`);
+
+  groupUpdate.select(".player-node-circle")
+    .attr("fill", d => d.isTarget ? "url(#targetGrad)" : "url(#playerGrad)")
+    .attr("stroke", d => d.isTarget ? "#f59e0b" : "#38bdf8");
+
+  groupUpdate.select(".player-node-role")
+    .text(d => d.role);
+
+  groupUpdate.select(".player-name-text")
+    .attr("fill", d => d.isTarget ? "#fbbf24" : "#f1f5f9")
+    .text(d => {
+      const name = d.playerName || d.role;
+      return name.length > 11 ? name.substring(0, 10) + "…" : name;
+    });
+
+  // 6. Update Tactical Blueprint text & tags
+  const titleEl = document.getElementById("blueprintTitle");
+  const descEl = document.getElementById("blueprintDesc");
+  const tagsEl = document.getElementById("blueprintTags");
+
+  if (titleEl) titleEl.innerText = form.name;
+  if (descEl) descEl.innerText = form.desc;
+  if (tagsEl && form.tags) {
+    tagsEl.innerHTML = form.tags.map(t => `<span class="intel-tag">${t}</span>`).join("");
+  }
+
+  // 7. Update Live Squad Audit
+  const meterEl = document.getElementById("squadFitMeter");
+  if (meterEl) {
+    if (!myTeam) {
+      meterEl.innerHTML = `
+        <div style="font-size:11px; color:#38bdf8; line-height:1.4;">
+          <strong>Tactical Preview Mode:</strong> Displaying Pep's masterclass reference eleven. Join your club to populate this board with your signed stars!
+        </div>
+      `;
+    } else {
+      const defTarget = form.roles.filter(r => r.posType === "DEF").length;
+      const midTarget = form.roles.filter(r => r.posType === "MID").length;
+      const attTarget = form.roles.filter(r => r.posType === "ATT").length;
+      const defFill = Math.min(defs.length, defTarget);
+      const midFill = Math.min(mids.length, midTarget);
+      const attFill = Math.min(fwds.length, attTarget);
+      const gkFill = Math.min(gks.length, 1);
+
+      meterEl.innerHTML = `
+        <div class="fit-row">
+          <span>GK (${gkFill}/1)</span>
+          <div class="fit-bar-container"><div class="fit-bar-fill" style="width:${(gkFill / 1) * 100}%"></div></div>
+          <span>${gkFill === 1 ? '✅ Ready' : '⚠️ Need GK'}</span>
+        </div>
+        <div class="fit-row">
+          <span>Defense (${defFill}/${defTarget})</span>
+          <div class="fit-bar-container"><div class="fit-bar-fill" style="width:${(defFill / defTarget) * 100}%"></div></div>
+          <span>${defFill >= defTarget ? '✅ Ready' : `⚠️ Need ${defTarget - defFill}`}</span>
+        </div>
+        <div class="fit-row">
+          <span>Midfield (${midFill}/${midTarget})</span>
+          <div class="fit-bar-container"><div class="fit-bar-fill" style="width:${(midFill / midTarget) * 100}%"></div></div>
+          <span>${midFill >= midTarget ? '✅ Ready' : `⚠️ Need ${midTarget - midFill}`}</span>
+        </div>
+        <div class="fit-row">
+          <span>Attack (${attFill}/${attTarget})</span>
+          <div class="fit-bar-container"><div class="fit-bar-fill" style="width:${(attFill / attTarget) * 100}%"></div></div>
+          <span>${attFill >= attTarget ? '✅ Ready' : `⚠️ Need ${attTarget - attFill}`}</span>
+        </div>
+      `;
+    }
+  }
+
+  // If drills active, refresh the circulating drill passes
+  if (isDrillActive) {
+    startBallCirculation();
+  }
+}
+
+// Attach debounced ResizeObserver for fluid responsive stage sizing
+let tacticalResizeTimeout = null;
+const pitchContainer = document.getElementById("tacticalPitchStage");
+if (pitchContainer && window.ResizeObserver) {
+  const ro = new ResizeObserver(() => {
+    clearTimeout(tacticalResizeTimeout);
+    tacticalResizeTimeout = setTimeout(() => {
+      const drawer = document.getElementById("dugoutTacticalDrawer");
+      if (drawer && drawer.style.display !== "none") {
+        // Redraw or adjust stage
+      }
+    }, 150);
+  });
+  ro.observe(pitchContainer);
+}
+
+// Restore user sound preference
+const savedAudio = localStorage.getItem("football_auction_audio");
+if (savedAudio !== null) {
+  soundEnabled = savedAudio === "1";
+  updateAudioUi();
+}
+
+/* =====================================================
+   3D MATCHDAY ARENA ENGINE CONTROLLER
+===================================================== */
+
+let match3dEngineInstance = null;
+let current3DFixture = null;
+let current3DSimSpeed = 1;
+
+// Initialize or open 3D Matchday Arena
+function open3DMatchArena(customFixture = null) {
+  const modal = document.getElementById("match3dModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  document.body.style.overflow = "hidden";
+
+  // Play referee whistle upon entering stadium
+  playWhistleSound();
+
+  // Populate fixture dropdown
+  populate3DFixtureDropdown();
+
+  // Select target fixture
+  let targetFixture = customFixture;
+  if (!targetFixture) {
+    const div = leagueData?.divisions?.[currentDivisionTab];
+    const fixtures = div?.fixtures || [];
+    // Prioritize played fixture of current round, or user derby, or first fixture
+    targetFixture = fixtures.find(f => f.round === currentViewingRound && (f.isRivalry || f.played))
+      || fixtures.find(f => f.round === currentViewingRound)
+      || fixtures[0];
+  }
+
+  if (targetFixture) {
+    load3DMatch(targetFixture);
+  } else {
+    // Generate an exciting showcase match if league has no fixtures yet
+    const showcaseFixture = {
+      homeTeam: myTeam || "Real Madrid",
+      awayTeam: "Barcelona",
+      homeScore: 3,
+      awayScore: 2,
+      played: true,
+      isRivalry: true,
+      derbyName: "El Clásico",
+      round: 1,
+      scorers: [
+        { scorer: "Vinícius Jr.", minute: 18, team: myTeam || "Real Madrid" },
+        { scorer: "Robert Lewandowski", minute: 34, team: "Barcelona" },
+        { scorer: "Jude Bellingham", minute: 61, team: myTeam || "Real Madrid" },
+        { scorer: "Lamine Yamal", minute: 74, team: "Barcelona" },
+        { scorer: "Kylian Mbappé", minute: 89, team: myTeam || "Real Madrid" }
+      ]
+    };
+    load3DMatch(showcaseFixture);
+  }
+}
+
+function close3DMatchArena() {
+  const modal = document.getElementById("match3dModal");
+  if (modal) modal.style.display = "none";
+  document.body.style.overflow = "";
+
+  if (match3dEngineInstance) {
+    match3dEngineInstance.destroy();
+    match3dEngineInstance = null;
+  }
+}
+
+function populate3DFixtureDropdown() {
+  const select = document.getElementById("match3dFixtureSelect");
+  if (!select) return;
+
+  const div = leagueData?.divisions?.[currentDivisionTab];
+  const fixtures = div?.fixtures || [];
+
+  if (fixtures.length === 0) {
+    select.innerHTML = `<option value="showcase">Showcase Derby Match</option>`;
+    return;
+  }
+
+  let html = "";
+  fixtures.forEach((f, idx) => {
+    const playedMark = f.played ? `(${f.homeScore}-${f.awayScore})` : "(Upcoming)";
+    const derbyMark = f.isRivalry ? "🔥 " : "";
+    html += `<option value="${idx}">R${f.round}: ${derbyMark}${f.homeTeam} vs ${f.awayTeam} ${playedMark}</option>`;
+  });
+
+  select.innerHTML = html;
+}
+
+function onSelect3DFixture(val) {
+  if (val === "showcase") return;
+  const idx = parseInt(val, 10);
+  const div = leagueData?.divisions?.[currentDivisionTab];
+  const fixtures = div?.fixtures || [];
+  if (fixtures[idx]) {
+    load3DMatch(fixtures[idx]);
+  }
+}
+
+function launch3DMatchByIndex(divisionTab, round, fixtureIndex) {
+  const div = leagueData?.divisions?.[divisionTab];
+  if (!div) return;
+  const roundFixtures = (div.fixtures || []).filter(f => f.round === round);
+  const fix = roundFixtures[fixtureIndex];
+  if (fix) {
+    open3DMatchArena(fix);
+  }
+}
+
+function load3DMatch(fixture) {
+  current3DFixture = fixture;
+
+  // Update HUD
+  const titleEl = document.getElementById("hudMatchTitle");
+  if (titleEl) {
+    titleEl.innerText = `${fixture.isRivalry ? "🔥 " + (fixture.derbyName || "Derby") : "League Match"} • Round ${fixture.round || 1}`;
+  }
+
+  const homeNameEl = document.getElementById("hudTeamNameHome");
+  const awayNameEl = document.getElementById("hudTeamNameAway");
+  if (homeNameEl) homeNameEl.innerText = fixture.homeTeam;
+  if (awayNameEl) awayNameEl.innerText = fixture.awayTeam;
+
+  const scoreHomeEl = document.getElementById("hudScoreHome");
+  const scoreAwayEl = document.getElementById("hudScoreAway");
+  if (scoreHomeEl) scoreHomeEl.innerText = fixture.played ? fixture.homeScore : "0";
+  if (scoreAwayEl) scoreAwayEl.innerText = fixture.played ? fixture.awayScore : "0";
+
+  const derbyBadge = document.getElementById("hudDerbyTag");
+  if (derbyBadge) {
+    derbyBadge.style.display = fixture.isRivalry ? "inline-block" : "none";
+    if (fixture.isRivalry && fixture.derbyName) {
+      derbyBadge.innerText = `🔥 ${fixture.derbyName.toUpperCase()}`;
+    }
+  }
+
+  // Update logos
+  const div = leagueData?.divisions?.[currentDivisionTab];
+  const homeClub = (div?.standings || []).find(s => s.name === fixture.homeTeam);
+  const awayClub = (div?.standings || []).find(s => s.name === fixture.awayTeam);
+  const logoHome = document.getElementById("hudTeamLogoHome");
+  const logoAway = document.getElementById("hudTeamLogoAway");
+  if (logoHome) logoHome.innerText = homeClub?.logo || "⚽";
+  if (logoAway) logoAway.innerText = awayClub?.logo || "⚽";
+
+  // Select dropdown option if exists
+  const select = document.getElementById("match3dFixtureSelect");
+  if (select && div?.fixtures) {
+    const fIdx = div.fixtures.findIndex(f => f.homeTeam === fixture.homeTeam && f.awayTeam === fixture.awayTeam && f.round === fixture.round);
+    if (fIdx !== -1) select.value = fIdx;
+  }
+
+  // Init or reload engine
+  const container = document.getElementById("match3dCanvasContainer");
+  if (!container) return;
+
+  if (!match3dEngineInstance) {
+    if (typeof Match3DEngine !== "undefined") {
+      match3dEngineInstance = new Match3DEngine(container);
+    } else {
+      console.error("Match3DEngine not loaded yet");
+      return;
+    }
+  }
+
+  const roomTeams = (typeof gameState !== "undefined" && gameState?.teams) ? gameState.teams : {};
+  match3dEngineInstance.loadMatch(fixture, roomTeams);
+}
+
+function set3DCameraMode(mode) {
+  if (match3dEngineInstance) {
+    match3dEngineInstance.setCameraMode(mode);
+  }
+  document.querySelectorAll(".cam-btn").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.mode === mode);
+  });
+}
+
+function toggle3DPlayPause() {
+  if (!match3dEngineInstance) return;
+  const isPlaying = match3dEngineInstance.togglePlayPause();
+  const btn = document.getElementById("btnMatch3dPlay");
+  if (btn) {
+    btn.innerText = isPlaying ? "⏸️ Pause" : "▶️ Play";
+  }
+}
+
+function next3DHighlight() {
+  if (match3dEngineInstance) {
+    match3dEngineInstance.nextHighlight();
+  }
+}
+
+function prev3DHighlight() {
+  if (match3dEngineInstance) {
+    match3dEngineInstance.prevHighlight();
+  }
+}
+
+function replay3DGoal() {
+  if (match3dEngineInstance) {
+    if (typeof match3dEngineInstance.replayCurrentHighlight === "function") {
+      match3dEngineInstance.replayCurrentHighlight();
+    } else if (typeof match3dEngineInstance.instantReplay === "function") {
+      match3dEngineInstance.instantReplay();
+    }
+  }
+}
+
+function set3DSimSpeed(speed) {
+  current3DSimSpeed = speed;
+  if (match3dEngineInstance) {
+    match3dEngineInstance.setSpeed(speed);
+  }
+  document.querySelectorAll(".speed-btn").forEach(btn => {
+    btn.classList.toggle("active", parseInt(btn.dataset.speed, 10) === speed);
+  });
+}
+
+function toggle3DSound() {
+  toggleAudio();
+  const btn = document.getElementById("btnMatch3dSound");
+  if (btn) {
+    btn.innerText = soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+  }
+}
+
+// Keyboard navigation for 3D Arena
+window.addEventListener("keydown", (e) => {
+  const modal = document.getElementById("match3dModal");
+  if (!modal || modal.style.display !== "flex") return;
+
+  if (e.key === "Escape") {
+    close3DMatchArena();
+  } else if (e.code === "Space") {
+    e.preventDefault();
+    toggle3DPlayPause();
+  } else if (e.key === "ArrowRight") {
+    next3DHighlight();
+  } else if (e.key === "ArrowLeft") {
+    prev3DHighlight();
+  } else if (e.key.toLowerCase() === "r") {
+    replay3DGoal();
+  } else if (e.key.toLowerCase() === "c") {
+    const modes = ["broadcast", "action", "goal", "tactical"];
+    const current = match3dEngineInstance?.cameraMode || "broadcast";
+    const nextIdx = (modes.indexOf(current) + 1) % modes.length;
+    set3DCameraMode(modes[nextIdx]);
+  }
+});
 
 </script>
 

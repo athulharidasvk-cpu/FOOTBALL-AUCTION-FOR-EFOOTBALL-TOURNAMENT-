@@ -1,0 +1,6 @@
+{
+  "name": "Football Auction",
+  "description": "Multiplayer football auction, realistic manager dugout broadcast, 3D stadium gameplay visualizer, arch-rival derby matches, sound effects, and multi-division league championship with AI clubs and promotion/relegation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -40,6 +40,8 @@
   }
   window.addEventListener('DOMContentLoaded',()=>{
     setTimeout(()=>{
+      // Replace the old global switcher so existing header/card buttons also use real screens.
+      window.switchAppView=show;
       document.querySelectorAll('#gameNavigationBar .game-nav-btn').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>show(b.dataset.screen),0),true));
       document.querySelectorAll('.game-back-btn').forEach(b=>b.addEventListener('click',()=>setTimeout(()=>show('home'),0),true));
       setTimeout(()=>show('home'),80);

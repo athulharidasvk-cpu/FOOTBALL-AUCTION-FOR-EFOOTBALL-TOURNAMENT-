@@ -21,6 +21,11 @@
 <script src="/jersey_studio.js"></script>
 <script src="/match_center.js"></script>
 <script src="/awards_trophy.js"></script>
+<script src="/crest_studio.js"></script>
+<script src="/injury_center.js"></script>
+<script src="/music_engine.js"></script>
+<script src="/pls_match_game.js"></script>
+<script type="module" src="/firebase_cloud.js"></script>
 
 <style>
 * {
@@ -2922,89 +2927,1140 @@ select {
 .fixture-matchday-pill strong {
   color: #2ecc71;
 }
+
+/* =====================================================
+   REMEMBER PLAYER & PROGRESS SAVE STYLES
+===================================================== */
+.console-save-btn {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid #38bdf8;
+  border-radius: 8px;
+  color: #ffffff;
+  padding: 6px 14px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+  white-space: nowrap;
+}
+
+.console-save-btn:hover {
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  border-color: #7dd3fc;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.5);
+  transform: translateY(-1px);
+}
+
+.console-save-btn:active {
+  transform: translateY(0);
+}
+
+.console-save-btn.saved {
+  background: linear-gradient(135deg, #059669, #047857) !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4) !important;
+}
+
+.console-save-btn.saving {
+  opacity: 0.8;
+  cursor: wait;
+}
+
+/* Remember player toggle & resume card */
+.saved-player-resume-card {
+  background: linear-gradient(135deg, rgba(14, 38, 66, 0.95), rgba(7, 21, 38, 0.98));
+  border: 1.5px solid #0284c7;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(56, 189, 248, 0.2);
+}
+
+.saved-resume-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.saved-resume-badge {
+  background: rgba(2, 132, 199, 0.2);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.saved-resume-time {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.saved-resume-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.saved-resume-crest {
+  width: 52px;
+  height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #061321;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.saved-resume-info {
+  flex: 1;
+}
+
+.saved-resume-team {
+  font-size: 18px;
+  font-weight: 900;
+  color: #ffffff;
+  margin: 0 0 3px 0;
+  letter-spacing: 0.5px;
+}
+
+.saved-resume-manager {
+  font-size: 12px;
+  color: #cbd5e1;
+  margin-bottom: 4px;
+}
+
+.saved-resume-manager strong {
+  color: #f59e0b;
+}
+
+.saved-resume-stats {
+  font-size: 11.5px;
+  color: #94a3b8;
+}
+
+.saved-resume-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-resume-primary {
+  flex: 2;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  border: 1px solid #fbbf24;
+  color: #0f172a;
+  font-weight: 800;
+  font-size: 12.5px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.3);
+}
+
+.btn-resume-primary:hover {
+  background: linear-gradient(135deg, #fbbf24, #f59e0b);
+  transform: translateY(-1px);
+}
+
+.btn-resume-secondary {
+  flex: 1;
+  background: #0f233a;
+  border: 1px solid #1e3a5f;
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 11.5px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-resume-secondary:hover {
+  background: #173252;
+  color: #ffffff;
+}
+
+.remember-player-box {
+  background: rgba(10, 27, 46, 0.85);
+  border: 1px solid #1a3654;
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 12px 0;
+}
+
+.remember-player-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember-custom-toggle {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background: #1e293b;
+  border-radius: 22px;
+  flex-shrink: 0;
+  transition: background 0.25s ease;
+  border: 1px solid #334155;
+  margin-top: 2px;
+}
+
+.remember-custom-toggle::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  background: #94a3b8;
+  border-radius: 50%;
+  transition: transform 0.25s ease, background 0.25s ease;
+}
+
+.remember-player-label input[type="checkbox"] {
+  display: none;
+}
+
+.remember-player-label input[type="checkbox"]:checked + .remember-custom-toggle {
+  background: #0284c7;
+  border-color: #38bdf8;
+}
+
+.remember-player-label input[type="checkbox"]:checked + .remember-custom-toggle::after {
+  transform: translateX(18px);
+  background: #ffffff;
+}
+
+.remember-text-block {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.remember-main-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.remember-sub-title {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+/* Save & Profile Modal */
+.save-profile-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 10, 20, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.save-profile-modal-content {
+  background: #081626;
+  border: 1.5px solid #1a3654;
+  border-radius: 14px;
+  max-width: 580px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+  padding: 22px;
+}
+
+.save-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #162e49;
+  margin-bottom: 16px;
+}
+
+.save-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 900;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+}
+
+.save-card-summary {
+  background: #0a1b2e;
+  border: 1px solid #1e3a5f;
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.save-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.save-stat-cell {
+  background: #050f1a;
+  border: 1px solid #162e49;
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+}
+
+.save-stat-cell .v {
+  font-size: 17px;
+  font-weight: 900;
+  color: #f59e0b;
+}
+
+.save-stat-cell .l {
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.save-action-btn-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.btn-modal-save {
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  border: 1px solid #38bdf8;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 13px;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-save:hover {
+  background: linear-gradient(135deg, #0369a1, #0284c7);
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+}
+
+.save-backup-row {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-modal-backup {
+  flex: 1;
+  background: #0e2338;
+  border: 1px solid #1e3a5f;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-backup:hover {
+  background: #173252;
+  color: #ffffff;
+  border-color: #38bdf8;
+}
+
+.btn-modal-logout {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #f87171;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.btn-modal-logout:hover {
+  background: #7f1d1d;
+  color: #ffffff;
+  border-color: #ef4444;
+}
+
+/* Save Toast Notification */
+.save-toast-banner {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: #081726;
+  border: 1.5px solid #10b981;
+  border-radius: 10px;
+  padding: 12px 18px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6), 0 0 15px rgba(16, 185, 129, 0.3);
+  z-index: 10001;
+  transform: translateY(100px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.save-toast-banner.show {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
 </style>
 </head>
 
-<body>
-
-<div class="header">
-  <div class="header-inner">
-    <div class="header-title-box">
-      <span class="live-stadium-badge">⚡ MATCHDAY LIVE • SQUAD AUCTION</span>
-      <h1>⚽ FOOTBALL AUCTION</h1>
-      <p>Multiplayer Football Auction, Realistic Manager Dugout & Multi-Division League</p>
-    </div>
-    <div class="header-audio-controls">
-      <button id="audioToggleBtn" class="audio-toggle-btn" onclick="toggleAudio()" title="Toggle realistic sound effects">
-        <span id="audioIcon">🔊</span>
-        <span id="audioStatusText">AUDIO: ON</span>
-        <span class="sound-wave-anim" id="soundWaveIndicator">
-          <i></i><i></i><i></i>
-        </span>
-      </button>
-    </div>
-  </div>
-</div>
-
-<div class="container">
+<body class="console-app-shell">
 
   <!-- =====================================================
-       MODERN APP-LIKE HEADER BAR & QUICK ACTIONS
+       PRO FOOTBALL MANAGER CONSOLE: TOP HEADER BAR
   ====================================================== -->
-  <div class="app-top-nav-bar">
-    <div class="app-nav-inner">
-      <div class="app-brand-lockup">
-        <div class="app-brand-icon">⚽</div>
-        <div class="app-brand-text">
-          <h1>FOOTBALL AUCTION PRO</h1>
-          <div class="app-sub-status">
-            <span class="live-indicator-dot"></span>
-            <span id="appTopStatusText">MATCHDAY ARENA • SEASON 1</span>
-          </div>
+  <header class="console-top-bar" id="consoleTopBar">
+    <div class="console-club-identity" onclick="switchAppView('home')" title="Athul FC Club Dashboard">
+      <div class="console-club-crest-slot" id="topBarCrestSlot">
+        <!-- Golden Athul FC Shield Crest with Crown & Football -->
+        <svg width="42" height="48" viewBox="0 0 100 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="crestGoldGradTop" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#fef08a"/>
+              <stop offset="50%" stop-color="#f59e0b"/>
+              <stop offset="100%" stop-color="#b45309"/>
+            </linearGradient>
+            <linearGradient id="crestNavyBgTop" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stop-color="#0f2544"/>
+              <stop offset="100%" stop-color="#050d1a"/>
+            </linearGradient>
+          </defs>
+          <path d="M50 8 L88 20 C88 66 65 94 50 104 C35 94 12 66 12 20 Z" fill="url(#crestNavyBgTop)" stroke="url(#crestGoldGradTop)" stroke-width="4"/>
+          <path d="M50 15 L82 25 C82 63 62 87 50 96 C38 87 18 63 18 25 Z" fill="none" stroke="url(#crestGoldGradTop)" stroke-width="1.5" opacity="0.6"/>
+          <path d="M30 36 L35 23 L43 31 L50 19 L57 31 L65 23 L70 36 Z" fill="url(#crestGoldGradTop)"/>
+          <circle cx="50" cy="18" r="2.5" fill="#fef08a"/>
+          <circle cx="35" cy="22" r="2" fill="#fef08a"/>
+          <circle cx="65" cy="22" r="2" fill="#fef08a"/>
+          <circle cx="50" cy="58" r="16" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/>
+          <polygon points="50,51 55,54 53,60 47,60 45,54" fill="#0b172a"/>
+          <polygon points="50,44 46,47 45,51 50,51 55,51 54,47" fill="#0b172a" opacity="0.8"/>
+          <polygon points="62,56 59,60 55,60 56,65 62,63" fill="#0b172a" opacity="0.8"/>
+          <polygon points="38,56 41,60 45,60 44,65 38,63" fill="#0b172a" opacity="0.8"/>
+          <polygon points="50,72 46,67 54,67" fill="#0b172a" opacity="0.8"/>
+          <polygon points="50,84 52,89 57,89 53,92 55,97 50,94 45,97 47,92 43,89 48,89" fill="#facc15" transform="scale(0.8) translate(12, 12)"/>
+        </svg>
+      </div>
+      <div class="console-club-text">
+        <span class="console-club-name" id="consoleClubName">ATHUL FC</span>
+        <div class="console-club-meta">
+          <span id="consoleDivisionTag">Division 3</span>
+          <span>|</span>
+          <span class="console-rank-indicator" id="consoleRankTag">1st ▲</span>
         </div>
       </div>
-      <div class="app-header-actions">
-        <button type="button" class="app-pill-btn" onclick="switchAppView('jerseys')" title="Design jerseys & boost kit sales revenue">
-          <span>👕</span><span>Kit Studio</span>
-        </button>
-        <button type="button" class="app-pill-btn gold" onclick="switchAppView('awards')" title="Ballon d'Or & Season Honors">
-          <span>⭐</span><span>Ballon d'Or</span>
-        </button>
-        <button type="button" class="app-pill-btn gold" onclick="triggerTrophyPresentation()" title="Celebrate Champions with Trophy Lifting">
-          <span>🏆</span><span>Lift Trophy</span>
-        </button>
+    </div>
+
+    <!-- Header Metrics -->
+    <div class="console-header-metrics">
+      <div class="console-metric-pill" onclick="switchAppView('hq')" title="Club Treasury & Finances">
+        <div class="console-metric-icon">💵</div>
+        <div class="console-metric-info">
+          <span class="console-metric-val" id="topBudgetDisplay">₹ 500M</span>
+          <span class="console-metric-sub">Club Budget</span>
+        </div>
       </div>
+
+      <div class="console-metric-pill" onclick="switchAppView('auction')" title="Current Season & Window Status">
+        <div class="console-metric-icon">📅</div>
+        <div class="console-metric-info">
+          <span class="console-metric-val">Season 1</span>
+          <span class="console-metric-sub">Transfer Window: <span style="color:#10b981; font-weight:800;">Open</span></span>
+        </div>
+      </div>
+
+      <div class="console-metric-pill" onclick="openManagerPhotoModal()" title="Manage Profile & Tactics">
+        <img src="/manager_photo.jpg" alt="Manager" class="console-manager-avatar" id="topManagerAvatar" onerror="this.src='/manager.png'">
+        <div class="console-metric-info">
+          <span class="console-metric-sub">Manager</span>
+          <span class="console-metric-val" style="font-size: 15px;" id="topManagerName">Athul V V <span style="color:#f59e0b;">👑</span></span>
+        </div>
+      </div>
+
+      <!-- SAVE PROGRESS BUTTON -->
+      <button type="button" class="console-save-btn" id="consoleSaveBtn" onclick="manualSaveProgress()" title="Save Player Progress (Auto-save is ON)">
+        <span id="saveBtnIcon">💾</span>
+        <span id="saveBtnText">SAVE</span>
+      </button>
+
+      <button type="button" class="console-gear-btn" onclick="openSaveProfileModal()" title="Save Progress & Profile Settings" aria-label="Settings">
+        ⚙️
+      </button>
+
+      <button type="button" class="console-gear-btn" onclick="toggleAudio()" title="Toggle Stadium SFX Audio" id="consoleAudioBtn" aria-label="Audio">
+        🔊
+      </button>
+
+      <!-- STADIUM SOUNDTRACK & MUSIC JUKEBOX -->
+      <div class="console-music-lockup" onclick="toggleMusicJukebox()" title="Stadium Soundtrack Jukebox (Click for controls)">
+        <div class="stadium-eq-box">
+          <div class="stadium-eq-bar"></div>
+          <div class="stadium-eq-bar"></div>
+          <div class="stadium-eq-bar"></div>
+          <div class="stadium-eq-bar"></div>
+        </div>
+        <span class="music-title-mini" id="headerMusicTitle">Champions Groove</span>
+      </div>
+
+      <button type="button" class="console-gear-btn active-music" onclick="toggleInterfaceMusic()" title="Toggle Interface Background Music" id="consoleMusicBtn" aria-label="Music">
+        🎵
+      </button>
+    </div>
+  </header>
+
+  <!-- MUSIC JUKEBOX DROPDOWN -->
+  <div class="music-jukebox-modal" id="musicJukeboxModal">
+    <div class="music-jukebox-header">
+      <h4><span>🎵</span> STADIUM JUKEBOX</h4>
+      <button type="button" class="btn-pls-close" style="padding: 2px 8px;" onclick="toggleMusicJukebox()">✕</button>
+    </div>
+    <div class="music-track-display">
+      <div class="music-track-title" id="musicWidgetTrackTitle">Champions Groove</div>
+      <div class="music-track-genre" id="musicWidgetGenre">Electro Stadium House • 124 BPM</div>
+    </div>
+    <div class="music-controls-row">
+      <button type="button" class="btn-music-ctrl" onclick="MusicEngine.prev()" title="Previous Track">⏮️</button>
+      <button type="button" class="btn-music-ctrl play-main" id="musicWidgetPlayBtn" onclick="MusicEngine.toggle()" title="Play / Pause">⏸️</button>
+      <button type="button" class="btn-music-ctrl" onclick="MusicEngine.next()" title="Next Track">⏭️</button>
+    </div>
+    <div class="music-vol-row">
+      <span>🔈</span>
+      <input type="range" class="music-vol-slider" id="musicVolumeSlider" min="0" max="100" value="65" oninput="MusicEngine.setVolume(this.value / 100)">
+      <span>🔊</span>
     </div>
   </div>
 
   <!-- =====================================================
-       FLOATING APP NAVIGATION DOCK
+       WORKSPACE FRAME (SIDEBAR + MAIN STAGE)
   ====================================================== -->
-  <div class="app-bottom-dock" id="appBottomDock">
-    <button type="button" class="dock-item-btn active" id="dockBtn_league" onclick="switchAppView('league')">
-      <span class="dock-icon">🏆</span>
-      <span>League</span>
-    </button>
-    <button type="button" class="dock-item-btn" id="dockBtn_match" onclick="switchAppView('match')">
-      <span class="dock-icon">🏟️</span>
-      <span>Match Center</span>
-    </button>
-    <button type="button" class="dock-item-btn" id="dockBtn_jerseys" onclick="switchAppView('jerseys')">
-      <span class="dock-icon">👕</span>
-      <span>Kit Studio</span>
-    </button>
-    <button type="button" class="dock-item-btn" id="dockBtn_awards" onclick="switchAppView('awards')">
-      <span class="dock-icon">⭐</span>
-      <span>Awards</span>
-    </button>
-    <button type="button" class="dock-item-btn" id="dockBtn_hq" onclick="switchAppView('hq')">
-      <span class="dock-icon">🏢</span>
-      <span>Club HQ</span>
-    </button>
-    <button type="button" class="dock-item-btn" id="dockBtn_auction" onclick="switchAppView('auction')">
-      <span class="dock-icon">🔨</span>
-      <span>Auction</span>
-    </button>
+  <div class="console-workspace-frame">
+    <!-- Left Navigation Rail -->
+    <aside class="console-sidebar" id="consoleSidebar">
+      <button type="button" class="console-nav-tab active" id="sideBtn_home" onclick="switchAppView('home')">
+        <span class="tab-icon">🏠</span>
+        <span>Home</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_journey" onclick="switchAppView('journey')">
+        <span class="tab-icon">🎮</span>
+        <span>Journey (PLS)</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_squad" onclick="switchAppView('squad')">
+        <span class="tab-icon">👥</span>
+        <span>Squad</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_transfers" onclick="switchAppView('transfers')">
+        <span class="tab-icon">⇄</span>
+        <span>Transfers</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_league" onclick="switchAppView('league')">
+        <span class="tab-icon">🏆</span>
+        <span>League</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_cup" onclick="switchAppView('cup')">
+        <span class="tab-icon">🏆</span>
+        <span>Cup</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_finances" onclick="switchAppView('finances')">
+        <span class="tab-icon">💳</span>
+        <span>Finances</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_contracts" onclick="switchAppView('contracts')">
+        <span class="tab-icon">📋</span>
+        <span>Contracts</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_settings" onclick="openSaveProfileModal()">
+        <span class="tab-icon">⚙️</span>
+        <span>Save & Profile</span>
+      </button>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <main class="console-content-stage" id="consoleMainStage">
+
+      <!-- =====================================================
+           VIEW 0: PRO CONSOLE HOME DASHBOARD (REFERENCE REPLICA)
+      ====================================================== -->
+      <div class="app-view-container active" id="view_home">
+        <div class="home-dashboard-shell">
+
+          <!-- TOP ROW: NEXT MATCH, LIVE AUCTION, LEAGUE & FIXTURES -->
+          <div class="home-row-upper">
+
+            <!-- 1. NEXT MATCH -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>NEXT MATCH</span>
+              </div>
+              <div class="next-match-card-body" style="background-image: url('/stadium_pitch.jpg');">
+                <div class="next-match-overlay"></div>
+                <div class="next-match-content">
+                  <div class="match-opponents-row">
+                    <!-- Athul FC -->
+                    <div class="match-team-block">
+                      <div class="match-team-crest">
+                        <svg width="56" height="62" viewBox="0 0 100 110" fill="none">
+                          <path d="M50 8 L88 20 C88 66 65 94 50 104 C35 94 12 66 12 20 Z" fill="#0f2544" stroke="#f59e0b" stroke-width="4"/>
+                          <path d="M50 15 L82 25 C82 63 62 87 50 96 C38 87 18 63 18 25 Z" fill="none" stroke="#f59e0b" stroke-width="1.5" opacity="0.6"/>
+                          <path d="M30 36 L35 23 L43 31 L50 19 L57 31 L65 23 L70 36 Z" fill="#facc15"/>
+                          <circle cx="50" cy="18" r="2.5" fill="#fef08a"/>
+                          <circle cx="35" cy="22" r="2" fill="#fef08a"/>
+                          <circle cx="65" cy="22" r="2" fill="#fef08a"/>
+                          <circle cx="50" cy="58" r="16" fill="#ffffff" stroke="#f59e0b" stroke-width="1.5"/>
+                          <polygon points="50,51 55,54 53,60 47,60 45,54" fill="#0b172a"/>
+                          <polygon points="50,44 46,47 45,51 50,51 55,51 54,47" fill="#0b172a" opacity="0.8"/>
+                          <polygon points="62,56 59,60 55,60 56,65 62,63" fill="#0b172a" opacity="0.8"/>
+                          <polygon points="38,56 41,60 45,60 44,65 38,63" fill="#0b172a" opacity="0.8"/>
+                          <polygon points="50,72 46,67 54,67" fill="#0b172a" opacity="0.8"/>
+                          <polygon points="50,84 52,89 57,89 53,92 55,97 50,94 45,97 47,92 43,89 48,89" fill="#facc15" transform="scale(0.8) translate(12, 12)"/>
+                        </svg>
+                      </div>
+                      <span class="match-team-label" id="nextMatchUserTeam">ATHUL FC</span>
+                    </div>
+
+                    <!-- VS -->
+                    <div class="match-vs-divider">VS</div>
+
+                    <!-- Kochi FC -->
+                    <div class="match-team-block">
+                      <div class="match-team-crest">
+                        <svg width="56" height="62" viewBox="0 0 100 110" fill="none">
+                          <path d="M50 8 L88 20 C88 66 65 94 50 104 C35 94 12 66 12 20 Z" fill="#450a0a" stroke="#ef4444" stroke-width="4"/>
+                          <path d="M50 15 L82 25 C82 63 62 87 50 96 C38 87 18 63 18 25 Z" fill="none" stroke="#f87171" stroke-width="1.5" opacity="0.4"/>
+                          <path d="M34 32 L42 24 L50 30 L58 24 L66 32 L62 46 C62 60 56 70 50 74 C44 70 38 60 38 46 Z" fill="#ef4444" opacity="0.95"/>
+                          <circle cx="50" cy="40" r="4" fill="#facc15"/>
+                          <path d="M44 50 Q50 56 56 50" stroke="#facc15" stroke-width="2" fill="none"/>
+                          <polygon points="46,44 48,48 44,48" fill="#facc15"/>
+                          <polygon points="54,44 56,48 52,48" fill="#facc15"/>
+                          <text x="50" y="88" font-size="11" font-weight="900" fill="#facc15" text-anchor="middle" letter-spacing="1">KOCHI</text>
+                        </svg>
+                      </div>
+                      <span class="match-team-label">KOCHI FC</span>
+                    </div>
+                  </div>
+
+                  <div class="match-meta-info">
+                    <span class="match-division-round">Division 3 &nbsp;|&nbsp; Matchday 5</span>
+                    <span class="match-schedule-date">📅 Sat, 14 Jun 2025 &nbsp;|&nbsp; 20:00</span>
+                  </div>
+
+                  <div style="display: flex; gap: 8px; width: 100%; margin-top: 10px;">
+                    <button type="button" class="btn-match-centre" onclick="openPLSGameModal(0)" style="flex: 1.3; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-color: rgba(16, 185, 129, 0.5);" title="Play Interactive 2D Arcade Match (PLS Style)">
+                      <span>🎮 PLAY (PLS)</span>
+                    </button>
+                    <button type="button" class="btn-match-centre" onclick="switchAppView('match')" style="flex: 1;" title="Open Broadcast Match Center">
+                      <span>MATCH CENTRE ›</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 2. AUCTION [LIVE] -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>AUCTION</span>
+                <span class="console-badge-pill red-live">LIVE</span>
+              </div>
+              <div class="auction-card-body">
+                <div class="auction-top-stat-bar">
+                  <span class="auction-timer-digital" id="consoleAuctionTimer">00:14</span>
+                  <div class="auction-bid-stat">
+                    <span class="auction-bid-label">Current Bid</span>
+                    <span class="auction-bid-val" id="consoleAuctionBidVal">₹ 85M</span>
+                  </div>
+                </div>
+
+                <div class="auction-player-hero-row">
+                  <!-- Purple FUT Ultimate Team Card -->
+                  <div class="fut-card-pod">
+                    <div class="fut-card-top">
+                      <span class="fut-card-rating">87</span>
+                      <span class="fut-card-pos">CF</span>
+                      <span class="fut-card-club-logo">🔵🔴</span>
+                    </div>
+                    <div class="fut-card-avatar-wrap">
+                      <svg width="85" height="95" viewBox="0 0 100 110" fill="none">
+                        <circle cx="50" cy="40" r="26" fill="#d97706"/>
+                        <path d="M26 34 C26 18 74 18 74 34 C74 26 26 26 26 34 Z" fill="#18181b"/>
+                        <circle cx="42" cy="38" r="3" fill="#18181b"/>
+                        <circle cx="58" cy="38" r="3" fill="#18181b"/>
+                        <path d="M46 48 Q50 52 54 48" stroke="#18181b" stroke-width="2" fill="none"/>
+                        <path d="M20 90 L28 62 L50 68 L72 62 L80 90 Z" fill="#1e1b4b" stroke="#a855f7" stroke-width="1.5"/>
+                        <path d="M44 67 L50 74 L56 67 Z" fill="#ef4444"/>
+                      </svg>
+                    </div>
+                    <div class="fut-card-bottom">
+                      <div class="fut-card-name">MBAPPÉ</div>
+                      <div class="fut-card-flag">🇫🇷</div>
+                    </div>
+                  </div>
+
+                  <!-- Attributes -->
+                  <div class="auction-attr-list">
+                    <div class="auction-attr-row">
+                      <span class="auction-attr-label">Age</span>
+                      <span class="auction-attr-val">25</span>
+                    </div>
+                    <div class="auction-attr-row">
+                      <span class="auction-attr-label">OVR</span>
+                      <span class="auction-attr-val" style="color: #38bdf8;">87</span>
+                    </div>
+                    <div class="auction-attr-row">
+                      <span class="auction-attr-label">Position</span>
+                      <span class="auction-attr-val">CF</span>
+                    </div>
+                    <div class="auction-attr-row">
+                      <span class="auction-attr-label">Club</span>
+                      <span class="auction-attr-val">PSG</span>
+                    </div>
+                    <div class="auction-attr-row">
+                      <span class="auction-attr-label">Value</span>
+                      <span class="auction-attr-val" style="color: #facc15;">₹ 180M</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="auction-action-buttons">
+                  <button type="button" class="btn-auction-bid" onclick="bidFromConsole()">
+                    <span>🔨</span>
+                    <span>BID + ₹5M &nbsp;|&nbsp; ₹ 90M</span>
+                  </button>
+                  <button type="button" class="btn-auction-skip" onclick="skipFromConsole()">
+                    <span>⏭</span>
+                    <span>SKIP</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 3. RIGHT STACK: LEAGUE TABLE & FIXTURES -->
+            <div class="home-right-stack">
+              <!-- 3A: LEAGUE TABLE -->
+              <div class="console-card">
+                <div class="console-card-header">
+                  <span>LEAGUE TABLE</span>
+                  <span class="console-badge-pill green">DIVISION 3</span>
+                </div>
+                <div style="padding: 6px 10px 10px;">
+                  <table class="console-mini-table">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th class="col-club">Club</th>
+                        <th>P</th>
+                        <th>W</th>
+                        <th>D</th>
+                        <th>L</th>
+                        <th>GD</th>
+                        <th>Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody id="homeLeagueTableBody">
+                      <tr class="user-row">
+                        <td>1</td>
+                        <td class="col-club">
+                          <span class="mini-crest-icon">👑</span>
+                          <span id="homeUserClubName">ATHUL FC</span>
+                        </td>
+                        <td>4</td>
+                        <td>3</td>
+                        <td>1</td>
+                        <td>0</td>
+                        <td>+7</td>
+                        <td>10</td>
+                      </tr>
+                      <tr>
+                        <td>2</td>
+                        <td class="col-club">
+                          <span class="mini-crest-icon">🛡️</span>
+                          <span>AI United</span>
+                        </td>
+                        <td>4</td>
+                        <td>3</td>
+                        <td>1</td>
+                        <td>0</td>
+                        <td>+5</td>
+                        <td>10</td>
+                      </tr>
+                      <tr>
+                        <td>3</td>
+                        <td class="col-club">
+                          <span class="mini-crest-icon">🦁</span>
+                          <span>Rangers FC</span>
+                        </td>
+                        <td>4</td>
+                        <td>2</td>
+                        <td>1</td>
+                        <td>1</td>
+                        <td>+3</td>
+                        <td>7</td>
+                      </tr>
+                      <tr>
+                        <td>4</td>
+                        <td class="col-club">
+                          <span class="mini-crest-icon">🦅</span>
+                          <span>Phoenix FC</span>
+                        </td>
+                        <td>4</td>
+                        <td>2</td>
+                        <td>0</td>
+                        <td>2</td>
+                        <td>+1</td>
+                        <td>6</td>
+                      </tr>
+                      <tr>
+                        <td>5</td>
+                        <td class="col-club">
+                          <span class="mini-crest-icon">⚡</span>
+                          <span>West Ham B</span>
+                        </td>
+                        <td>4</td>
+                        <td>1</td>
+                        <td>2</td>
+                        <td>1</td>
+                        <td>0</td>
+                        <td>5</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 3B: UPCOMING FIXTURES -->
+              <div class="console-card">
+                <div class="console-card-header">
+                  <span>UPCOMING FIXTURES</span>
+                  <span class="console-badge-pill green">Division 3</span>
+                </div>
+                <div class="fixtures-mini-list">
+                  <div class="fixture-mini-row">
+                    <div class="fixture-mini-teams">
+                      <span>👑</span><span>ATHUL FC</span>
+                      <span style="color:#64748b; font-size:10px;">vs</span>
+                      <span>🦁</span><span>KOCHI FC</span>
+                    </div>
+                    <span class="fixture-mini-date">Sat, 14 Jun | 20:00</span>
+                  </div>
+                  <div class="fixture-mini-row">
+                    <div class="fixture-mini-teams">
+                      <span>🛡️</span><span>Rangers FC</span>
+                      <span style="color:#64748b; font-size:10px;">vs</span>
+                      <span>⚡</span><span>AI United</span>
+                    </div>
+                    <span class="fixture-mini-date">Sun, 15 Jun | 16:00</span>
+                  </div>
+                  <div class="fixture-mini-row">
+                    <div class="fixture-mini-teams">
+                      <span>🦅</span><span>Phoenix FC</span>
+                      <span style="color:#64748b; font-size:10px;">vs</span>
+                      <span>⚒️</span><span>West Ham B</span>
+                    </div>
+                    <span class="fixture-mini-date">Sun, 15 Jun | 20:00</span>
+                  </div>
+                  <div class="fixture-mini-row">
+                    <div class="fixture-mini-teams">
+                      <span>⚓</span><span>City FC</span>
+                      <span style="color:#64748b; font-size:10px;">vs</span>
+                      <span>🏰</span><span>United FC</span>
+                    </div>
+                    <span class="fixture-mini-date">Mon, 16 Jun | 18:00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BOTTOM ROW: SQUAD, TRANSFER MARKET, CLUB FINANCES, MANAGER MESSAGE -->
+          <div class="home-row-lower">
+
+            <!-- 1. SQUAD (4-3-3 Pitch) -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>SQUAD</span>
+                <span class="console-badge-pill blue">4-3-3</span>
+              </div>
+              <div class="tactical-pitch-stage">
+                <div class="pitch-line-half"></div>
+                <div class="pitch-line-center-circle"></div>
+                <div class="pitch-line-box-top"></div>
+                <div class="pitch-line-box-bottom"></div>
+
+                <!-- 11 Player Pitch Nodes in 4-3-3 -->
+                <!-- Attackers -->
+                <div class="pitch-player-node" style="left: 18%; top: 20%;" title="LW - Rating 86">
+                  <span class="pitch-player-rating-badge">86</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">LW</span>
+                </div>
+                <div class="pitch-player-node" style="left: 50%; top: 14%;" title="ST - Rating 89">
+                  <span class="pitch-player-rating-badge">89</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">ST</span>
+                </div>
+                <div class="pitch-player-node" style="left: 82%; top: 20%;" title="RW - Rating 88">
+                  <span class="pitch-player-rating-badge">88</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">RW</span>
+                </div>
+
+                <!-- Midfielders -->
+                <div class="pitch-player-node" style="left: 26%; top: 48%;" title="CM - Rating 84">
+                  <span class="pitch-player-rating-badge">84</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">CM</span>
+                </div>
+                <div class="pitch-player-node" style="left: 50%; top: 44%;" title="CM - Rating 88">
+                  <span class="pitch-player-rating-badge">88</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">CM</span>
+                </div>
+                <div class="pitch-player-node" style="left: 74%; top: 48%;" title="CM - Rating 80">
+                  <span class="pitch-player-rating-badge">80</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">CM</span>
+                </div>
+
+                <!-- Defenders -->
+                <div class="pitch-player-node" style="left: 16%; top: 74%;" title="LB - Rating 80">
+                  <span class="pitch-player-rating-badge">80</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">LB</span>
+                </div>
+                <div class="pitch-player-node" style="left: 38%; top: 76%;" title="CB - Rating 80">
+                  <span class="pitch-player-rating-badge">80</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">CB</span>
+                </div>
+                <div class="pitch-player-node" style="left: 62%; top: 76%;" title="CB - Rating 89">
+                  <span class="pitch-player-rating-badge">89</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">CB</span>
+                </div>
+                <div class="pitch-player-node" style="left: 84%; top: 74%;" title="RB - Rating 80">
+                  <span class="pitch-player-rating-badge">80</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">RB</span>
+                </div>
+
+                <!-- Goalkeeper -->
+                <div class="pitch-player-node" style="left: 50%; top: 90%;" title="GK - Rating 89">
+                  <span class="pitch-player-rating-badge">89</span>
+                  <img src="/manager_photo.jpg" class="pitch-player-avatar-circle" onerror="this.src='/manager.png'">
+                  <span class="pitch-player-pos-label">GK</span>
+                </div>
+              </div>
+
+              <button type="button" class="btn-card-bottom-action" onclick="switchAppView('auction')">
+                <span>VIEW SQUAD</span>
+                <span>›</span>
+              </button>
+            </div>
+
+            <!-- 2. TRANSFER MARKET -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>TRANSFER MARKET</span>
+              </div>
+              <div class="transfer-card-body">
+                <div class="transfer-star-silhouette">
+                  <svg width="110" height="110" viewBox="0 0 100 100" fill="none">
+                    <path d="M22 30 L38 20 L62 20 L78 30 L70 55 L62 50 L62 90 L38 90 L38 50 L30 55 Z" fill="#0f2440" stroke="#0284c7" stroke-width="2"/>
+                    <text x="50" y="44" font-size="7" font-weight="900" fill="#94a3b8" text-anchor="middle" letter-spacing="1">BELLINGHAM</text>
+                    <text x="50" y="74" font-size="28" font-weight="900" fill="#ffffff" text-anchor="middle">5</text>
+                  </svg>
+                </div>
+                <p class="transfer-card-copy">
+                  Find new talent or sell your players in the transfer market.
+                </p>
+                <button type="button" class="btn-card-bottom-action" onclick="switchAppView('auction')">
+                  <span>BROWSE PLAYERS</span>
+                  <span>›</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 3. CLUB FINANCES -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>CLUB FINANCES</span>
+              </div>
+              <div class="finances-card-body">
+                <div class="finance-metric-row">
+                  <div class="finance-icon-bubble" style="background: rgba(2, 132, 199, 0.15); border: 1px solid #0284c7; color: #38bdf8;">
+                    💵
+                  </div>
+                  <div class="finance-row-text">
+                    <span class="finance-row-label">Balance</span>
+                    <span class="finance-row-val" id="homeFinanceBalance">₹ 500M</span>
+                  </div>
+                </div>
+
+                <div class="finance-metric-row">
+                  <div class="finance-icon-bubble green">
+                    ⬆️
+                  </div>
+                  <div class="finance-row-text">
+                    <span class="finance-row-label">Weekly Income</span>
+                    <span class="finance-row-val" style="color: #10b981;">₹ 12M</span>
+                  </div>
+                </div>
+
+                <div class="finance-metric-row">
+                  <div class="finance-icon-bubble red">
+                    ⬇️
+                  </div>
+                  <div class="finance-row-text">
+                    <span class="finance-row-label">Weekly Expenses</span>
+                    <span class="finance-row-val" style="color: #ef4444;">₹ 8M</span>
+                  </div>
+                </div>
+
+                <button type="button" class="btn-card-bottom-action" onclick="switchAppView('hq')">
+                  <span>VIEW FINANCES</span>
+                  <span>›</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- 4. MANAGER MESSAGE -->
+            <div class="console-card">
+              <div class="console-card-header">
+                <span>MANAGER MESSAGE</span>
+              </div>
+              <div class="manager-card-body">
+                <div class="manager-card-photo-wrap" onclick="openManagerPhotoModal()" title="Click to change manager portrait">
+                  <img src="/manager_photo.jpg" alt="Manager" class="manager-card-photo" id="homeManagerCardImg" onerror="this.src='/manager.png'">
+                </div>
+                <p class="manager-quote-text">
+                  “Build the best team you can with your budget. The league is tough, but we can do it!”
+                </p>
+                <span class="manager-author-sign">– Manager</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BOTTOM DOCK (6 LARGE NAVIGATION CARDS) -->
+          <div class="console-bottom-grid" id="consoleBottomDock">
+            <div class="console-dock-tile active" id="consoleDock_home" onclick="switchAppView('home')">
+              <div class="console-dock-tile-icon">🏠</div>
+              <div class="console-dock-tile-title">HOME</div>
+              <div class="console-dock-tile-desc">Your club at a glance</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_squad" onclick="switchAppView('squad')">
+              <div class="console-dock-tile-icon">👥</div>
+              <div class="console-dock-tile-title">SQUAD</div>
+              <div class="console-dock-tile-desc">Manage your players</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_transfers" onclick="switchAppView('transfers')">
+              <div class="console-dock-tile-icon">⇄</div>
+              <div class="console-dock-tile-title">TRANSFERS</div>
+              <div class="console-dock-tile-desc">Buy / Sell / Loan</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_league" onclick="switchAppView('league')">
+              <div class="console-dock-tile-icon">🏆</div>
+              <div class="console-dock-tile-title">LEAGUE</div>
+              <div class="console-dock-tile-desc">Table / Fixtures / Results</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_cup" onclick="switchAppView('cup')">
+              <div class="console-dock-tile-icon">🏆</div>
+              <div class="console-dock-tile-title">CUP</div>
+              <div class="console-dock-tile-desc">Knockout Competitions</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_club" onclick="switchAppView('hq')">
+              <div class="console-dock-tile-icon">🛡️</div>
+              <div class="console-dock-tile-title">CLUB</div>
+              <div class="console-dock-tile-desc">Stadium / Finances / History</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+
+  <!-- =====================================================
+       VIEW: JOURNEY CAMPAIGN (PRO LEAGUE SOCCER)
+  ====================================================== -->
+  <div class="app-view-container" id="view_journey">
+    <div class="journey-dashboard-view">
+      <!-- HERO BANNER -->
+      <div class="journey-hero-card">
+        <div class="journey-hero-title">
+          <h2>🎮 PRO LEAGUE SOCCER (PLS) • JOURNEY CAMPAIGN</h2>
+          <p>Take direct control of your squad! Dribble, pass, charge up thunderous shots, and slide tackle through 5 tiers of elite competition to earn massive prize money and claim the World Champions Trophy.</p>
+        </div>
+        <button type="button" class="btn-play-stage" style="padding: 12px 24px; font-size: 14px;" onclick="PLS_MatchGame.playStage(0)">
+          <span>⚡ QUICK MATCH</span>
+        </button>
+      </div>
+
+      <!-- JOURNEY STAGES LIST -->
+      <div class="journey-stages-container" id="journeyStagesList">
+        <!-- Injected dynamically by PLS_MatchGame.initJourney() -->
+      </div>
+    </div>
   </div>
 
   <!-- =====================================================
@@ -3167,6 +4223,15 @@ select {
   </div>
 
   <!-- =====================================================
+       VIEW 5: CLUB MEDICAL CENTRE & PLAYER INJURY LIST
+  ====================================================== -->
+  <div class="app-view-container" id="view_injuries">
+    <div id="injuryListContainer">
+      <!-- Rendered dynamically by InjuryCenter.renderMedicalCentre() -->
+    </div>
+  </div>
+
+  <!-- =====================================================
        VIEW 6 (PART 1): LIVE SQUAD AUCTION & DUGOUT
   ====================================================== -->
   <div class="app-view-container view-auction-part" id="view_auction_main">
@@ -3191,14 +4256,14 @@ select {
     <div class="dugout-main">
       <div class="manager-avatar-pod">
         <div class="avatar-ring-glow ring-cyan" id="managerRingGlow">
-          <div class="manager-avatar-art">
-            <span class="manager-emoji">🧑‍💼</span>
-            <span class="manager-headset">🎧</span>
+          <div class="manager-avatar-art manager-photo-pod">
+            <img src="/manager_photo.jpg" alt="Manager Portrait" id="dugoutManagerPhoto" class="manager-real-portrait" referrerpolicy="no-referrer" onerror="this.src='/manager.png'">
+            <button type="button" class="btn-change-manager-photo" onclick="openManagerPhotoModal()" title="Customize or Change Head Coach Portrait">📷</button>
           </div>
         </div>
         <div class="manager-credentials">
-          <strong class="manager-name">Pep Guardiola</strong>
-          <span class="manager-title">Head Tactician & Auctioneer</span>
+          <strong class="manager-name" id="dugoutManagerName">Pep Guardiola</strong>
+          <span class="manager-title" id="dugoutManagerTitle">Head Tactician & Auctioneer</span>
         </div>
         <div class="voice-waveform" id="voiceWaveform" title="Radio transmission active">
           <span class="wave-bar"></span>
@@ -3306,23 +4371,157 @@ select {
        JOIN
   ========================== -->
 
-  <div class="join-box">
+  <div class="join-box" id="mainJoinBox">
 
-    <h2>Join Your Team</h2>
+    <h2>Join Your Team & Club Identity</h2>
 
-    <input
-      id="teamName"
-      type="text"
-      placeholder="Enter your team name"
-      maxlength="25"
-    >
+    <!-- REMEMBERED PLAYER RESUME CARD (Populated if saved club exists) -->
+    <div class="saved-player-resume-card" id="savedPlayerResumeCard" style="display: none;">
+      <div class="saved-resume-header">
+        <span class="saved-resume-badge">⚡ REMEMBERED PLAYER</span>
+        <span class="saved-resume-time" id="resumeLastSavedText">Last saved: Today</span>
+      </div>
+      <div class="saved-resume-body">
+        <div class="saved-resume-crest" id="resumeCrestPreview">
+          <!-- Live SVG crest -->
+        </div>
+        <div class="saved-resume-info">
+          <h3 class="saved-resume-team" id="resumeTeamName">ATHUL FC</h3>
+          <div class="saved-resume-manager">Manager: <strong id="resumeManagerName">Athul V V</strong> 👑</div>
+          <div class="saved-resume-stats" id="resumeStatsText">Squad: 0 players • Budget: ₹500M</div>
+        </div>
+      </div>
+      <div class="saved-resume-actions">
+        <button type="button" class="btn-resume-primary" onclick="resumeRememberedPlayer()">
+          <span>⚡</span><span id="resumeBtnLabel">RESUME AS ATHUL FC</span>
+        </button>
+        <button type="button" class="btn-resume-secondary" onclick="toggleManualJoinForm()">
+          <span id="toggleJoinFormLabel">Switch Club</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="manualJoinFormFields">
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block;">Club / Team Name</label>
+        <input
+          id="teamName"
+          type="text"
+          placeholder="Enter your team name (e.g. Athul FC, Madrid Titans, London Royals)"
+          maxlength="25"
+          oninput="onTeamNameInput(this.value)"
+        >
+      </div>
+
+      <div style="margin-bottom: 12px;">
+        <label style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block;">Manager / Head Coach Name</label>
+        <input
+          id="managerNameInput"
+          type="text"
+          placeholder="Manager Name (e.g. Athul V V)"
+          value="Athul V V"
+          maxlength="25"
+          style="background: #0a1b2d; border: 1px solid #1a3654; color: #ffffff; padding: 10px 14px; border-radius: 8px; width: 100%; font-size: 14px;"
+          oninput="onManagerNameInput(this.value)"
+        >
+      </div>
+
+      <!-- CUSTOM TEAM CREST DESIGNER -->
+      <div class="crest-studio-card">
+      <div class="crest-studio-header">
+        <span class="crest-studio-title">🎨 CUSTOM CLUB CREST & LOGO</span>
+        <span style="font-size: 11px; color: var(--app-muted);">Vector Club Identity</span>
+      </div>
+
+      <div class="crest-designer-layout">
+        <div class="crest-preview-box" id="customCrestPreview">
+          <!-- Live SVG crest rendered by CrestStudio -->
+        </div>
+
+        <div class="crest-controls-grid">
+          <div class="crest-ctrl-group">
+            <label>Shape</label>
+            <select id="crestShapeSelect" onchange="CrestStudio.updateField('shape', this.value)">
+              <option value="shield">Classic Shield</option>
+              <option value="circle">Circular Crest</option>
+              <option value="hexagon">Modern Hexagon</option>
+              <option value="diamond">Angled Diamond</option>
+            </select>
+          </div>
+
+          <div class="crest-ctrl-group">
+            <label>Pattern</label>
+            <select id="crestPatternSelect" onchange="CrestStudio.updateField('pattern', this.value)">
+              <option value="stripes">Dual Stripes</option>
+              <option value="half">Halved Vertical</option>
+              <option value="solid">Metallic Solid</option>
+              <option value="sash">Diagonal Sash</option>
+            </select>
+          </div>
+
+          <div class="crest-ctrl-group">
+            <label>Colors</label>
+            <div class="crest-colors-row">
+              <input type="color" id="crestPrimaryColor" value="#dc2626" title="Primary Color" onchange="CrestStudio.updateField('primary', this.value)">
+              <input type="color" id="crestSecondaryColor" value="#1e3a8a" title="Secondary Color" onchange="CrestStudio.updateField('secondary', this.value)">
+              <input type="color" id="crestAccentColor" value="#facc15" title="Gold/Accent Border" onchange="CrestStudio.updateField('accent', this.value)">
+            </div>
+          </div>
+
+          <div class="crest-ctrl-group">
+            <label>Monogram</label>
+            <input type="text" id="crestMonogramInput" placeholder="FC" maxlength="4" value="FC" oninput="CrestStudio.updateField('monogram', this.value)">
+          </div>
+        </div>
+      </div>
+
+      <!-- Mascot & Emblem selector -->
+      <div style="margin-top: 10px;">
+        <div style="font-size: 10px; font-weight: 800; color: var(--app-muted); text-transform: uppercase; margin-bottom: 4px;">Choose Mascot / Emblem</div>
+        <div class="emblem-picker-scroll" id="emblemPickerRow">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+
+      <!-- Quick Preset Themes -->
+      <div style="margin-top: 8px;">
+        <div style="font-size: 10px; font-weight: 800; color: var(--app-muted); text-transform: uppercase; margin-bottom: 4px;">Quick Presets</div>
+        <div class="crest-presets-row">
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(0)">👑 Royal Gold</button>
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(1)">🐉 Red Dragons</button>
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(2)">🦅 Sky Titans</button>
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(3)">🦁 Golden Lions</button>
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(4)">⚡ Neon Thunder</button>
+          <button type="button" class="crest-preset-pill" onclick="CrestStudio.applyCrestPreset(5)">🐺 Emerald Wolves</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- REMEMBER PLAYER TOGGLE -->
+    <div class="remember-player-box">
+      <label class="remember-player-label">
+        <input type="checkbox" id="rememberPlayerToggle" checked onchange="toggleRememberMePreference(this.checked)">
+        <span class="remember-custom-toggle"></span>
+        <div class="remember-text-block">
+          <span class="remember-main-title">Remember Player & Auto-Save Progress</span>
+          <span class="remember-sub-title">Saves your club identity, squad roster, stadium level, and finances so you stay logged in.</span>
+        </div>
+      </label>
+    </div>
 
     <button
       class="primary"
       onclick="joinTeam()"
     >
-      JOIN AUCTION
+      JOIN AUCTION WITH CLUB CREST
     </button>
+
+    <div style="margin-top: 10px; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #94a3b8;">
+      <span>🟢 Auto-Save: Enabled</span>
+      <button type="button" onclick="openSaveProfileModal()" style="background:none; border:none; color:#38bdf8; cursor:pointer; font-weight:700; text-decoration:underline;">Manage Saves & Backups</button>
+    </div>
+
+    </div>
 
   </div>
 
@@ -3336,7 +4535,7 @@ select {
 
       <div class="stat">
         <span>YOUR TEAM</span>
-        <strong id="myTeam">Not Joined</strong>
+        <strong id="myTeamBadge">Not Joined</strong>
       </div>
 
       <div class="stat">
@@ -3490,7 +4689,7 @@ select {
   <!-- =====================================================
        VIEW 1: LEAGUE CHAMPIONSHIP & STANDINGS
   ====================================================== -->
-  <div class="app-view-container active" id="view_league">
+  <div class="app-view-container" id="view_league">
 
   <!-- =========================
        LEAGUE CHAMPIONSHIP (DIV 1, 2, 3)
@@ -3786,7 +4985,9 @@ select {
         <!-- CURRENT MANAGER CARD -->
         <div class="manager-card-box">
           <div class="manager-header">
-            <div class="manager-avatar-circle" id="hqManagerAvatar">👔</div>
+            <div class="manager-avatar-circle" id="hqManagerAvatar">
+              <img src="/manager_photo.jpg" alt="Head Coach" id="hqManagerPhotoImg" class="hq-manager-img" referrerpolicy="no-referrer" onerror="this.src='/manager.png'">
+            </div>
             <div class="manager-info">
               <div class="name" id="hqManagerName">Carlo Ancelotti</div>
               <div class="role" id="hqManagerRole">Tactical Mastermind • 4-3-3 Attacking</div>
@@ -4118,6 +5319,93 @@ select {
   </div> <!-- /#view_auction_ops -->
 
   <!-- =====================================================
+       PRO LEAGUE SOCCER (PLS) PLAYABLE MATCH ARENA MODAL
+  ===================================================== -->
+  <div id="plsGameModal" class="pls-match-modal" role="dialog" aria-modal="true">
+    <!-- Top Bar -->
+    <div class="pls-modal-topbar">
+      <div class="pls-top-title-lockup">
+        <span class="pls-badge-icon">PLS 2D ARCADE</span>
+        <span class="pls-header-title">Pro League Soccer • Playable Match</span>
+      </div>
+      <div class="pls-top-actions">
+        <button type="button" class="btn-pls-pill" id="plsPauseBtn" onclick="PLS_MatchGame.pause()">⏸️ PAUSE</button>
+        <button type="button" class="btn-pls-pill" onclick="PLS_MatchGame.restart()">🔄 RESTART</button>
+        <button type="button" class="btn-pls-close" onclick="closePLSGameModal()">✕ EXIT</button>
+      </div>
+    </div>
+
+    <!-- Live Scoreboard -->
+    <div class="pls-scoreboard-bar">
+      <div class="pls-team-score-side">
+        <span style="font-size: 20px;">🛡️</span>
+        <span class="pls-team-name-tag" id="plsHomeName">ATHUL FC</span>
+      </div>
+
+      <div class="pls-score-center-digital">
+        <span class="pls-digits" id="plsScoreDisplay">0 - 0</span>
+        <span class="pls-clock-badge" id="plsMatchClock">0' (H1)</span>
+      </div>
+
+      <div class="pls-team-score-side">
+        <span class="pls-team-name-tag" id="plsAwayName">KOCHI FC</span>
+        <span style="font-size: 20px;">⚡</span>
+      </div>
+    </div>
+
+    <!-- Match Canvas Pitch & Controls Layer -->
+    <div class="pls-canvas-wrapper">
+      <canvas id="plsMatchCanvas"></canvas>
+
+      <!-- Commentary Ticker -->
+      <div class="pls-commentary-bar" id="plsCommentaryTicker">
+        Welcome to Pro League Soccer! Match kicked off.
+      </div>
+
+      <!-- Goal Celebration Banner -->
+      <div class="pls-event-banner" id="plsEventBanner">
+        <div class="pls-banner-title" id="plsBannerTitle">⚽ GOAL!</div>
+        <div class="pls-banner-subtitle" id="plsBannerSubtitle">Spectacular strike!</div>
+        <div class="pls-banner-extra" id="plsBannerExtra">1 - 0</div>
+      </div>
+
+      <!-- Touch Controls Layer (for touch devices and mobile) -->
+      <div class="pls-controls-overlay">
+        <!-- Left Analog Virtual Joystick -->
+        <div class="pls-joystick-zone" id="plsJoystickZone">
+          <div class="pls-joystick-knob" id="plsJoystickKnob"></div>
+        </div>
+
+        <!-- Right Action Cluster -->
+        <div class="pls-buttons-cluster">
+          <button type="button" class="btn-pls-action btn-pls-through" onclick="PLS_MatchGame.through()" title="Through Ball (L / C)">
+            <span>🟡</span><span>THRU</span>
+          </button>
+          <button type="button" class="btn-pls-action btn-pls-shoot" onmousedown="PLS_MatchGame.shootStart()" onmouseup="PLS_MatchGame.shootRelease()" ontouchstart="PLS_MatchGame.shootStart()" ontouchend="PLS_MatchGame.shootRelease()" title="Shoot / Charge (K / X)">
+            <span>🔴</span><span>SHOOT</span>
+          </button>
+          <button type="button" class="btn-pls-action btn-pls-pass" onclick="PLS_MatchGame.pass()" title="Pass (J / Z / Space)">
+            <span>🟢</span><span>PASS</span>
+          </button>
+          <button type="button" class="btn-pls-action btn-pls-sprint" onclick="PLS_MatchGame.tackle()" title="Sprint / Slide Tackle (Shift / E)">
+            <span>🔵</span><span>TACKLE</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Keyboard Control Bar (Desktop) -->
+    <div class="pls-keyboard-hints">
+      <span><span class="pls-key-pill">WASD</span> or <span class="pls-key-pill">ARROWS</span>: Move/Dribble</span>
+      <span><span class="pls-key-pill">J</span> / <span class="pls-key-pill">SPACE</span>: Pass</span>
+      <span><span class="pls-key-pill">K</span> / <span class="pls-key-pill">X</span>: Hold & Release to Shoot</span>
+      <span><span class="pls-key-pill">L</span> / <span class="pls-key-pill">C</span>: Through Ball</span>
+      <span><span class="pls-key-pill">SHIFT</span>: Sprint / Tackle</span>
+      <span><span class="pls-key-pill">Q</span>: Switch Player</span>
+    </div>
+  </div>
+
+  <!-- =====================================================
        3D MATCHDAY GAMEPLAY VISUALIZER MODAL
   ===================================================== -->
   <div id="match3dModal" role="dialog" aria-modal="true">
@@ -4216,19 +5504,778 @@ select {
     </div>
   </div>
 
+    </main>
+  </div>
+
+<!-- =====================================================
+     MANAGER PORTRAIT CHOOSER MODAL
+====================================================== -->
+<div id="managerPhotoModal" class="manager-photo-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+  <div class="manager-photo-modal-content">
+    <div class="manager-photo-modal-header">
+      <div class="manager-photo-modal-title">
+        <span>📸</span><span>OFFICIAL HEAD COACH PORTRAIT</span>
+      </div>
+      <button type="button" class="btn-sm-danger" onclick="closeManagerPhotoModal()" style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; border-radius:8px; padding:4px 10px; cursor:pointer;">✕ CLOSE</button>
+    </div>
+
+    <div style="font-size:12px; color:#94a3b8;">
+      Select an elite tactical mastermind portrait or provide a custom image URL for your club's head coach.
+    </div>
+
+    <div class="manager-portrait-grid" id="managerPortraitGrid">
+      <!-- Populated dynamically -->
+    </div>
+
+    <div style="border-top: 1px solid #1f3b5c; padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+      <label style="font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Custom Image URL</label>
+      <div style="display: flex; gap: 8px;">
+        <input type="url" id="customManagerPhotoUrl" placeholder="https://example.com/coach.jpg" style="flex: 1; background: #0a1b2e; border: 1px solid #1e3a5f; color: #f1f5f9; padding: 6px 10px; border-radius: 6px; font-size: 12px;">
+        <button type="button" onclick="applyCustomManagerPhotoUrl()" style="background: #0284c7; color: #fff; border: none; border-radius: 6px; padding: 6px 14px; font-weight: 700; font-size: 12px; cursor: pointer;">APPLY</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =====================================================
+     SAVE & MANAGER PROFILE MODAL
+====================================================== -->
+<div id="saveProfileModal" class="save-profile-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+  <div class="save-profile-modal-content">
+    <div class="save-modal-header">
+      <div class="save-modal-title">
+        <span>💾</span><span>CLUB SAVE & MANAGER PROFILE</span>
+      </div>
+      <button type="button" onclick="closeSaveProfileModal()" style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; border-radius:8px; padding:4px 10px; cursor:pointer; font-weight:700;">✕ CLOSE</button>
+    </div>
+
+    <!-- Active Profile Overview -->
+    <div class="save-card-summary">
+      <div class="saved-resume-crest" id="modalCrestSlot" style="width: 58px; height: 64px;">
+        <!-- Live SVG Crest -->
+      </div>
+      <div style="flex: 1;">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <h3 style="font-size: 18px; font-weight: 900; color: #ffffff; margin: 0;" id="modalTeamNameDisplay">ATHUL FC</h3>
+          <span style="font-size: 11px; background: rgba(16,185,129,0.15); border: 1px solid #10b981; color: #10b981; padding: 2px 8px; border-radius: 4px; font-weight: 800;">ACTIVE CLUB</span>
+        </div>
+        <div style="font-size: 12px; color: #cbd5e1; margin-top: 3px;">
+          Manager: <strong id="modalManagerNameDisplay" style="color: #f59e0b;">Athul V V</strong> 👑
+        </div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;" id="modalSyncStatus">
+          ● Synced to Device & Server • Last saved: <span id="modalLastSavedTime">Just now</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Key Snapshot Stats -->
+    <div class="save-stats-grid">
+      <div class="save-stat-cell">
+        <div class="v" id="modalStatBudget">₹ 500M</div>
+        <div class="l">Club Budget</div>
+      </div>
+      <div class="save-stat-cell">
+        <div class="v" id="modalStatSquad">0</div>
+        <div class="l">Squad Players</div>
+      </div>
+      <div class="save-stat-cell">
+        <div class="v" id="modalStatDivision">Div 3</div>
+        <div class="l">Division Standing</div>
+      </div>
+    </div>
+
+    <!-- Remember Player & Auto-Save Toggles -->
+    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+      <div class="remember-player-box" style="margin: 0;">
+        <label class="remember-player-label">
+          <input type="checkbox" id="modalRememberToggle" checked onchange="toggleRememberMePreference(this.checked)">
+          <span class="remember-custom-toggle"></span>
+          <div class="remember-text-block">
+            <span class="remember-main-title">Remember Player & Auto-Login</span>
+            <span class="remember-sub-title">Automatically logs into this club and loads all progress whenever you return or refresh.</span>
+          </div>
+        </label>
+      </div>
+
+      <div class="remember-player-box" style="margin: 0;">
+        <label class="remember-player-label">
+          <input type="checkbox" id="modalAutoSaveToggle" checked onchange="toggleAutoSavePreference(this.checked)">
+          <span class="remember-custom-toggle"></span>
+          <div class="remember-text-block">
+            <span class="remember-main-title">Auto-Save on Action</span>
+            <span class="remember-sub-title">Saves immediately after every auction win, transfer offer, stadium upgrade, and match simulation.</span>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Manager Actions -->
+    <div class="save-action-btn-row">
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn-modal-save" onclick="manualSaveProgress()" style="flex: 1;">
+          <span>💾</span><span>SAVE LOCAL & DISK</span>
+        </button>
+        <button type="button" class="btn-modal-save" onclick="syncWithCloudFirestore()" style="flex: 1; background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);">
+          <span>☁️</span><span>CLOUD FIRESTORE SYNC</span>
+        </button>
+      </div>
+
+      <div class="save-backup-row">
+        <button type="button" class="btn-modal-backup" onclick="exportSaveFile()" title="Download a JSON backup of your club progress">
+          <span>📥</span><span>Export Backup (.json)</span>
+        </button>
+        <button type="button" class="btn-modal-backup" onclick="triggerImportSaveFile()" title="Upload a previously saved JSON file">
+          <span>📤</span><span>Import Save File</span>
+        </button>
+        <input type="file" id="importSaveFileInput" accept=".json" style="display: none;" onchange="handleImportSaveFile(event)">
+      </div>
+
+      <div style="display: flex; gap: 10px;">
+        <button type="button" class="btn-modal-backup" onclick="openManagerPhotoModal(); closeSaveProfileModal();" style="flex: 1;">
+          <span>📸</span><span>Change Coach Portrait</span>
+        </button>
+        <button type="button" class="btn-modal-logout" onclick="logoutPlayer()" style="flex: 1;" title="Sign out of this club and switch manager">
+          <span>🚪</span><span>Switch / Log Out</span>
+        </button>
+      </div>
+
+      <button type="button" onclick="confirmResetProgress()" style="background: transparent; border: 1px dashed #475569; color: #94a3b8; font-size: 11px; padding: 8px; border-radius: 6px; cursor: pointer; margin-top: 4px;">
+        ⚠️ Reset Current Club Progress (Fresh Season)
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- FLOATING SAVE TOAST BANNER -->
+<div class="save-toast-banner" id="saveToastBanner">
+  <span id="saveToastIcon" style="font-size: 18px;">💾</span>
+  <span id="saveToastMsg">Progress Saved Successfully</span>
 </div>
 
 <script>
 
 /* =====================================================
-   SOCKET
+   SOCKET & GLOBAL STATE
 ===================================================== */
 
 const socket = io();
 
 let myTeam = null;
+window.myTeam = null;
+window.userClubName = null;
+
+function setAppMyTeam(name) {
+  myTeam = (typeof name === "string" && name.trim()) ? name.trim() : null;
+  window.myTeam = myTeam;
+  window.userClubName = myTeam;
+}
+
+window.getActiveUserTeam = function() {
+  if (typeof myTeam === "string" && myTeam && myTeam !== "Not Joined") return myTeam;
+  if (typeof window.userClubName === "string" && window.userClubName) return window.userClubName;
+  if (typeof window.myTeam === "string" && window.myTeam && window.myTeam !== "Not Joined") return window.myTeam;
+  const inputEl = document.getElementById("teamName");
+  if (inputEl && typeof inputEl.value === "string" && inputEl.value.trim()) return inputEl.value.trim();
+  const badgeEl = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
+  if (badgeEl && typeof badgeEl.innerText === "string") {
+    const txt = badgeEl.innerText.trim();
+    if (txt && txt !== "Not Joined" && txt !== "Not Connected") return txt;
+  }
+  try {
+    const saved = localStorage.getItem("football_auction_saved_manager");
+    if (saved) {
+      const p = JSON.parse(saved);
+      if (p && typeof p.teamName === "string" && p.teamName.trim()) return p.teamName.trim();
+    }
+  } catch(e) {}
+  return "Athul FC";
+};
 
 let gameState = null;
+
+let currentManagerPhoto = "/manager_photo.jpg";
+let currentManagerName = "Athul V V";
+
+/* =====================================================
+   PERSISTENCE & REMEMBER PLAYER ENGINE
+===================================================== */
+const STORAGE_KEY_REMEMBER = "football_auction_remember_player";
+const STORAGE_KEY_SAVED_MANAGER = "football_auction_saved_manager";
+const STORAGE_KEY_AUTOSAVE = "football_auction_auto_save";
+
+let autoSaveEnabled = localStorage.getItem(STORAGE_KEY_AUTOSAVE) !== "0";
+let rememberPlayerEnabled = localStorage.getItem(STORAGE_KEY_REMEMBER) !== "0";
+let lastSavedTimestamp = null;
+let isManualJoinVisible = false;
+
+const MANAGER_PRESET_PORTRAITS = [
+  { name: "Pep Guardiola", photo: "/manager_photo.jpg", style: "Tiki-Taka Master" },
+  { name: "Jürgen Klopp", photo: "/manager_photo.jpg", style: "Heavy-Metal Press" },
+  { name: "Carlo Ancelotti", photo: "/manager_photo.jpg", style: "Tactical Freedom" },
+  { name: "Zinedine Zidane", photo: "/manager_photo.jpg", style: "Galáctico Control" },
+  { name: "José Mourinho", photo: "/manager_photo.jpg", style: "Ruthless Counter" },
+  { name: "Mikel Arteta", photo: "/manager_photo.jpg", style: "Positional Overload" }
+];
+
+function showSaveToast(msg, icon = "💾") {
+  const banner = document.getElementById("saveToastBanner");
+  const msgEl = document.getElementById("saveToastMsg");
+  const iconEl = document.getElementById("saveToastIcon");
+  if (!banner || !msgEl) return;
+  msgEl.innerText = msg;
+  if (iconEl) iconEl.innerText = icon;
+  banner.classList.add("show");
+  clearTimeout(banner._hideTimer);
+  banner._hideTimer = setTimeout(() => {
+    banner.classList.remove("show");
+  }, 2800);
+}
+
+function onManagerNameInput(val) {
+  currentManagerName = (val || "").trim() || "Athul V V";
+  const topMgr = document.getElementById("topManagerName");
+  if (topMgr) topMgr.innerHTML = currentManagerName + ' <span style="color:#f59e0b;">👑</span>';
+  const dugoutMgr = document.getElementById("dugoutManagerName");
+  if (dugoutMgr) dugoutMgr.innerText = currentManagerName;
+}
+
+function toggleRememberMePreference(checked) {
+  rememberPlayerEnabled = !!checked;
+  localStorage.setItem(STORAGE_KEY_REMEMBER, checked ? "1" : "0");
+  const t1 = document.getElementById("rememberPlayerToggle");
+  const t2 = document.getElementById("modalRememberToggle");
+  if (t1) t1.checked = checked;
+  if (t2) t2.checked = checked;
+  showSaveToast(checked ? "Auto-Login & Remember Me: ENABLED" : "Remember Me: DISABLED", checked ? "✅" : "⚠️");
+  if (checked && myTeam) {
+    saveCurrentPlayerProgress(false);
+  }
+}
+
+function toggleAutoSavePreference(checked) {
+  autoSaveEnabled = !!checked;
+  localStorage.setItem(STORAGE_KEY_AUTOSAVE, checked ? "1" : "0");
+  const t = document.getElementById("modalAutoSaveToggle");
+  if (t) t.checked = checked;
+  showSaveToast(checked ? "Auto-Save on Action: ENABLED" : "Auto-Save: PAUSED", checked ? "🟢" : "⏸️");
+}
+
+function updateClubProfileUI(teamName, managerName, photoUrl, crestConfig, crestSvg) {
+  if (teamName) {
+    setAppMyTeam(teamName);
+    const clubNames = ["consoleClubName", "homeUserClubName", "nextMatchUserTeam", "myTeamBadge", "myTeam"];
+    clubNames.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = teamName;
+    });
+  }
+  if (managerName) {
+    currentManagerName = managerName;
+    const topMgr = document.getElementById("topManagerName");
+    if (topMgr) topMgr.innerHTML = managerName + ' <span style="color:#f59e0b;">👑</span>';
+    const dugoutMgr = document.getElementById("dugoutManagerName");
+    if (dugoutMgr) dugoutMgr.innerText = managerName;
+    const mgrInput = document.getElementById("managerNameInput");
+    if (mgrInput) mgrInput.value = managerName;
+  }
+  if (photoUrl) {
+    currentManagerPhoto = photoUrl;
+    const topAvatar = document.getElementById("topManagerAvatar");
+    if (topAvatar) topAvatar.src = photoUrl;
+    const dugoutPhoto = document.getElementById("dugoutManagerPhoto");
+    if (dugoutPhoto) dugoutPhoto.src = photoUrl;
+    const hqPhoto = document.getElementById("hqManagerPhotoImg");
+    if (hqPhoto) hqPhoto.src = photoUrl;
+  }
+  if (crestConfig && typeof CrestStudio !== "undefined") {
+    CrestStudio.loadSavedConfig(crestConfig);
+  }
+}
+
+function initRememberedPlayer() {
+  try {
+    const savedRaw = localStorage.getItem(STORAGE_KEY_SAVED_MANAGER);
+    const resumeCard = document.getElementById("savedPlayerResumeCard");
+    const manualFields = document.getElementById("manualJoinFormFields");
+    const rememberToggle = document.getElementById("rememberPlayerToggle");
+    const modalRememberToggle = document.getElementById("modalRememberToggle");
+    const modalAutoSaveToggle = document.getElementById("modalAutoSaveToggle");
+
+    if (rememberToggle) rememberToggle.checked = rememberPlayerEnabled;
+    if (modalRememberToggle) modalRememberToggle.checked = rememberPlayerEnabled;
+    if (modalAutoSaveToggle) modalAutoSaveToggle.checked = autoSaveEnabled;
+
+    if (!savedRaw) {
+      if (resumeCard) resumeCard.style.display = "none";
+      if (manualFields) manualFields.style.display = "block";
+      return;
+    }
+
+    const saved = JSON.parse(savedRaw);
+    if (!saved || !saved.teamName) return;
+
+    // Populate Resume Card in Join Box
+    if (resumeCard) {
+      resumeCard.style.display = "block";
+      const resumeTeam = document.getElementById("resumeTeamName");
+      const resumeMgr = document.getElementById("resumeManagerName");
+      const resumeBtn = document.getElementById("resumeBtnLabel");
+      const resumeTime = document.getElementById("resumeLastSavedText");
+      const resumeStats = document.getElementById("resumeStatsText");
+      const resumeCrest = document.getElementById("resumeCrestPreview");
+
+      if (resumeTeam) resumeTeam.innerText = saved.teamName;
+      if (resumeMgr) resumeMgr.innerText = saved.managerName || "Athul V V";
+      if (resumeBtn) resumeBtn.innerText = "RESUME AS " + saved.teamName.toUpperCase();
+      if (resumeStats) {
+        const squadCount = Array.isArray(saved.players) ? saved.players.length : (saved.squadCount || 0);
+        const budget = saved.budget !== undefined ? saved.budget : 500;
+        resumeStats.innerText = `Squad: ${squadCount} players • Treasury: ₹${budget}M`;
+      }
+      if (resumeTime && saved.lastSaved) {
+        const date = new Date(saved.lastSaved);
+        resumeTime.innerText = "Last saved: " + date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " (" + date.toLocaleDateString() + ")";
+      }
+      if (resumeCrest && saved.crestConfig && typeof CrestStudio !== "undefined") {
+        resumeCrest.innerHTML = CrestStudio.generateCrestSvg(saved.crestConfig, 44);
+      }
+    }
+
+    // Pre-populate input fields
+    const teamInput = document.getElementById("teamName");
+    if (teamInput && !teamInput.value) teamInput.value = saved.teamName;
+    const mgrInput = document.getElementById("managerNameInput");
+    if (mgrInput && saved.managerName) mgrInput.value = saved.managerName;
+
+    // Check if auto-login is active
+    if (rememberPlayerEnabled && saved.teamName) {
+      // Auto-reconnect & resume session
+      myTeam = saved.teamName;
+      updateClubProfileUI(saved.teamName, saved.managerName, saved.managerPhoto, saved.crestConfig, saved.crestSvg);
+
+      const crestSvg = saved.crestSvg || (saved.crestConfig && typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(saved.crestConfig, 48) : null);
+
+      socket.emit("joinTeam", {
+        teamName: saved.teamName,
+        managerName: saved.managerName || "Athul V V",
+        customLogo: crestSvg,
+        crestSvg: crestSvg,
+        crestConfig: saved.crestConfig,
+        managerPhoto: saved.managerPhoto || currentManagerPhoto,
+        savedProgress: saved
+      });
+
+      showSaveToast(`👋 Welcome back, Manager ${saved.managerName || "Athul V V"}! Resumed ${saved.teamName}.`, "👑");
+    } else {
+      // Hide manual fields initially to emphasize resume card
+      if (manualFields) manualFields.style.display = "none";
+    }
+
+    // Check Cloud Firestore for any newer cloud save
+    setTimeout(() => {
+      if (window.FirebaseCloud && typeof window.FirebaseCloud.loadClub === "function" && saved.teamName) {
+        window.FirebaseCloud.loadClub(saved.teamName).then(cloudData => {
+          if (cloudData && cloudData.lastSaved && (!saved.lastSaved || new Date(cloudData.lastSaved) > new Date(saved.lastSaved))) {
+            localStorage.setItem(STORAGE_KEY_SAVED_MANAGER, JSON.stringify(cloudData));
+            showSaveToast(`☁️ Cloud Synced: Updated ${saved.teamName} from Firestore!`, "🔄");
+          }
+        }).catch(e => console.warn("Cloud check warning:", e));
+      }
+    }, 1500);
+  } catch (err) {
+    console.error("Failed to init remembered player:", err);
+  }
+}
+
+function resumeRememberedPlayer() {
+  try {
+    const savedRaw = localStorage.getItem(STORAGE_KEY_SAVED_MANAGER);
+    if (!savedRaw) {
+      joinTeam();
+      return;
+    }
+    const saved = JSON.parse(savedRaw);
+    if (!saved || !saved.teamName) {
+      joinTeam();
+      return;
+    }
+
+    const teamInput = document.getElementById("teamName");
+    if (teamInput) teamInput.value = saved.teamName;
+    const mgrInput = document.getElementById("managerNameInput");
+    if (mgrInput) mgrInput.value = saved.managerName || "Athul V V";
+
+    if (saved.crestConfig && typeof CrestStudio !== "undefined") {
+      CrestStudio.loadSavedConfig(saved.crestConfig);
+    }
+
+    joinTeam();
+  } catch (e) {
+    joinTeam();
+  }
+}
+
+function toggleManualJoinForm() {
+  const fields = document.getElementById("manualJoinFormFields");
+  const label = document.getElementById("toggleJoinFormLabel");
+  if (!fields) return;
+  isManualJoinVisible = !isManualJoinVisible;
+  fields.style.display = isManualJoinVisible ? "block" : "none";
+  if (label) label.innerText = isManualJoinVisible ? "Hide Form" : "Switch Club";
+}
+
+function saveCurrentPlayerProgress(manual = false) {
+  const teamName = myTeam || (document.getElementById("teamName")?.value || "").trim();
+  if (!teamName) {
+    if (manual) showError("Please join or specify a club name first.");
+    return;
+  }
+
+  const saveBtn = document.getElementById("consoleSaveBtn");
+  const saveBtnText = document.getElementById("saveBtnText");
+  const saveBtnIcon = document.getElementById("saveBtnIcon");
+
+  if (saveBtn) {
+    saveBtn.classList.add("saving");
+    if (saveBtnText) saveBtnText.innerText = "SAVING...";
+    if (saveBtnIcon) saveBtnIcon.innerText = "⏳";
+  }
+
+  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
+  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+
+  const teamData = gameState?.teams?.[teamName] || {};
+  const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
+  const currentPlayers = Array.isArray(teamData.players) ? teamData.players : [];
+
+  const progressPayload = {
+    teamName: teamName,
+    managerName: currentManagerName || "Athul V V",
+    managerPhoto: currentManagerPhoto || "/manager_photo.jpg",
+    crestConfig: crestConfig,
+    crestSvg: crestSvg,
+    budget: currentBudget,
+    players: currentPlayers,
+    squadCount: currentPlayers.length,
+    season: gameState?.season || 1,
+    division: "Division 3",
+    lastSaved: new Date().toISOString()
+  };
+
+  localStorage.setItem(STORAGE_KEY_SAVED_MANAGER, JSON.stringify(progressPayload));
+  lastSavedTimestamp = progressPayload.lastSaved;
+
+  // Emit to server for disk persistence
+  socket.emit("saveTeamProgress", progressPayload, (ack) => {
+    // Ack received
+  });
+
+  // Sync with Cloud Firestore if available
+  if (window.FirebaseCloud && typeof window.FirebaseCloud.saveClub === "function") {
+    window.FirebaseCloud.saveClub(progressPayload).then(res => {
+      if (res && res.success) {
+        const syncStatus = document.getElementById("modalSyncStatus");
+        if (syncStatus) {
+          syncStatus.innerHTML = `<span style="color:#10b981;">☁️ Cloud Synced (${new Date().toLocaleTimeString()})</span> • advance-ocean-fq6d2`;
+        }
+      }
+    }).catch(e => console.warn("Firestore auto-save warning:", e));
+  }
+
+  setTimeout(() => {
+    if (saveBtn) {
+      saveBtn.classList.remove("saving");
+      saveBtn.classList.add("saved");
+      if (saveBtnText) saveBtnText.innerText = "SAVED!";
+      if (saveBtnIcon) saveBtnIcon.innerText = "✅";
+
+      setTimeout(() => {
+        saveBtn.classList.remove("saved");
+        if (saveBtnText) saveBtnText.innerText = "SAVE";
+        if (saveBtnIcon) saveBtnIcon.innerText = "💾";
+      }, 2000);
+    }
+  }, 400);
+
+  const modalLastSaved = document.getElementById("modalLastSavedTime");
+  if (modalLastSaved) modalLastSaved.innerText = "Just now (" + new Date().toLocaleTimeString() + ")";
+
+  if (manual) {
+    showSaveToast(`💾 Progress Saved • ${teamName} squad (${currentPlayers.length}) & ₹${currentBudget}M safe!`, "✅");
+  }
+}
+
+function manualSaveProgress() {
+  saveCurrentPlayerProgress(true);
+}
+
+async function syncWithCloudFirestore() {
+  const activeName = myTeam || (document.getElementById("teamName")?.value || "").trim();
+  if (!activeName) {
+    showError("Please enter or select a club name to sync with cloud.");
+    return;
+  }
+
+  showSaveToast("☁️ Syncing with Cloud Firestore...", "⏳");
+
+  if (!window.FirebaseCloud || typeof window.FirebaseCloud.saveClub !== "function") {
+    saveCurrentPlayerProgress(true);
+    return;
+  }
+
+  const teamData = gameState?.teams?.[activeName] || {};
+  const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
+  const currentPlayers = Array.isArray(teamData.players) ? teamData.players : [];
+  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
+  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+
+  const payload = {
+    teamName: activeName,
+    managerName: currentManagerName || "Athul V V",
+    managerPhoto: currentManagerPhoto || "/manager_photo.jpg",
+    crestConfig: crestConfig,
+    crestSvg: crestSvg,
+    budget: currentBudget,
+    players: currentPlayers,
+    squadCount: currentPlayers.length,
+    season: gameState?.season || 1,
+    division: "Division 3",
+    lastSaved: new Date().toISOString()
+  };
+
+  try {
+    const res = await window.FirebaseCloud.saveClub(payload);
+    if (res && res.success) {
+      showSaveToast(`☁️ Cloud Synced! ${activeName} is permanently stored in Firestore.`, "✅");
+      const syncStatus = document.getElementById("modalSyncStatus");
+      if (syncStatus) {
+        syncStatus.innerHTML = `<span style="color:#10b981;">☁️ Cloud Synced (${new Date().toLocaleTimeString()})</span> • advance-ocean-fq6d2`;
+      }
+    } else {
+      showSaveToast("Local & disk saved. Cloud sync pending.", "💾");
+    }
+  } catch (err) {
+    console.error("Cloud sync error:", err);
+    showSaveToast("Progress saved to local & server storage.", "💾");
+  }
+}
+
+function openSaveProfileModal() {
+  const modal = document.getElementById("saveProfileModal");
+  if (!modal) return;
+
+  const activeName = myTeam || (document.getElementById("teamName")?.value || "Athul FC").trim();
+  const teamData = gameState?.teams?.[activeName] || {};
+  const budget = teamData.budget !== undefined ? teamData.budget : 500;
+  const squad = Array.isArray(teamData.players) ? teamData.players.length : 0;
+
+  const nameEl = document.getElementById("modalTeamNameDisplay");
+  if (nameEl) nameEl.innerText = activeName;
+  const mgrEl = document.getElementById("modalManagerNameDisplay");
+  if (mgrEl) mgrEl.innerText = currentManagerName || "Athul V V";
+
+  const budgetEl = document.getElementById("modalStatBudget");
+  if (budgetEl) budgetEl.innerText = "₹ " + budget + "M";
+  const squadEl = document.getElementById("modalStatSquad");
+  if (squadEl) squadEl.innerText = squad;
+
+  const crestSlot = document.getElementById("modalCrestSlot");
+  if (crestSlot && typeof CrestStudio !== "undefined") {
+    const cfg = CrestStudio.getCurrentConfig();
+    crestSlot.innerHTML = CrestStudio.generateCrestSvg(cfg, 48);
+  }
+
+  const remToggle = document.getElementById("modalRememberToggle");
+  if (remToggle) remToggle.checked = rememberPlayerEnabled;
+  const autoToggle = document.getElementById("modalAutoSaveToggle");
+  if (autoToggle) autoToggle.checked = autoSaveEnabled;
+
+  const lastSavedEl = document.getElementById("modalLastSavedTime");
+  if (lastSavedEl) {
+    if (lastSavedTimestamp) {
+      lastSavedEl.innerText = new Date(lastSavedTimestamp).toLocaleTimeString();
+    } else {
+      lastSavedEl.innerText = "Ready to save";
+    }
+  }
+
+  modal.style.display = "flex";
+}
+
+function closeSaveProfileModal() {
+  const modal = document.getElementById("saveProfileModal");
+  if (modal) modal.style.display = "none";
+}
+
+function logoutPlayer() {
+  const activeName = myTeam || "club";
+  if (!confirm(`Are you sure you want to sign out of ${activeName}? Your progress remains safely saved on this device.`)) {
+    return;
+  }
+
+  // Disable auto-login so user lands on join screen next time
+  rememberPlayerEnabled = false;
+  localStorage.setItem(STORAGE_KEY_REMEMBER, "0");
+
+  setAppMyTeam(null);
+  const badgeEl = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
+  if (badgeEl) badgeEl.innerText = "Not Joined";
+  const joinBox = document.getElementById("mainJoinBox");
+  if (joinBox) joinBox.style.display = "block";
+  const manualFields = document.getElementById("manualJoinFormFields");
+  if (manualFields) manualFields.style.display = "block";
+  const resumeCard = document.getElementById("savedPlayerResumeCard");
+  if (resumeCard) resumeCard.style.display = "block";
+
+  closeSaveProfileModal();
+  showSaveToast(`🚪 Signed out of ${activeName}. You can resume or switch clubs.`, "👋");
+}
+
+function exportSaveFile() {
+  const activeName = myTeam || (document.getElementById("teamName")?.value || "Athul_FC").trim();
+  const savedRaw = localStorage.getItem(STORAGE_KEY_SAVED_MANAGER);
+  let payload = null;
+  try {
+    if (savedRaw) payload = JSON.parse(savedRaw);
+  } catch (e) {}
+
+  if (!payload) {
+    saveCurrentPlayerProgress(false);
+    payload = JSON.parse(localStorage.getItem(STORAGE_KEY_SAVED_MANAGER));
+  }
+
+  const jsonStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+  const downloadAnchor = document.createElement("a");
+  downloadAnchor.setAttribute("href", jsonStr);
+  downloadAnchor.setAttribute("download", `${activeName.replace(/\s+/g, "_")}_SaveBackup.json`);
+  document.body.appendChild(downloadAnchor);
+  downloadAnchor.click();
+  downloadAnchor.remove();
+
+  showSaveToast("📥 Save backup downloaded successfully!", "💾");
+}
+
+function triggerImportSaveFile() {
+  const input = document.getElementById("importSaveFileInput");
+  if (input) input.click();
+}
+
+function handleImportSaveFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function (e) {
+    try {
+      const data = JSON.parse(e.target.result);
+      if (!data || !data.teamName) {
+        showError("Invalid save file format.");
+        return;
+      }
+
+      localStorage.setItem(STORAGE_KEY_SAVED_MANAGER, JSON.stringify(data));
+      rememberPlayerEnabled = true;
+      localStorage.setItem(STORAGE_KEY_REMEMBER, "1");
+
+      myTeam = data.teamName;
+      updateClubProfileUI(data.teamName, data.managerName, data.managerPhoto, data.crestConfig, data.crestSvg);
+
+      socket.emit("joinTeam", {
+        teamName: data.teamName,
+        managerName: data.managerName || "Athul V V",
+        customLogo: data.crestSvg,
+        crestSvg: data.crestSvg,
+        crestConfig: data.crestConfig,
+        managerPhoto: data.managerPhoto || currentManagerPhoto,
+        savedProgress: data
+      });
+
+      closeSaveProfileModal();
+      showSaveToast(`📤 Successfully restored progress for ${data.teamName}!`, "🎉");
+    } catch (err) {
+      showError("Failed to parse save file: " + err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function confirmResetProgress() {
+  const activeName = myTeam || "Club";
+  if (!confirm(`⚠️ Are you sure you want to reset progress for ${activeName}? This will clear your squad roster and reset treasury to ₹500M.`)) {
+    return;
+  }
+
+  socket.emit("resetTeamProgress", { teamName: activeName });
+  localStorage.removeItem(STORAGE_KEY_SAVED_MANAGER);
+  closeSaveProfileModal();
+  showSaveToast(`Club progress reset to Season 1 standard.`, "⚠️");
+}
+
+function openManagerPhotoModal() {
+  const modal = document.getElementById("managerPhotoModal");
+  if (!modal) return;
+  renderManagerPortraitGrid();
+  modal.style.display = "flex";
+}
+
+function closeManagerPhotoModal() {
+  const modal = document.getElementById("managerPhotoModal");
+  if (modal) modal.style.display = "none";
+}
+
+function renderManagerPortraitGrid() {
+  const grid = document.getElementById("managerPortraitGrid");
+  if (!grid) return;
+  grid.innerHTML = MANAGER_PRESET_PORTRAITS.map(p => `
+    <div class="manager-portrait-card ${currentManagerPhoto === p.photo ? 'active' : ''}" onclick="selectManagerPhoto('${p.photo}', '${p.name}')">
+      <img src="${p.photo}" alt="${p.name}" class="manager-portrait-thumb" referrerpolicy="no-referrer" onerror="this.src='/manager.png'">
+      <div class="manager-portrait-label">${p.name}</div>
+      <div class="manager-portrait-style">${p.style}</div>
+    </div>
+  `).join("");
+}
+
+function selectManagerPhoto(photoUrl, managerName = "") {
+  currentManagerPhoto = photoUrl;
+  const dugoutPhoto = document.getElementById("dugoutManagerPhoto");
+  if (dugoutPhoto) dugoutPhoto.src = photoUrl;
+  const hqPhoto = document.getElementById("hqManagerPhotoImg");
+  if (hqPhoto) hqPhoto.src = photoUrl;
+  if (managerName) {
+    currentManagerName = managerName;
+    const topMgr = document.getElementById("topManagerName");
+    if (topMgr) topMgr.innerHTML = managerName + ' <span style="color:#f59e0b;">👑</span>';
+    const dugoutName = document.getElementById("dugoutManagerName");
+    if (dugoutName) dugoutName.innerText = managerName;
+  }
+
+  if (myTeam) {
+    socket.emit("updateManagerPhoto", { teamName: myTeam, managerPhoto: photoUrl });
+    if (autoSaveEnabled) saveCurrentPlayerProgress(false);
+  }
+
+  closeManagerPhotoModal();
+}
+
+function applyCustomManagerPhotoUrl() {
+  const input = document.getElementById("customManagerPhotoUrl");
+  const url = input ? input.value.trim() : "";
+  if (!url) {
+    showError("Please enter a valid image URL.");
+    return;
+  }
+  selectManagerPhoto(url, "Custom Tactician");
+}
+
+function onTeamNameInput(val) {
+  if (typeof CrestStudio !== "undefined") {
+    const clean = (val || "").trim();
+    const initials = clean ? clean.split(/\s+/).map(w => w[0]).join("").substring(0, 3).toUpperCase() : "FC";
+    const monogramInput = document.getElementById("crestMonogramInput");
+    if (monogramInput) monogramInput.value = initials;
+    CrestStudio.updateField("monogram", initials);
+  }
+}
 
 /* =====================================================
    ERROR
@@ -4260,7 +6307,7 @@ function joinTeam() {
     document.getElementById("teamName");
 
   const name =
-    input.value.trim();
+    input ? input.value.trim() : "";
 
   if (!name) {
 
@@ -4273,16 +6320,54 @@ function joinTeam() {
 
   myTeam = name;
 
+  const mgrInput = document.getElementById("managerNameInput");
+  if (mgrInput && mgrInput.value.trim()) {
+    currentManagerName = mgrInput.value.trim();
+  }
+
+  const rememberToggle = document.getElementById("rememberPlayerToggle");
+  if (rememberToggle) {
+    rememberPlayerEnabled = rememberToggle.checked;
+    localStorage.setItem(STORAGE_KEY_REMEMBER, rememberPlayerEnabled ? "1" : "0");
+  }
+
+  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
+  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+
+  let savedProgress = null;
+  try {
+    const savedRaw = localStorage.getItem(STORAGE_KEY_SAVED_MANAGER);
+    if (savedRaw) {
+      const parsed = JSON.parse(savedRaw);
+      if (parsed && parsed.teamName === name) {
+        savedProgress = parsed;
+      }
+    }
+  } catch (e) {}
+
   socket.emit(
     "joinTeam",
     {
-      teamName: name
+      teamName: name,
+      managerName: currentManagerName,
+      customLogo: crestSvg,
+      crestSvg: crestSvg,
+      crestConfig: crestConfig,
+      managerPhoto: currentManagerPhoto,
+      rememberMe: rememberPlayerEnabled,
+      savedProgress: savedProgress
     }
   );
 
-  document.getElementById(
-    "myTeam"
-  ).innerText = name;
+  setAppMyTeam(name);
+  const badgeEl1 = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
+  if (badgeEl1) badgeEl1.innerText = name;
+
+  updateClubProfileUI(name, currentManagerName, currentManagerPhoto, crestConfig, crestSvg);
+
+  if (rememberPlayerEnabled) {
+    saveCurrentPlayerProgress(false);
+  }
 }
 
 /* =====================================================
@@ -4293,13 +6378,12 @@ socket.on(
   "teamJoined",
   data => {
 
-    myTeam =
-      data.teamName;
+    setAppMyTeam(data.teamName);
 
-    document.getElementById(
-      "myTeam"
-    ).innerText =
-      myTeam;
+    const badgeEl2 = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
+    if (badgeEl2) badgeEl2.innerText = data.teamName;
+
+    updateClubProfileUI(myTeam, currentManagerName, currentManagerPhoto);
 
     if (data.host) {
 
@@ -4311,12 +6395,24 @@ socket.on(
 
     }
 
+    if (rememberPlayerEnabled) {
+      saveCurrentPlayerProgress(false);
+    }
+
     socket.emit(
       "requestState"
     );
 
   }
 );
+
+socket.on("teamProgressSaved", data => {
+  if (data && data.savedAt) {
+    lastSavedTimestamp = data.savedAt;
+    const modalLastSaved = document.getElementById("modalLastSavedTime");
+    if (modalLastSaved) modalLastSaved.innerText = "Server Synced (" + new Date(data.savedAt).toLocaleTimeString() + ")";
+  }
+});
 
 /* =====================================================
    START AUCTION
@@ -4651,6 +6747,12 @@ socket.on(
       `🔨 SOLD! ${data.player.name} → ${data.team} for ₹${data.price}M`,
       "🔨 AUCTION HAMMER"
     );
+    if (data.team === myTeam && autoSaveEnabled) {
+      setTimeout(() => {
+        saveCurrentPlayerProgress(false);
+        showSaveToast(`Player Acquired: ${data.player.name} • Progress Auto-Saved!`, "⚽");
+      }, 500);
+    }
   }
 );
 
@@ -5630,6 +7732,54 @@ function renderLeague() {
   renderClubHq();
 }
 
+function renderTeamBadgeHtml(teamName, defaultEmoji = "⚽", size = 22) {
+  if (!teamName) return `<span>${defaultEmoji}</span>`;
+
+  // 1. Check if user team in room.teams has customLogo or crestSvg
+  const roomTeam = gameState?.teams?.[teamName];
+  let customLogo = roomTeam?.customLogo || roomTeam?.crestSvg;
+
+  // 2. Check if standings have customLogo
+  if (!customLogo && leagueData?.divisions) {
+    for (const divId of [1, 2, 3]) {
+      const standing = leagueData.divisions[divId]?.standings?.find(s => s.name && s.name.toLowerCase() === teamName.toLowerCase());
+      if (standing?.customLogo) {
+        customLogo = standing.customLogo;
+        break;
+      }
+    }
+  }
+
+  // 3. If SVG string
+  if (customLogo && typeof customLogo === "string" && customLogo.trim().startsWith("<svg")) {
+    const resizedSvg = customLogo
+      .replace(/width="[^"]*"/, `width="${size}"`)
+      .replace(/height="[^"]*"/, `height="${size}"`);
+    return `<span class="club-crest-badge" style="display:inline-flex; width:${size}px; height:${size}px; align-items:center; justify-content:center; vertical-align:middle; filter:drop-shadow(0 1px 3px rgba(0,0,0,0.5));">${resizedSvg}</span>`;
+  }
+
+  // 4. If image URL or data URI
+  if (customLogo && typeof customLogo === "string" && (customLogo.startsWith("http") || customLogo.startsWith("data:") || customLogo.startsWith("/"))) {
+    return `<img src="${customLogo}" alt="${escapeHtml(teamName)}" style="width:${size}px; height:${size}px; border-radius:50%; object-fit:contain; vertical-align:middle;" referrerpolicy="no-referrer">`;
+  }
+
+  // 5. If this is a user-defined club without a custom SVG logo yet, generate a crisp vector crest from CrestStudio!
+  if (roomTeam && typeof CrestStudio !== "undefined") {
+    const generated = CrestStudio.generateCrestSvg({
+      shape: "shield",
+      pattern: "stripes",
+      primary: "#2563eb",
+      secondary: "#f59e0b",
+      accent: "#ffffff",
+      emblem: "lion",
+      monogram: teamName.substring(0, 2).toUpperCase()
+    }, size);
+    return `<span class="club-crest-badge" style="display:inline-flex; width:${size}px; height:${size}px; align-items:center; justify-content:center; vertical-align:middle;">${generated}</span>`;
+  }
+
+  return `<span>${defaultEmoji}</span>`;
+}
+
 function renderStandings() {
   const div = leagueData?.divisions?.[currentDivisionTab];
   if (!div) return;
@@ -5674,7 +7824,7 @@ function renderStandings() {
         <td style="font-weight: bold; text-align: center;">${pos}</td>
         <td>
           <div class="club-cell">
-            <span>${team.logo || "⚽"}</span>
+            ${renderTeamBadgeHtml(team.name, team.logo || "⚽", 22)}
             <span class="club-name">${team.name}</span>
             ${clubTag}
           </div>
@@ -5791,7 +7941,7 @@ function renderFixtures() {
         <div class="fixture-teams">
           <div class="fixture-team home">
             <div class="team-title">
-              <span>${homeClub?.logo || "⚽"}</span>
+              ${renderTeamBadgeHtml(fix.homeTeam, homeClub?.logo || "⚽", 20)}
               <span style="${isHomeUser ? 'color: #f1c40f; font-weight: bold;' : ''}">${fix.homeTeam}</span>
             </div>
             <div class="team-rate">⭐ ${homeClub?.rating || 78}</div>
@@ -5800,7 +7950,7 @@ function renderFixtures() {
           <div class="fixture-team away">
             <div class="team-title">
               <span style="${isAwayUser ? 'color: #f1c40f; font-weight: bold;' : ''}">${fix.awayTeam}</span>
-              <span>${awayClub?.logo || "⚽"}</span>
+              ${renderTeamBadgeHtml(fix.awayTeam, awayClub?.logo || "⚽", 20)}
             </div>
             <div class="team-rate">⭐ ${awayClub?.rating || 78}</div>
           </div>
@@ -6013,6 +8163,13 @@ function renderClubHq() {
     mgrPerk.innerHTML = `✨ <strong>Tactical Perk:</strong> ${escapeHtml(manager.perk.name)} <span style="opacity:0.85">(${escapeHtml(manager.perk.description)})</span>`;
   }
 
+  const photoEl = document.getElementById('hqManagerPhotoImg');
+  const userTeamData = gameState?.teams?.[targetClub];
+  const mgrPhotoSrc = manager.photo || userTeamData?.managerPhoto || currentManagerPhoto || "/manager_photo.jpg";
+  if (photoEl) {
+    photoEl.src = mgrPhotoSrc;
+  }
+
   const confidence = Math.round(manager.boardConfidence || 80);
   if (confText) {
     const statusColor = confidence >= 80 ? "#2ecc71" : confidence >= 65 ? "#f1c40f" : "#ef4444";
@@ -6061,7 +8218,9 @@ function renderClubHq() {
           <div class="candidate-card">
             <div>
               <div class="candidate-header">
-                <div class="candidate-avatar">👔</div>
+                <div class="candidate-avatar">
+                  <img src="${cand.photo || '/manager_photo.jpg'}" alt="${escapeHtml(cand.name)}" class="candidate-photo-img" referrerpolicy="no-referrer" onerror="this.src='/manager.png'">
+                </div>
                 <div>
                   <div class="candidate-name">${escapeHtml(cand.name)}</div>
                   <div class="candidate-rep">⭐ ${cand.reputation || 90} Rating • ${escapeHtml(cand.tacticalStyle || 'Tactician')}</div>
@@ -7633,23 +9792,46 @@ if (savedAudio !== null) {
    APP VIEW SWITCHER & WORKSPACE DOCK
 ===================================================== */
 
-let currentAppView = "league";
+let currentAppView = "home";
 
 function switchAppView(viewName) {
   currentAppView = viewName;
   document.querySelectorAll(".app-view-container").forEach(el => el.classList.remove("active"));
   document.querySelectorAll(".dock-item-btn").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".console-nav-tab").forEach(el => el.classList.remove("active"));
+  document.querySelectorAll(".console-dock-tile").forEach(el => el.classList.remove("active"));
 
+  // Highlight side navigation tab if matched
+  const sideTab = document.getElementById("sideBtn_" + viewName);
+  if (sideTab) sideTab.classList.add("active");
+
+  // Highlight bottom dock tile if matched
+  const dockTile = document.getElementById("consoleDock_" + viewName);
+  if (dockTile) dockTile.classList.add("active");
+
+  // Legacy dock buttons fallback
   const targetBtn = document.getElementById("dockBtn_" + viewName);
   if (targetBtn) targetBtn.classList.add("active");
 
-  if (viewName === "auction") {
+  if (viewName === "auction" || viewName === "squad" || viewName === "transfers") {
     document.querySelectorAll(".view-auction-part").forEach(el => el.classList.add("active"));
+    const mainAuction = document.getElementById("view_auction_main");
+    if (mainAuction) mainAuction.classList.add("active");
+  } else if (viewName === "finances" || viewName === "contracts" || viewName === "club" || viewName === "hq") {
+    const hqView = document.getElementById("view_hq");
+    if (hqView) hqView.classList.add("active");
+  } else if (viewName === "cup") {
+    const awardsView = document.getElementById("view_awards");
+    if (awardsView) awardsView.classList.add("active");
   } else {
     const targetView = document.getElementById("view_" + viewName);
     if (targetView) targetView.classList.add("active");
   }
 
+  if (viewName === "injuries" && typeof InjuryCenter !== "undefined") {
+    InjuryCenter.renderMedicalCentre();
+    InjuryCenter.updateAppHeaderInjuryBadge();
+  }
   if (viewName === "jerseys" && typeof JerseyStudio !== "undefined") {
     JerseyStudio.init(myTeam);
     JerseyStudio.renderJerseyStudio();
@@ -7660,7 +9842,87 @@ function switchAppView(viewName) {
   if (viewName === "awards") {
     loadAwardsData();
   }
+  if (viewName === "journey" && typeof PLS_MatchGame !== "undefined") {
+    PLS_MatchGame.initJourney();
+  }
 }
+
+// Stadium Music Player & Jukebox Helpers
+function toggleInterfaceMusic() {
+  if (window.MusicEngine) {
+    window.MusicEngine.toggle();
+    const isPlaying = window.MusicEngine.isPlaying();
+    const track = window.MusicEngine.getCurrentTrack();
+    if (typeof showSaveToast === "function") {
+      showSaveToast(isPlaying ? `🎵 Music ON: ${track.title}` : "🔇 Music Paused", "🎶");
+    }
+  }
+}
+
+function toggleMusicJukebox() {
+  const modal = document.getElementById("musicJukeboxModal");
+  if (!modal) return;
+  const isShown = modal.style.display === "flex";
+  modal.style.display = isShown ? "none" : "flex";
+}
+
+// PLS Playable Match Game Modal Open/Close
+function openPLSGameModal(stageIdx = 0) {
+  const modal = document.getElementById("plsGameModal");
+  if (modal) {
+    modal.style.display = "flex";
+    if (window.PLS_MatchGame) {
+      window.PLS_MatchGame.start(stageIdx);
+    }
+  }
+}
+
+function closePLSGameModal() {
+  const modal = document.getElementById("plsGameModal");
+  if (modal) {
+    modal.style.display = "none";
+    if (window.PLS_MatchGame) {
+      window.PLS_MatchGame.stop();
+    }
+  }
+}
+
+// Console Live Auction Interaction Handlers
+function bidFromConsole() {
+  const currentBidEl = document.getElementById("consoleAuctionBidVal");
+  let cur = 85;
+  if (currentBidEl) {
+    const m = currentBidEl.innerText.match(/\d+/);
+    if (m) cur = parseInt(m[0], 10);
+    const nextBid = cur + 5;
+    currentBidEl.innerText = "₹ " + nextBid + "M";
+    const bidBtnText = document.querySelector(".btn-auction-bid span:nth-child(2)");
+    if (bidBtnText) bidBtnText.innerHTML = "BID + ₹5M &nbsp;|&nbsp; ₹ " + (nextBid + 5) + "M";
+  }
+  if (typeof audioContext !== "undefined") playSound("bid");
+  if (typeof placeBid === "function") {
+    placeBid();
+  }
+}
+
+function skipFromConsole() {
+  if (typeof audioContext !== "undefined") playSound("whistle");
+  if (typeof skipPlayer === "function") {
+    skipPlayer();
+  } else {
+    switchAppView("auction");
+  }
+}
+
+// Console Live Countdown Timer loop
+let consoleTimerSecs = 14;
+setInterval(() => {
+  const timerEl = document.getElementById("consoleAuctionTimer");
+  if (!timerEl) return;
+  consoleTimerSecs--;
+  if (consoleTimerSecs < 0) consoleTimerSecs = 15;
+  timerEl.innerText = (consoleTimerSecs < 10 ? "00:0" : "00:") + consoleTimerSecs;
+}, 1000);
 
 function initInPageMatchCenter(customFixture = null) {
   const container = document.getElementById("inPageMatchCenterStage");
@@ -7987,11 +10249,22 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// Auto-initialize Jersey Studio and initial load
+// Auto-initialize Jersey Studio, Remembered Player, and periodic auto-save
 window.addEventListener("DOMContentLoaded", () => {
+  if (typeof initRememberedPlayer === "function") {
+    initRememberedPlayer();
+  }
+
   if (typeof JerseyStudio !== "undefined") {
     JerseyStudio.init(myTeam);
   }
+
+  // Periodic background auto-save every 90 seconds if logged in
+  setInterval(() => {
+    if (myTeam && autoSaveEnabled && typeof saveCurrentPlayerProgress === "function") {
+      saveCurrentPlayerProgress(false);
+    }
+  }, 90000);
 });
 
 </script>

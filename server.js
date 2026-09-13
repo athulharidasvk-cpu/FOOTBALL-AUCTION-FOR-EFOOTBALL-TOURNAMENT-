@@ -2,6 +2,9 @@ const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
 const path = require("path");
+const fs = require("fs");
+
+const SAVE_FILE_PATH = path.join(__dirname, "saved_game_progress.json");
 
 const app = express();
 const server = http.createServer(app);
@@ -96,7 +99,93 @@ function initGlobalRoom() {
   };
 }
 
+// -----------------------------------------------------
+// PERSISTENT PROGRESS SAVE & LOAD ENGINE
+// -----------------------------------------------------
+
+function saveGameProgressToFile() {
+  try {
+    const room = rooms[GLOBAL_ROOM];
+    if (!room) return;
+
+    const payload = {
+      version: "1.1.0",
+      savedAt: new Date().toISOString(),
+      season: currentSeason,
+      transferWindowOpen: transferWindowOpen,
+      host: room.host,
+      soldPlayers: Array.from(room.soldPlayers || []),
+      teams: {}
+    };
+
+    for (const [name, t] of Object.entries(room.teams || {})) {
+      payload.teams[name] = {
+        budget: Number(t.budget) || STARTING_BUDGET,
+        players: Array.isArray(t.players) ? t.players : [],
+        season: t.season || currentSeason,
+        transferOffers: Array.isArray(t.transferOffers) ? t.transferOffers : [],
+        customLogo: t.customLogo || null,
+        crestSvg: t.crestSvg || null,
+        crestConfig: t.crestConfig || null,
+        managerPhoto: t.managerPhoto || "/manager_photo.jpg",
+        managerName: t.managerName || "Athul V V",
+        lastSaved: new Date().toISOString()
+      };
+    }
+
+    fs.writeFileSync(SAVE_FILE_PATH, JSON.stringify(payload, null, 2), "utf8");
+  } catch (err) {
+    console.error("Failed to save progress to file:", err.message);
+  }
+}
+
+function loadGameProgressFromFile() {
+  try {
+    if (!fs.existsSync(SAVE_FILE_PATH)) return false;
+    const content = fs.readFileSync(SAVE_FILE_PATH, "utf8");
+    if (!content.trim()) return false;
+    const data = JSON.parse(content);
+    const room = rooms[GLOBAL_ROOM];
+    if (!room) return false;
+
+    if (Array.isArray(data.soldPlayers)) {
+      room.soldPlayers = new Set(data.soldPlayers);
+    }
+    if (data.season) {
+      currentSeason = Number(data.season) || 1;
+    }
+    if (typeof data.transferWindowOpen === "boolean") {
+      transferWindowOpen = data.transferWindowOpen;
+    }
+    if (data.host) {
+      room.host = data.host;
+    }
+    if (data.teams && typeof data.teams === "object") {
+      for (const [tName, tData] of Object.entries(data.teams)) {
+        room.teams[tName] = {
+          budget: Number(tData.budget) || STARTING_BUDGET,
+          players: Array.isArray(tData.players) ? tData.players : [],
+          socketId: null,
+          season: tData.season || currentSeason,
+          transferOffers: Array.isArray(tData.transferOffers) ? tData.transferOffers : [],
+          customLogo: tData.customLogo || null,
+          crestSvg: tData.crestSvg || null,
+          crestConfig: tData.crestConfig || null,
+          managerPhoto: tData.managerPhoto || "/manager_photo.jpg",
+          managerName: tData.managerName || "Athul V V"
+        };
+      }
+      console.log(`[SaveEngine] Restored ${Object.keys(room.teams).length} clubs and progress from disk.`);
+    }
+    return true;
+  } catch (err) {
+    console.error("Failed to load progress from file:", err.message);
+    return false;
+  }
+}
+
 initGlobalRoom();
+loadGameProgressFromFile();
 
 // =====================================================
 // STATIC FILES
@@ -439,6 +528,8 @@ function finishAuction(roomCode) {
 
         `🔨 SOLD! ${room.currentPlayer.name} joins ${room.currentBidder} for ₹${price}M! Contract: ${CONTRACT_YEARS} seasons, salary ₹${contractPlayer.contract.salary}M/year, release clause ₹${contractPlayer.contract.releaseClause}M.`
       );
+
+      saveGameProgressToFile();
     } else {
       io.to(roomCode).emit(
         "playerUnsold",
@@ -534,8 +625,28 @@ io.on("connection", socket => {
     // -------------------------------------------------
 
     if (room.teams[teamName]) {
-      room.teams[teamName].socketId =
-        socket.id;
+      room.teams[teamName].socketId = socket.id;
+      if (data?.customLogo) room.teams[teamName].customLogo = data.customLogo;
+      if (data?.crestSvg) room.teams[teamName].crestSvg = data.crestSvg;
+      if (data?.crestConfig) room.teams[teamName].crestConfig = data.crestConfig;
+      if (data?.managerPhoto) room.teams[teamName].managerPhoto = data.managerPhoto;
+      if (data?.managerName) room.teams[teamName].managerName = data.managerName;
+
+      // If existing team has empty squad but client provided saved squad progress, restore it
+      if (
+        (!room.teams[teamName].players || room.teams[teamName].players.length === 0) &&
+        data?.savedProgress?.players &&
+        Array.isArray(data.savedProgress.players) &&
+        data.savedProgress.players.length > 0
+      ) {
+        room.teams[teamName].players = data.savedProgress.players;
+        if (data.savedProgress.budget !== undefined) {
+          room.teams[teamName].budget = Number(data.savedProgress.budget) || room.teams[teamName].budget;
+        }
+        data.savedProgress.players.forEach(p => {
+          if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
+        });
+      }
     }
 
     // -------------------------------------------------
@@ -555,21 +666,41 @@ io.on("connection", socket => {
         return;
       }
 
+      // Check if client provided saved progress for this team
+      let initialBudget = STARTING_BUDGET;
+      let initialPlayers = [];
+      if (data?.savedProgress) {
+        if (data.savedProgress.budget !== undefined) {
+          initialBudget = Number(data.savedProgress.budget) || STARTING_BUDGET;
+        }
+        if (Array.isArray(data.savedProgress.players)) {
+          initialPlayers = data.savedProgress.players;
+          initialPlayers.forEach(p => {
+            if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
+          });
+        }
+      }
+
       room.teams[teamName] = {
-        budget:
-          STARTING_BUDGET,
+        budget: initialBudget,
 
-        players: [],
+        players: initialPlayers,
 
-        socketId:
-          socket.id,
+        socketId: socket.id,
 
-        season:
-          currentSeason,
+        season: currentSeason,
 
-        transferOffers: []
+        transferOffers: [],
+
+        customLogo: data?.customLogo || null,
+        crestSvg: data?.crestSvg || null,
+        crestConfig: data?.crestConfig || null,
+        managerPhoto: data?.managerPhoto || "/manager_photo.jpg",
+        managerName: data?.managerName || "Athul V V"
       };
     }
+
+    saveGameProgressToFile();
 
     // -------------------------------------------------
     // FIRST PLAYER BECOMES HOST
@@ -2464,6 +2595,85 @@ io.on("connection", socket => {
   });
 
   // ===================================================
+  // CUSTOM TEAM CREST & LOGO IDENTITY
+  // ===================================================
+
+  socket.on("updateTeamLogo", (data) => {
+    const room = getRoom(socket);
+    if (!room) return;
+    const teamName = (data && data.teamName) || socket.teamName;
+    if (!teamName || !room.teams[teamName]) return;
+
+    if (data.customLogo) room.teams[teamName].customLogo = data.customLogo;
+    if (data.crestSvg) room.teams[teamName].crestSvg = data.crestSvg;
+    if (data.crestConfig) room.teams[teamName].crestConfig = data.crestConfig;
+
+    league.syncUserClubs(room.teams);
+    broadcastState(GLOBAL_ROOM);
+    broadcastLeagueState(GLOBAL_ROOM);
+    socket.emit("teamLogoUpdated", { teamName, customLogo: data.customLogo, crestSvg: data.crestSvg });
+    managerMessage(GLOBAL_ROOM, `🎨 ${teamName} unveiled their new official club crest and visual identity!`);
+  });
+
+  // ===================================================
+  // CUSTOM MANAGER PORTRAIT PHOTO
+  // ===================================================
+
+  socket.on("updateManagerPhoto", (data) => {
+    const room = getRoom(socket);
+    if (!room) return;
+    const teamName = (data && data.teamName) || socket.teamName;
+    if (!teamName || !room.teams[teamName]) return;
+
+    if (data.managerPhoto) {
+      room.teams[teamName].managerPhoto = data.managerPhoto;
+      if (league.managers[teamName]) {
+        league.managers[teamName].photo = data.managerPhoto;
+      }
+    }
+
+    broadcastState(GLOBAL_ROOM);
+    broadcastLeagueState(GLOBAL_ROOM);
+    socket.emit("managerPhotoUpdated", { teamName, managerPhoto: data.managerPhoto });
+    managerMessage(GLOBAL_ROOM, `📸 ${teamName} updated their head coach official touchline portrait!`);
+  });
+
+  // ===================================================
+  // PLAYER INJURY REHABILITATION & MEDICAL WARD
+  // ===================================================
+
+  socket.on("acceleratePlayerRehab", (data) => {
+    const room = getRoom(socket);
+    if (!room) return;
+    const teamName = (data && data.teamName) || socket.teamName;
+    const injuryId = data && data.injuryId;
+    if (!teamName || !injuryId) return;
+
+    const res = league.accelerateRehab(teamName, injuryId, room.teams);
+    if (res.error) {
+      socket.emit("errorMessage", res.error);
+      return;
+    }
+
+    broadcastState(GLOBAL_ROOM);
+    broadcastLeagueState(GLOBAL_ROOM);
+    socket.emit("rehabAcceleratedSuccess", res);
+    managerMessage(GLOBAL_ROOM, `🏥 ${teamName} invested ₹2.5M in cryogenic rehabilitation for ${res.injury.playerName}!`);
+  });
+
+  socket.on("runLateFitnessTest", (data) => {
+    const room = getRoom(socket);
+    if (!room) return;
+    const teamName = (data && data.teamName) || socket.teamName;
+    const injuryId = data && data.injuryId;
+    if (!teamName || !injuryId) return;
+
+    const res = league.runLateFitnessTest(teamName, injuryId);
+    broadcastLeagueState(GLOBAL_ROOM);
+    socket.emit("fitnessTestResult", res);
+  });
+
+  // ===================================================
   // PLAYER SCOUTING NETWORK
   // ===================================================
 
@@ -2508,6 +2718,7 @@ io.on("connection", socket => {
       return;
     }
     broadcastLeagueState(GLOBAL_ROOM);
+    saveGameProgressToFile();
     socket.emit("jerseySavedSuccess", res);
     socket.emit("userMessage", `🎨 ${teamName} kit updated! Aesthetic Rating: ${res.jersey.aestheticScore}/10 (${res.jersey.tier}) - Sales Multiplier: ${res.jersey.salesMultiplier}x!`);
   });
@@ -2533,6 +2744,119 @@ io.on("connection", socket => {
     const ceremony = league.getTrophyCeremonyData(room?.teams || {});
     socket.emit("trophyCeremonyData", ceremony);
   });
+
+  // ===================================================
+  // PLAYER PROGRESS SAVING & RESTORATION
+  // ===================================================
+
+  socket.on("saveTeamProgress", (data, callback) => {
+    const room = getRoom(socket);
+    const teamName = (data && data.teamName) || socket.teamName;
+
+    if (!room || !teamName || !room.teams[teamName]) {
+      const err = { success: false, error: "Team not found or not connected." };
+      socket.emit("teamProgressSaved", err);
+      if (typeof callback === "function") callback(err);
+      return;
+    }
+
+    const team = room.teams[teamName];
+
+    if (data?.managerName) team.managerName = String(data.managerName).trim();
+    if (data?.managerPhoto) team.managerPhoto = data.managerPhoto;
+    if (data?.crestConfig) team.crestConfig = data.crestConfig;
+    if (data?.crestSvg) team.crestSvg = data.crestSvg;
+    if (data?.customLogo) team.customLogo = data.customLogo;
+    if (data?.budget !== undefined) team.budget = Number(data.budget) || team.budget;
+    if (Array.isArray(data?.players) && data.players.length > 0) {
+      team.players = data.players;
+      data.players.forEach(p => {
+        if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
+      });
+    }
+
+    saveGameProgressToFile();
+
+    const result = {
+      success: true,
+      teamName,
+      managerName: team.managerName || "Athul V V",
+      budget: team.budget,
+      squadCount: team.players.length,
+      savedAt: new Date().toISOString()
+    };
+
+    socket.emit("teamProgressSaved", result);
+    if (typeof callback === "function") callback(result);
+  });
+
+  socket.on("getSavedTeamProgress", (data, callback) => {
+    const room = getRoom(socket);
+    const teamName = (data && data.teamName) || socket.teamName;
+
+    if (!room || !teamName || !room.teams[teamName]) {
+      const err = { success: false, error: "No saved team progress found." };
+      socket.emit("savedTeamProgressData", err);
+      if (typeof callback === "function") callback(err);
+      return;
+    }
+
+    const team = room.teams[teamName];
+    const payload = {
+      success: true,
+      teamName,
+      managerName: team.managerName || "Athul V V",
+      managerPhoto: team.managerPhoto || "/manager_photo.jpg",
+      crestConfig: team.crestConfig,
+      crestSvg: team.crestSvg,
+      budget: team.budget,
+      players: team.players,
+      season: team.season || currentSeason
+    };
+
+    socket.emit("savedTeamProgressData", payload);
+    if (typeof callback === "function") callback(payload);
+  });
+
+  socket.on("resetTeamProgress", (data, callback) => {
+    const room = getRoom(socket);
+    const teamName = (data && data.teamName) || socket.teamName;
+
+    if (room && teamName && room.teams[teamName]) {
+      const team = room.teams[teamName];
+      // Free players from sold set
+      if (Array.isArray(team.players)) {
+        team.players.forEach(p => {
+          if (p && p.name) room.soldPlayers.delete(normalizeName(p.name));
+        });
+      }
+      team.budget = STARTING_BUDGET;
+      team.players = [];
+      saveGameProgressToFile();
+      broadcastState(GLOBAL_ROOM);
+    }
+
+    const res = { success: true, teamName };
+    socket.emit("teamProgressReset", res);
+    if (typeof callback === "function") callback(res);
+  });
+});
+
+// =====================================================
+// API - FIREBASE CONFIG
+// =====================================================
+
+app.get("/api/firebase-config", (req, res) => {
+  try {
+    const configPath = path.join(__dirname, "firebase-applet-config.json");
+    if (fs.existsSync(configPath)) {
+      const raw = fs.readFileSync(configPath, "utf8");
+      return res.json(JSON.parse(raw));
+    }
+  } catch (err) {
+    console.error("Failed to read firebase config:", err);
+  }
+  res.status(404).json({ error: "Firebase config not found" });
 });
 
 // =====================================================

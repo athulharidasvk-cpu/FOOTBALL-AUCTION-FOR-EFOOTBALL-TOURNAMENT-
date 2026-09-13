@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "ClubProgress": {
+      "title": "ClubProgress",
+      "description": "Saved progress for a football club manager including squad, budget, and crest",
+      "type": "object",
+      "properties": {
+        "teamName": { "type": "string", "description": "Unique team or club name" },
+        "managerName": { "type": "string", "description": "Name of head coach or manager" },
+        "managerPhoto": { "type": "string", "description": "URL or path to manager portrait" },
+        "budget": { "type": "number", "description": "Remaining club budget in Millions INR" },
+        "crestSvg": { "type": "string", "description": "SVG markup of the club crest" },
+        "season": { "type": "number", "description": "Current season number" },
+        "division": { "type": "string", "description": "Current league division" },
+        "squadCount": { "type": "number", "description": "Total count of players in squad" },
+        "lastSaved": { "type": "string", "description": "ISO timestamp of last save" }
+      },
+      "required": ["teamName", "budget"]
+    },
+    "GameState": {
+      "title": "GameState",
+      "description": "Global multiplayer auction and tournament state",
+      "type": "object",
+      "properties": {
+        "season": { "type": "number", "description": "Current season number" },
+        "transferWindowOpen": { "type": "boolean", "description": "Transfer window open status" },
+        "lastUpdated": { "type": "string", "description": "ISO timestamp of last update" }
+      },
+      "required": ["season", "transferWindowOpen"]
+    }
+  },
+  "firestore": {
+    "/clubs/{clubId}": {
+      "schema": "ClubProgress",
+      "description": "Stores individual club progress, manager identity, squad, and treasury"
+    },
+    "/global/gameState": {
+      "schema": "GameState",
+      "description": "Stores global multiplayer auction state and season records"
+    }
+  }
+}

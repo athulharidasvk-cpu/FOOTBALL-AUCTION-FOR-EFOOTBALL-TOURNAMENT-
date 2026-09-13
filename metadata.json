@@ -1,6 +1,6 @@
 {
   "name": "Football Auction",
-  "description": "Multiplayer football auction and club management app with custom jersey kit editor, aesthetics-driven merchandise revenue, broadcast match center with team crests and minute-by-minute live statistics, prestigious season awards (Ballon d'Or, Golden Glove, Golden Boot), and animated champion trophy lifting celebrations.",
+  "description": "Multiplayer football auction and club management app with Firebase Firestore cloud sync, procedural Web Audio stadium soundtrack & jukebox, Pro League Soccer (PLS) 2D playable arcade match engine & journey campaign, custom jersey kit editor, broadcast match center with crest studio, and awards trophy room.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

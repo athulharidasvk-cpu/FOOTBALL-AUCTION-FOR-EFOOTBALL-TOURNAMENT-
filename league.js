@@ -521,14 +521,14 @@ const CLUB_MANAGERS = {
 // AVAILABLE FREE-AGENT MANAGERS MARKET
 // =====================================================
 const FREE_AGENT_MANAGERS = [
-  { id: "klopp", name: "Jürgen Klopp", avatar: "🇩🇪", tactic: "Gegenpressing Heavy-Metal", formation: "4-3-3", wage: 14, rep: "World Class", perk: { name: "Heavy-Metal Roar", effect: "+22% Gegenpressing & +15% Fan Roar" }, desc: "Electrifying German tactician known for relentless pressing and inspiring players to die for the badge." },
-  { id: "zidane", name: "Zinedine Zidane", avatar: "🇫🇷", tactic: "Galáctico Pragmatism & Freedom", formation: "4-3-3", wage: 15, rep: "Legendary", perk: { name: "Champions Aura", effect: "+25% Derby & Title Decider Win Bonus" }, desc: "3x consecutive Champions League champion who extracts transcendent form from superstar talents." },
-  { id: "tuchel", name: "Thomas Tuchel", avatar: "🇩🇪", tactic: "Surgical Positional Structure", formation: "3-4-2-1", wage: 12, rep: "Tactical Elite", perk: { name: "Ironclad Fortress", effect: "+20% Defensive Clean Sheets" }, desc: "Detail-obsessed tactician adept at completely nullifying high-powered attacking opponents." },
-  { id: "mourinho", name: "José Mourinho", avatar: "🇵🇹", tactic: "Special One Low Block & Counter", formation: "4-2-3-1", wage: 11, rep: "Serial Winner", perk: { name: "Siege Mentality", effect: "+25% Lethal Counter-Attack & Spite" }, desc: "The Special One transforms squads into ruthless defensive gladiators who punish every opponent error." },
-  { id: "pochettino", name: "Mauricio Pochettino", avatar: "🇦🇷", tactic: "High-Energy Press & Youth Cultivation", formation: "4-2-3-1", wage: 10, rep: "Development Elite", perk: { name: "Youth Catalyst", effect: "+18% Wonderkid Growth & +10% Energy" }, desc: "Fosters intense pressing regimes and unlocks peak potential from rising young talents." },
-  { id: "flick", name: "Hansi Flick", avatar: "🇩🇪", tactic: "Sextuple Blitzkrieg Overload", formation: "4-2-3-1", wage: 13, rep: "Attacking Mastermind", perk: { name: "High-Line Overwhelm", effect: "+22% Expected Goals & Rapid Attacks" }, desc: "Plays breathtaking, relentless forward-pressing football that overwhelms opposition defenses." },
-  { id: "allegri", name: "Massimiliano Allegri", avatar: "🇮🇹", tactic: "Corto Muso Tactical Realism", formation: "3-5-2", wage: 9, rep: "Pragmatic Winner", perk: { name: "Corto Muso", effect: "+20% 1-0 Narrow Lead Preservation" }, desc: "Master of game management who values ruthless tactical discipline and low-risk defensive perfection." },
-  { id: "southgate", name: "Gareth Southgate", avatar: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", tactic: "Composed Tournament Solidarity", formation: "4-3-3", wage: 8, rep: "Diplomatic Leader", perk: { name: "Squad Unity", effect: "+15% Morale Recovery & Harmony" }, desc: "Cultivates unbreakable dressing room harmony and solid defensive tournament structures." }
+  { id: "klopp", name: "Jürgen Klopp", avatar: "🇩🇪", photo: "/manager_photo.jpg", tactic: "Gegenpressing Heavy-Metal", formation: "4-3-3", wage: 14, rep: "World Class", perk: { name: "Heavy-Metal Roar", effect: "+22% Gegenpressing & +15% Fan Roar" }, desc: "Electrifying German tactician known for relentless pressing and inspiring players to die for the badge." },
+  { id: "zidane", name: "Zinedine Zidane", avatar: "🇫🇷", photo: "/manager_photo.jpg", tactic: "Galáctico Pragmatism & Freedom", formation: "4-3-3", wage: 15, rep: "Legendary", perk: { name: "Champions Aura", effect: "+25% Derby & Title Decider Win Bonus" }, desc: "3x consecutive Champions League champion who extracts transcendent form from superstar talents." },
+  { id: "tuchel", name: "Thomas Tuchel", avatar: "🇩🇪", photo: "/manager_photo.jpg", tactic: "Surgical Positional Structure", formation: "3-4-2-1", wage: 12, rep: "Tactical Elite", perk: { name: "Ironclad Fortress", effect: "+20% Defensive Clean Sheets" }, desc: "Detail-obsessed tactician adept at completely nullifying high-powered attacking opponents." },
+  { id: "mourinho", name: "José Mourinho", avatar: "🇵🇹", photo: "/manager_photo.jpg", tactic: "Special One Low Block & Counter", formation: "4-2-3-1", wage: 11, rep: "Serial Winner", perk: { name: "Siege Mentality", effect: "+25% Lethal Counter-Attack & Spite" }, desc: "The Special One transforms squads into ruthless defensive gladiators who punish every opponent error." },
+  { id: "pochettino", name: "Mauricio Pochettino", avatar: "🇦🇷", photo: "/manager_photo.jpg", tactic: "High-Energy Press & Youth Cultivation", formation: "4-2-3-1", wage: 10, rep: "Development Elite", perk: { name: "Youth Catalyst", effect: "+18% Wonderkid Growth & +10% Energy" }, desc: "Fosters intense pressing regimes and unlocks peak potential from rising young talents." },
+  { id: "flick", name: "Hansi Flick", avatar: "🇩🇪", photo: "/manager_photo.jpg", tactic: "Sextuple Blitzkrieg Overload", formation: "4-2-3-1", wage: 13, rep: "Attacking Mastermind", perk: { name: "High-Line Overwhelm", effect: "+22% Expected Goals & Rapid Attacks" }, desc: "Plays breathtaking, relentless forward-pressing football that overwhelms opposition defenses." },
+  { id: "allegri", name: "Massimiliano Allegri", avatar: "🇮🇹", photo: "/manager_photo.jpg", tactic: "Corto Muso Tactical Realism", formation: "3-5-2", wage: 9, rep: "Pragmatic Winner", perk: { name: "Corto Muso", effect: "+20% 1-0 Narrow Lead Preservation" }, desc: "Master of game management who values ruthless tactical discipline and low-risk defensive perfection." },
+  { id: "southgate", name: "Gareth Southgate", avatar: "🏴󠁧󠁢󠁥󠁮󠁧󠁿", photo: "/manager_photo.jpg", tactic: "Composed Tournament Solidarity", formation: "4-3-3", wage: 8, rep: "Diplomatic Leader", perk: { name: "Squad Unity", effect: "+15% Morale Recovery & Harmony" }, desc: "Cultivates unbreakable dressing room harmony and solid defensive tournament structures." }
 ];
 
 class LeagueManager {
@@ -550,6 +550,69 @@ class LeagueManager {
     this.jerseys = {};
     this.playerSeasonStats = {};
     this.seasonAwards = null;
+
+    this.injuries = [
+      {
+        id: "inj_1",
+        playerName: "Bukayo Saka",
+        club: "Arsenal",
+        position: "RW",
+        rating: 89,
+        injuryType: "Hamstring Strain",
+        severity: "Moderate",
+        matchesRemaining: 2,
+        totalMatches: 3,
+        recoveryPct: 40,
+        status: "Ruled Out",
+        physioNote: "Sustained high-speed sprinting strain in last weekend's derby. Undergoing specialized cryogenic rehab.",
+        occurredMatchday: 1
+      },
+      {
+        id: "inj_2",
+        playerName: "Thibaut Courtois",
+        club: "Real Madrid",
+        position: "GK",
+        rating: 90,
+        injuryType: "Lateral Ankle Sprain",
+        severity: "Minor",
+        matchesRemaining: 1,
+        totalMatches: 2,
+        recoveryPct: 75,
+        status: "Doubtful",
+        physioNote: "Tweaked left ankle in training save drill. Mobility recovering well; late fitness test scheduled.",
+        occurredMatchday: 1
+      },
+      {
+        id: "inj_3",
+        playerName: "Rodri",
+        club: "Manchester City",
+        position: "CDM",
+        rating: 91,
+        injuryType: "Cruciate Ligament (ACL) Strain",
+        severity: "Severe",
+        matchesRemaining: 4,
+        totalMatches: 6,
+        recoveryPct: 30,
+        status: "Ruled Out",
+        physioNote: "Undergoing specialized regenerative treatment in Barcelona clinic. Progressing ahead of original prognosis.",
+        occurredMatchday: 1
+      },
+      {
+        id: "inj_4",
+        playerName: "Jamal Musiala",
+        club: "Bayern Munich",
+        position: "CAM",
+        rating: 88,
+        injuryType: "Groin / Adductor Tear",
+        severity: "Moderate",
+        matchesRemaining: 2,
+        totalMatches: 3,
+        recoveryPct: 50,
+        status: "Ruled Out",
+        physioNote: "Adductor overload from rapid dribbling decelerations. Light ball-work resumed today.",
+        occurredMatchday: 1
+      }
+    ];
 
     this.initSeason(this.season, INITIAL_CLUBS);
   }
@@ -899,16 +962,20 @@ class LeagueManager {
           isAlreadyInDivision = true;
           existingDivId = divId;
           const club = this.divisions[divId].clubs[idx];
+          const userTeamData = roomTeams[teamName] || {};
+          const customLogo = userTeamData.customLogo || userTeamData.crestSvg || null;
           club.isAi = false;
           club.rating = this.getClubRating(teamName, roomTeams);
-          club.logo = "👤";
+          club.customLogo = customLogo;
+          club.logo = customLogo ? "🛡️" : (userTeamData.logo || "👤");
 
           // Also update in standings
           const standing = this.divisions[divId].standings.find(s => s.name.toLowerCase() === teamName.toLowerCase());
           if (standing) {
             standing.isAi = false;
             standing.rating = club.rating;
-            standing.logo = "👤";
+            standing.customLogo = customLogo;
+            standing.logo = club.logo;
           }
           break;
         }
@@ -923,12 +990,15 @@ class LeagueManager {
         if (aiClubIdx !== -1) {
           const replacedClub = div1.clubs[aiClubIdx];
           const oldName = replacedClub.name;
+          const userTeamData = roomTeams[teamName] || {};
+          const customLogo = userTeamData.customLogo || userTeamData.crestSvg || null;
 
           // Replace club data
           div1.clubs[aiClubIdx] = {
             name: teamName,
             rating: this.getClubRating(teamName, roomTeams),
-            logo: "👤",
+            logo: customLogo ? "🛡️" : (userTeamData.logo || "👤"),
+            customLogo: customLogo,
             isAi: false
           };
 
@@ -937,7 +1007,8 @@ class LeagueManager {
           if (standingIdx !== -1) {
             div1.standings[standingIdx].name = teamName;
             div1.standings[standingIdx].rating = div1.clubs[aiClubIdx].rating;
-            div1.standings[standingIdx].logo = "👤";
+            div1.standings[standingIdx].logo = div1.clubs[aiClubIdx].logo;
+            div1.standings[standingIdx].customLogo = customLogo;
             div1.standings[standingIdx].isAi = false;
           }
 
@@ -1496,6 +1567,9 @@ class LeagueManager {
     const completedRound = this.currentRound;
     const rivalryMatches = roundMatches.filter(m => m.isRivalry);
 
+    // Advance recovery for injured players
+    this.advanceInjuries();
+
     if (this.currentRound >= this.totalRounds) {
       this.isSeasonComplete = true;
       this.lastSeasonSummary = this.calculateSeasonSummary();
@@ -1511,6 +1585,77 @@ class LeagueManager {
       seasonSummary: this.lastSeasonSummary,
       leagueState: this.getLeagueState()
     };
+  }
+
+  // Advance recovery progress for active injuries
+  advanceInjuries() {
+    if (!this.injuries) this.injuries = [];
+    this.injuries.forEach(inj => {
+      if (inj.matchesRemaining > 0) {
+        inj.matchesRemaining = Math.max(0, inj.matchesRemaining - 1);
+        const progress = Math.round(((inj.totalMatches - inj.matchesRemaining) / inj.totalMatches) * 100);
+        inj.recoveryPct = Math.min(100, Math.max(progress, (inj.recoveryPct || 0) + 30));
+        if (inj.matchesRemaining === 0) {
+          inj.status = "Cleared & Fit";
+          inj.recoveryPct = 100;
+          inj.physioNote = "Fully cleared by Chief Medical Officer. Return to full squad training approved.";
+        } else if (inj.matchesRemaining === 1) {
+          inj.status = "Doubtful (Late Test)";
+        }
+      }
+    });
+  }
+
+  // Accelerate player rehab by spending club funds
+  accelerateRehab(clubName, injuryId, roomTeams = {}) {
+    if (!this.injuries) this.injuries = [];
+    const inj = this.injuries.find(i => i.id === injuryId);
+    if (!inj) return { error: "Injury record not found." };
+
+    const cost = 2.5;
+    const userTeam = roomTeams[clubName];
+    if (userTeam) {
+      if ((userTeam.budget || 0) < cost) {
+        return { error: `Insufficient funds. Cryogenic therapy requires ₹${cost}M.` };
+      }
+      userTeam.budget = Math.round((userTeam.budget - cost) * 100) / 100;
+    }
+
+    inj.matchesRemaining = Math.max(0, inj.matchesRemaining - 1);
+    inj.recoveryPct = Math.min(100, (inj.recoveryPct || 0) + 35);
+    if (inj.matchesRemaining === 0) {
+      inj.status = "Cleared & Fit";
+      inj.recoveryPct = 100;
+      inj.physioNote = "Fast-track cryogenic therapy successful! Player has achieved full medical clearance.";
+    } else {
+      inj.physioNote = "Hyperbaric chamber treatment completed. Return timeline accelerated by 1 match.";
+    }
+
+    return {
+      success: true,
+      message: `${inj.playerName}'s rehabilitation accelerated! (${inj.matchesRemaining} match${inj.matchesRemaining === 1 ? '' : 'es'} remaining)`,
+      injury: inj,
+      budget: userTeam?.budget
+    };
+  }
+
+  // Run Late Fitness Test for doubtful player
+  runLateFitnessTest(clubName, injuryId) {
+    if (!this.injuries) this.injuries = [];
+    const inj = this.injuries.find(i => i.id === injuryId);
+    if (!inj) return { error: "Injury record not found." };
+
+    const pass = Math.random() > 0.45;
+    if (pass) {
+      inj.matchesRemaining = 0;
+      inj.recoveryPct = 100;
+      inj.status = "Cleared (Taped)";
+      inj.physioNote = "Passed morning fitness test! Cleared to feature with protective strapping.";
+      return { success: true, cleared: true, message: `Medical staff cleared ${inj.playerName} with protective strapping.`, injury: inj };
+    } else {
+      inj.physioNote = "Late fitness evaluation showed muscle discomfort. Held back 1 match for precaution.";
+      return { success: false, cleared: false, message: `${inj.playerName} failed the agility test and remains sidelined for safety.`, injury: inj };
+    }
   }
 
   // Simulate all remaining rounds of the current season
@@ -2297,6 +2442,7 @@ class LeagueManager {
       jerseys: this.jerseys,
       seasonAwards: this.seasonAwards || this.calculateSeasonAwards(),
       playerSeasonStats: this.playerSeasonStats,
+      injuries: this.injuries || [],
       divisions: {
         1: {
           id: 1,

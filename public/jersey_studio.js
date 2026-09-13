@@ -485,7 +485,19 @@
 
   // Save kit to server
   function saveCurrentJersey() {
-    const targetClub = (typeof myTeam !== "undefined" && myTeam) ? myTeam : (typeof selectedHqClub !== "undefined" && selectedHqClub) ? selectedHqClub : "Real Madrid";
+    let targetClub = "Real Madrid";
+    if (typeof window.getActiveUserTeam === "function") {
+      try {
+        const val = window.getActiveUserTeam();
+        if (typeof val === "string" && val.trim()) targetClub = val.trim();
+      } catch (e) {}
+    } else if (typeof window.userClubName === "string" && window.userClubName.trim()) {
+      targetClub = window.userClubName.trim();
+    } else if (typeof myTeam === "string" && myTeam.trim()) {
+      targetClub = myTeam.trim();
+    } else if (typeof selectedHqClub === "string" && selectedHqClub.trim()) {
+      targetClub = selectedHqClub.trim();
+    }
 
     if (typeof socket === "undefined") {
       alert("Socket server not connected.");
@@ -529,10 +541,20 @@
     renderJerseyStudio();
   }
 
+  function getCurrentDesign() {
+    return {
+      ...currentDesign,
+      primaryColor: currentDesign.primary,
+      secondaryColor: currentDesign.secondary,
+      shortsColor: currentDesign.secondary || currentDesign.accent || "#0f2544"
+    };
+  }
+
   // Export API
   global.JerseyStudio = {
     init,
     currentDesign,
+    getCurrentDesign,
     evaluateAesthetics,
     generateJerseySvg,
     renderJerseyStudio,

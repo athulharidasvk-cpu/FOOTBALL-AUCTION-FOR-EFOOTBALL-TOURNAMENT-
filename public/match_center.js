@@ -36,6 +36,19 @@
   };
 
   function getClubCrest(clubName) {
+    // Check if user defined custom team logo
+    const userTeam = window.gameState?.teams?.[clubName];
+    if (userTeam && (userTeam.customLogo || userTeam.crestSvg)) {
+      const customLogo = userTeam.customLogo || userTeam.crestSvg;
+      return {
+        customLogo: customLogo,
+        emoji: "🛡️",
+        primary: "#38bdf8",
+        secondary: "#facc15",
+        stars: 5
+      };
+    }
+
     if (CLUB_CRESTS[clubName]) return CLUB_CRESTS[clubName];
     // Hash based color
     let hash = 0;
@@ -225,7 +238,7 @@
             <!-- HOME CLUB CREST -->
             <div class="club-crest-card home">
               <div class="crest-emblem-wrapper" style="box-shadow: 0 0 30px ${homeCrest.primary}55; border-color: ${homeCrest.primary};">
-                <span class="crest-emoji">${homeCrest.emoji}</span>
+                ${homeCrest.customLogo ? `<span class="crest-custom-svg" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${homeCrest.customLogo}</span>` : `<span class="crest-emoji">${homeCrest.emoji}</span>`}
               </div>
               <div class="crest-club-name">${currentFixture.homeTeam}</div>
               <div class="crest-stars">⭐⭐⭐⭐⭐</div>
@@ -247,7 +260,7 @@
             <!-- AWAY CLUB CREST -->
             <div class="club-crest-card away">
               <div class="crest-emblem-wrapper" style="box-shadow: 0 0 30px ${awayCrest.primary}55; border-color: ${awayCrest.primary};">
-                <span class="crest-emoji">${awayCrest.emoji}</span>
+                ${awayCrest.customLogo ? `<span class="crest-custom-svg" style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;">${awayCrest.customLogo}</span>` : `<span class="crest-emoji">${awayCrest.emoji}</span>`}
               </div>
               <div class="crest-club-name">${currentFixture.awayTeam}</div>
               <div class="crest-stars">⭐⭐⭐⭐⭐</div>

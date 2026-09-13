@@ -1,0 +1,36 @@
+/* ATHUL FC Game Feel v3 - non-destructive presentation layer. */
+:root{--g-bg:#020811;--g-panel:#071a2c;--g-panel2:#0b2740;--g-blue:#087cf0;--g-cyan:#38bdf8;--g-green:#16d67a;--g-gold:#f4c542;--g-text:#f4f7fb;--g-muted:#9db0c7}
+body.game-screen-mode{background:radial-gradient(circle at 50% 8%,rgba(10,107,184,.28),transparent 36%),linear-gradient(120deg,#02050b,#06182a 48%,#01060d)!important;overflow-x:hidden}
+body.game-screen-mode:after{content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;background:linear-gradient(120deg,transparent 0 24%,rgba(36,139,207,.06) 24% 32%,transparent 32% 100%),radial-gradient(ellipse at 50% 100%,rgba(18,91,57,.18),transparent 42%)}
+body.game-screen-mode .header{min-height:88px!important;padding:12px 20px!important;background:linear-gradient(105deg,#020a15,#092541 52%,#020a14)!important;border-bottom:1px solid #1b5e8d!important;box-shadow:0 8px 30px rgba(0,0,0,.55),inset 0 -1px rgba(56,189,248,.12)}
+body.game-screen-mode .header-inner{max-width:1540px!important;min-height:64px}
+body.game-screen-mode .header-title-box h1,body.game-screen-mode .header-title-box .title,body.game-screen-mode .header-title-box strong{font-weight:950!important;letter-spacing:1px;text-transform:uppercase}
+body.game-screen-mode .console-workspace-frame{max-width:1540px!important;padding:0 16px!important}
+body.game-screen-mode .console-content-stage{padding:16px 0 150px!important}
+body.game-screen-mode .app-view-container{max-width:1500px!important}
+
+/* Turn common existing blocks into large game tiles without replacing their content. */
+body.game-screen-mode .section,body.game-screen-mode .card,body.game-screen-mode .panel,body.game-screen-mode .console-panel{position:relative;overflow:hidden;border:1px solid #1b557d!important;background:linear-gradient(145deg,rgba(9,31,51,.98),rgba(3,13,24,.98))!important;box-shadow:0 14px 34px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.055)!important}
+body.game-screen-mode .section:before,body.game-screen-mode .card:before,body.game-screen-mode .panel:before,body.game-screen-mode .console-panel:before{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(120deg,rgba(56,189,248,.065),transparent 38%,rgba(8,124,240,.035) 75%,transparent)}
+body.game-screen-mode .section h2,body.game-screen-mode .section h3,body.game-screen-mode .card h2,body.game-screen-mode .card h3{text-transform:uppercase;font-weight:900;letter-spacing:.7px}
+
+/* Larger, game-like navigation. */
+body.game-screen-mode .game-screen-nav{min-height:116px!important;width:min(98vw,1500px)!important;padding:8px!important;gap:9px!important;background:linear-gradient(180deg,rgba(9,29,49,.99),rgba(2,10,19,.99))!important;border:1px solid #205e8c!important;box-shadow:0 -10px 34px rgba(0,0,0,.58),0 18px 45px rgba(0,0,0,.48)!important}
+body.game-screen-mode .game-nav-btn{min-width:148px!important;min-height:98px!important;border:1px solid #245477!important;background:linear-gradient(145deg,#102e4a,#061526)!important;font-size:15px!important;font-weight:900!important;letter-spacing:1px!important;transform:skewX(-4deg)!important;transition:transform .15s ease,filter .15s ease,border-color .15s ease}
+body.game-screen-mode .game-nav-btn span{transform:skewX(4deg)!important}
+body.game-screen-mode .game-nav-btn:hover{filter:brightness(1.18);transform:skewX(-4deg) translateY(-3px)!important}
+body.game-screen-mode .game-nav-btn.active{background:linear-gradient(145deg,#087cf0,#063a8e)!important;border-color:#48bdff!important;box-shadow:0 0 26px rgba(8,124,240,.28),inset 0 1px rgba(255,255,255,.18)!important}
+
+/* Portal/dashboard cards get a console-game silhouette. */
+body.game-screen-mode .dashboard-card,body.game-screen-mode .overview-card,body.game-screen-mode .home-card,body.game-screen-mode .portal-card,body.game-screen-mode .tile{position:relative;overflow:hidden;border:1px solid #205b83!important;background:linear-gradient(145deg,#0b2a45,#041321)!important;box-shadow:0 12px 28px rgba(0,0,0,.4),inset 0 1px rgba(255,255,255,.06)!important;clip-path:polygon(0 0,97% 0,100% 11%,100% 100%,3% 100%,0 89%);transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+body.game-screen-mode .dashboard-card:hover,body.game-screen-mode .overview-card:hover,body.game-screen-mode .home-card:hover,body.game-screen-mode .portal-card:hover,body.game-screen-mode .tile:hover{transform:translateY(-3px);border-color:#38aef3!important;box-shadow:0 18px 38px rgba(0,0,0,.48),0 0 18px rgba(8,124,240,.12)!important}
+
+/* Stronger player/transfer cards. */
+body.game-screen-mode .player-card,body.game-screen-mode .player-row,body.game-screen-mode .transfer-card,body.game-screen-mode .market-card{border:1px solid #1e5b83!important;background:linear-gradient(145deg,#0b2943,#061525)!important;box-shadow:0 8px 22px rgba(0,0,0,.34)!important}
+body.game-screen-mode .player-card:hover,body.game-screen-mode .transfer-card:hover,body.game-screen-mode .market-card:hover{border-color:#39aef0!important;transform:translateY(-2px)}
+body.game-screen-mode .primary-btn,body.game-screen-mode .action-btn,body.game-screen-mode .bid-btn,body.game-screen-mode .buy-btn,body.game-screen-mode .sell-btn{min-height:50px!important;border:1px solid #45baff!important;background:linear-gradient(180deg,#118af6,#0754c2)!important;box-shadow:0 6px 18px rgba(0,102,230,.28),inset 0 1px rgba(255,255,255,.18)!important;font-weight:900!important}
+body.game-screen-mode input,body.game-screen-mode select{min-height:46px!important;background:#051525!important;border:1px solid #245d85!important;color:#fff!important}
+
+/* Mobile: large touch-first controls and one clear tile per row. */
+@media(max-width:900px){body.game-screen-mode .header{min-height:76px!important;padding:9px 11px!important}body.game-screen-mode .console-workspace-frame{padding:0 9px!important}body.game-screen-mode .console-content-stage{padding:10px 0 126px!important}body.game-screen-mode .game-screen-nav{min-height:94px!important;width:99vw!important;gap:5px!important;padding:6px!important;overflow-x:auto}body.game-screen-mode .game-nav-btn{min-width:118px!important;min-height:78px!important;font-size:12px!important}body.game-screen-mode .dashboard-grid,body.game-screen-mode .home-grid,body.game-screen-mode .overview-grid,body.game-screen-mode .portal-grid{grid-template-columns:1fr 1fr!important}}
+@media(max-width:560px){body.game-screen-mode .game-screen-nav{min-height:88px!important}body.game-screen-mode .game-nav-btn{min-width:102px!important;min-height:72px!important;font-size:11px!important}body.game-screen-mode .dashboard-grid,body.game-screen-mode .home-grid,body.game-screen-mode .overview-grid,body.game-screen-mode .portal-grid{grid-template-columns:1fr!important}body.game-screen-mode .dashboard-card,body.game-screen-mode .overview-card,body.game-screen-mode .home-card,body.game-screen-mode .portal-card,body.game-screen-mode .tile{min-height:140px}}

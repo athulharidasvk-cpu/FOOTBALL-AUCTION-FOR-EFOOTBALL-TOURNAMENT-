@@ -4212,5 +4212,284 @@
   border-radius: 6px;
 }
 
+/* =====================================================
+   TEAM MOMENTUM & STREAK INDICATORS (MATCH CENTRE & 3D)
+===================================================== */
+.team-momentum-indicator {
+  margin-top: 10px;
+  background: rgba(10, 20, 35, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  width: 100%;
+  max-width: 180px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  transition: all 0.25s ease;
+}
+
+.team-momentum-indicator.streak-win {
+  border-color: rgba(251, 191, 36, 0.6);
+  background: radial-gradient(circle at top, rgba(245, 158, 11, 0.15) 0%, rgba(10, 20, 35, 0.9) 100%);
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
+}
+
+.team-momentum-indicator.streak-loss {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: radial-gradient(circle at top, rgba(239, 68, 68, 0.12) 0%, rgba(10, 20, 35, 0.9) 100%);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.2);
+}
+
+.team-momentum-indicator.streak-unbeaten {
+  border-color: rgba(16, 185, 129, 0.5);
+  background: radial-gradient(circle at top, rgba(16, 185, 129, 0.12) 0%, rgba(10, 20, 35, 0.9) 100%);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.2);
+}
+
+.momentum-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.momentum-title {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: #94a3b8;
+  text-transform: uppercase;
+}
+
+.momentum-pct {
+  font-size: 11px;
+  font-weight: 900;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.team-momentum-indicator.streak-win .momentum-pct {
+  color: #facc15;
+}
+
+.team-momentum-indicator.streak-loss .momentum-pct {
+  color: #f87171;
+}
+
+.momentum-meter-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(15, 23, 42, 0.9);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.momentum-meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #0284c7 0%, #38bdf8 100%);
+  transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.team-momentum-indicator.streak-win .momentum-meter-fill {
+  background: linear-gradient(90deg, #f59e0b 0%, #fbbf24 100%);
+}
+
+.team-momentum-indicator.streak-loss .momentum-meter-fill {
+  background: linear-gradient(90deg, #b91c1c 0%, #ef4444 100%);
+}
+
+.team-momentum-indicator.streak-unbeaten .momentum-meter-fill {
+  background: linear-gradient(90deg, #059669 0%, #34d399 100%);
+}
+
+.momentum-form-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.form-dot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.dot-win {
+  background: #10b981;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(16, 185, 129, 0.4);
+}
+
+.dot-draw {
+  background: #64748b;
+  color: #f1f5f9;
+}
+
+.dot-loss {
+  background: #ef4444;
+  color: #ffffff;
+  box-shadow: 0 1px 4px rgba(239, 68, 68, 0.4);
+}
+
+.momentum-streak-tag {
+  font-size: 9px;
+  font-weight: 800;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.streak-win {
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #facc15;
+  animation: pulseStreak 2s infinite ease-in-out;
+}
+
+.streak-loss {
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+.streak-unbeaten {
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.5);
+  color: #6ee7b7;
+}
+
+.streak-positive {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+
+.streak-neutral {
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: #cbd5e1;
+}
+
+@keyframes pulseStreak {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.02); opacity: 0.9; }
+}
+
+/* 3D ARENA SCOREBOARD MOMENTUM BADGES */
+.hud-momentum-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+}
+
+.hud-momentum-badge.streak-win {
+  border-color: rgba(251, 191, 36, 0.5);
+  background: rgba(245, 158, 11, 0.18);
+}
+
+.hud-momentum-badge.streak-loss {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.hud-mom-tag {
+  font-weight: 800;
+  font-size: 9px;
+}
+
+.hud-mom-pct {
+  font-family: monospace;
+  font-weight: 900;
+  color: #38bdf8;
+}
+
+.hud-momentum-badge.streak-win .hud-mom-pct {
+  color: #facc15;
+}
+
+.hud-mom-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.hud-mom-dots .form-dot {
+  width: 12px;
+  height: 12px;
+  font-size: 8px;
+  border-radius: 2px;
+}
+
+/* 3D ARENA BROADCAST MOMENTUM LOWER-THIRD TICKER */
+.match3d-momentum-ticker {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(90deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 41, 59, 0.95) 50%, rgba(15, 23, 42, 0.95) 100%);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+  padding: 6px 16px;
+  margin: 0 auto;
+  width: 90%;
+  max-width: 760px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  position: relative;
+  z-index: 10;
+}
+
+.match3d-momentum-ticker .ticker-side {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.match3d-momentum-ticker .ticker-team {
+  font-size: 11px;
+  font-weight: 800;
+  color: #f8fafc;
+}
+
+.match3d-momentum-ticker .ticker-badge {
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.match3d-momentum-ticker .ticker-dots {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.match3d-momentum-ticker .ticker-vs {
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  color: #38bdf8;
+  padding: 2px 8px;
+  background: rgba(56, 189, 248, 0.12);
+  border-radius: 999px;
+}
+
+
 
 

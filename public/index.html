@@ -5433,6 +5433,7 @@ select {
       <div class="scoreboard-club home">
         <span id="hudTeamLogoHome">👑</span>
         <span id="hudTeamNameHome">Real Madrid</span>
+        <div class="hud-momentum-badge home" id="hudMomentumHome" title="Team Momentum & Form"></div>
       </div>
 
       <div class="scoreboard-score-box">
@@ -5442,6 +5443,7 @@ select {
       </div>
 
       <div class="scoreboard-club away">
+        <div class="hud-momentum-badge away" id="hudMomentumAway" title="Team Momentum & Form"></div>
         <span id="hudTeamNameAway">Manchester City</span>
         <span id="hudTeamLogoAway">🏙️</span>
       </div>
@@ -5453,6 +5455,9 @@ select {
     <!-- 3D Stadium Canvas Viewport -->
     <div class="match3d-viewport">
       <div id="match3dCanvasContainer"></div>
+
+      <!-- TV Broadcast Momentum Banner Ticker -->
+      <div class="match3d-momentum-ticker" id="match3dMomentumTicker"></div>
 
       <!-- Replay Tag -->
       <div class="match3d-replay-badge hidden" id="match3dReplayBadge">
@@ -5658,7 +5663,25 @@ select {
    SOCKET & GLOBAL STATE
 ===================================================== */
 
-const socket = io();
+// Server URL selection (defaults to current host, with optional remote URL support e.g. Render)
+const urlParams = new URLSearchParams(window.location.search);
+const remoteServerParam = urlParams.get("server") || localStorage.getItem("football_auction_server_url");
+const socketServerUrl = remoteServerParam || undefined;
+
+const socket = io(socketServerUrl, {
+  transports: ["websocket", "polling"],
+  reconnection: true,
+  reconnectionAttempts: 10,
+  reconnectionDelay: 1000
+});
+
+socket.on("connect", () => {
+  console.log("Socket connected:", socket.id);
+});
+
+socket.on("connect_error", (err) => {
+  console.warn("Socket connection notice:", err.message);
+});
 
 let myTeam = null;
 window.myTeam = null;
@@ -5689,6 +5712,18 @@ window.getActiveUserTeam = function() {
     }
   } catch(e) {}
   return "Athul FC";
+};
+
+window.getSafeTeamName = function(fallback = "Athul FC") {
+  const active = typeof window.getActiveUserTeam === "function" ? window.getActiveUserTeam() : null;
+  if (typeof active === "string" && active.trim() && active !== "Not Joined" && active !== "Not Connected") {
+    return active.trim();
+  }
+  if (typeof myTeam === "string" && myTeam.trim() && myTeam !== "Not Joined") return myTeam.trim();
+  if (typeof window.myTeam === "string" && window.myTeam.trim() && window.myTeam !== "Not Joined") return window.myTeam.trim();
+  const inputEl = document.getElementById("teamName");
+  if (inputEl && typeof inputEl.value === "string" && inputEl.value.trim()) return inputEl.value.trim();
+  return fallback;
 };
 
 let gameState = null;
@@ -5925,7 +5960,7 @@ function toggleManualJoinForm() {
 }
 
 function saveCurrentPlayerProgress(manual = false) {
-  const teamName = myTeam || (document.getElementById("teamName")?.value || "").trim();
+  const teamName = window.getSafeTeamName("");
   if (!teamName) {
     if (manual) showError("Please join or specify a club name first.");
     return;
@@ -6010,7 +6045,7 @@ function manualSaveProgress() {
 }
 
 async function syncWithCloudFirestore() {
-  const activeName = myTeam || (document.getElementById("teamName")?.value || "").trim();
+  const activeName = window.getSafeTeamName("");
   if (!activeName) {
     showError("Please enter or select a club name to sync with cloud.");
     return;
@@ -6064,7 +6099,7 @@ function openSaveProfileModal() {
   const modal = document.getElementById("saveProfileModal");
   if (!modal) return;
 
-  const activeName = myTeam || (document.getElementById("teamName")?.value || "Athul FC").trim();
+  const activeName = window.getSafeTeamName("Athul FC");
   const teamData = gameState?.teams?.[activeName] || {};
   const budget = teamData.budget !== undefined ? teamData.budget : 500;
   const squad = Array.isArray(teamData.players) ? teamData.players.length : 0;
@@ -6132,7 +6167,7 @@ function logoutPlayer() {
 }
 
 function exportSaveFile() {
-  const activeName = myTeam || (document.getElementById("teamName")?.value || "Athul_FC").trim();
+  const activeName = window.getSafeTeamName("Athul_FC");
   const savedRaw = localStorage.getItem(STORAGE_KEY_SAVED_MANAGER);
   let payload = null;
   try {
@@ -10167,6 +10202,54 @@ function load3DMatch(fixture) {
   if (select && div?.fixtures) {
     const fIdx = div.fixtures.findIndex(f => f.homeTeam === fixture.homeTeam && f.awayTeam === fixture.awayTeam && f.round === fixture.round);
     if (fIdx !== -1) select.value = fIdx;
+  }
+
+  // Populate Team Momentum & Streak indicators in 3D Arena HUD & Broadcast Ticker
+  const getMom = (typeof MatchCenter !== "undefined" && MatchCenter.getTeamMomentum) ?
+    MatchCenter.getTeamMomentum :
+    (typeof window.calculateTeamMomentum === "function" ? window.calculateTeamMomentum : null);
+
+  if (getMom) {
+    const homeMom = getMom(fixture.homeTeam);
+    const awayMom = getMom(fixture.awayTeam);
+
+    const hudMomHome = document.getElementById("hudMomentumHome");
+    if (hudMomHome && homeMom) {
+      hudMomHome.className = `hud-momentum-badge home ${homeMom.streakClass}`;
+      hudMomHome.innerHTML = `
+        <span class="hud-mom-tag">${homeMom.streakLabel}</span>
+        <span class="hud-mom-pct">${homeMom.score}%</span>
+        <span class="hud-mom-dots">${homeMom.dotsHtml}</span>
+      `;
+    }
+
+    const hudMomAway = document.getElementById("hudMomentumAway");
+    if (hudMomAway && awayMom) {
+      hudMomAway.className = `hud-momentum-badge away ${awayMom.streakClass}`;
+      hudMomAway.innerHTML = `
+        <span class="hud-mom-dots">${awayMom.dotsHtml}</span>
+        <span class="hud-mom-pct">${awayMom.score}%</span>
+        <span class="hud-mom-tag">${awayMom.streakLabel}</span>
+      `;
+    }
+
+    const ticker = document.getElementById("match3dMomentumTicker");
+    if (ticker && homeMom && awayMom) {
+      ticker.innerHTML = `
+        <div class="ticker-side home">
+          <span class="ticker-badge ${homeMom.streakClass}">${homeMom.streakLabel}</span>
+          <span class="ticker-team">${fixture.homeTeam} (${homeMom.score}% Mom)</span>
+          <div class="ticker-dots">${homeMom.dotsHtml}</div>
+        </div>
+        <div class="ticker-vs">⚡ FORM CLASH</div>
+        <div class="ticker-side away">
+          <div class="ticker-dots">${awayMom.dotsHtml}</div>
+          <span class="ticker-team">${fixture.awayTeam} (${awayMom.score}% Mom)</span>
+          <span class="ticker-badge ${awayMom.streakClass}">${awayMom.streakLabel}</span>
+        </div>
+      `;
+      ticker.style.display = "flex";
+    }
   }
 
   const container = document.getElementById("match3dCanvasContainer");

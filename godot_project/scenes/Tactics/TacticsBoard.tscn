@@ -1,0 +1,101 @@
+[gd_scene load_steps=2 format=3 uid="uid://d3m5k8w1q7l9p"]
+
+[ext_resource type="Script" path="res://scenes/Tactics/TacticsBoard.gd" id="1_tactics"]
+
+[node name="TacticsBoard" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_tactics")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.04, 0.08, 1)
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="BtnBack" type="Button" parent="VBox/Header"]
+custom_minimum_size = Vector2(90, 32)
+layout_mode = 2
+text = "⬅️ Menu"
+
+[node name="Title" type="Label" parent="VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 18
+text = "📋 SQUAD FORMATION & TACTICAL BOARD"
+horizontal_alignment = 1
+
+[node name="Formations" type="HBoxContainer" parent="VBox/Header"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Btn433" type="Button" parent="VBox/Header/Formations"]
+layout_mode = 2
+text = "4-3-3 Attack"
+
+[node name="Btn4231" type="Button" parent="VBox/Header/Formations"]
+layout_mode = 2
+text = "4-2-3-1 Solid"
+
+[node name="Btn352" type="Button" parent="VBox/Header/Formations"]
+layout_mode = 2
+text = "3-5-2 Wing"
+
+[node name="MainSplit" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="PitchPanel" type="PanelContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="TacticsPitch" type="Control" parent="VBox/MainSplit/PitchPanel"]
+layout_mode = 2
+
+[node name="SquadPanel" type="PanelContainer" parent="VBox/MainSplit"]
+custom_minimum_size = Vector2(360, 0)
+layout_mode = 2
+
+[node name="SquadVBox" type="VBoxContainer" parent="VBox/MainSplit/SquadPanel"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="SummaryLabel" type="Label" parent="VBox/MainSplit/SquadPanel/SquadVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 14
+text = "Squad Count: 0 Players"
+
+[node name="SquadItemList" type="ItemList" parent="VBox/MainSplit/SquadPanel/SquadVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+
+[connection signal="pressed" from="VBox/Header/BtnBack" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="VBox/Header/Formations/Btn433" to="." method="_on_btn_433_pressed"]
+[connection signal="pressed" from="VBox/Header/Formations/Btn4231" to="." method="_on_btn_4231_pressed"]
+[connection signal="pressed" from="VBox/Header/Formations/Btn352" to="." method="_on_btn_352_pressed"]

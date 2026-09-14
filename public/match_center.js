@@ -63,6 +63,139 @@
     };
   }
 
+  // Calculate team momentum & winning/losing streaks based on last 5 match results
+  function calculateTeamMomentum(teamName) {
+    if (!teamName) {
+      return {
+        score: 50,
+        form: [],
+        streakType: "neutral",
+        streakCount: 0,
+        streakLabel: "STEADY FORM",
+        streakClass: "streak-neutral",
+        dotsHtml: "",
+        badgeText: "⚡ 50% MOMENTUM"
+      };
+    }
+
+    let form = [];
+    // Check leagueData standings for explicit form array
+    if (window.leagueData && window.leagueData.divisions) {
+      for (const divId of Object.keys(window.leagueData.divisions)) {
+        const div = window.leagueData.divisions[divId];
+        if (div && Array.isArray(div.standings)) {
+          const club = div.standings.find(c => c.name === teamName);
+          if (club && Array.isArray(club.form) && club.form.length > 0) {
+            form = [...club.form];
+            break;
+          }
+        }
+      }
+    }
+
+    // Fallback: examine recent completed matches in leagueData fixtures
+    if (form.length === 0 && window.leagueData && window.leagueData.divisions) {
+      for (const divId of Object.keys(window.leagueData.divisions)) {
+        const div = window.leagueData.divisions[divId];
+        if (div && Array.isArray(div.fixtures)) {
+          const played = div.fixtures
+            .filter(f => f.played && (f.homeTeam === teamName || f.awayTeam === teamName))
+            .sort((a, b) => (b.round || 0) - (a.round || 0))
+            .slice(0, 5);
+          for (const f of played) {
+            const isHome = f.homeTeam === teamName;
+            const myScore = isHome ? f.homeScore : f.awayScore;
+            const oppScore = isHome ? f.awayScore : f.homeScore;
+            if (myScore > oppScore) form.push("W");
+            else if (myScore < oppScore) form.push("L");
+            else form.push("D");
+          }
+          if (form.length > 0) break;
+        }
+      }
+    }
+
+    // If still empty, determine clean realistic defaults for elite vs standard clubs
+    if (form.length === 0) {
+      const elite = ["Real Madrid", "Manchester City", "Bayern Munich", "Barcelona", "Liverpool", "Arsenal", "Athul FC"];
+      if (elite.includes(teamName)) {
+        form = ["W", "W", "D", "W", "W"];
+      } else {
+        form = ["W", "D", "L", "W", "D"];
+      }
+    }
+
+    const last5 = form.slice(0, 5);
+
+    // Calculate weighted momentum score (most recent match has highest weight)
+    const weights = [35, 25, 18, 12, 10];
+    let rawScore = 0;
+    for (let i = 0; i < last5.length; i++) {
+      const w = weights[i] || 10;
+      const res = String(last5[i]).toUpperCase();
+      if (res === "W") rawScore += w * 1.0;
+      else if (res === "D") rawScore += w * 0.45;
+      else rawScore += w * 0.05;
+    }
+
+    // Determine winning/losing streak
+    let streakType = "neutral";
+    let streakCount = 0;
+    let streakLabel = "⚖️ STEADY FORM";
+    let streakClass = "streak-neutral";
+
+    if (last5.length > 0) {
+      const firstRes = String(last5[0]).toUpperCase();
+      for (const r of last5) {
+        if (String(r).toUpperCase() === firstRes) streakCount++;
+        else break;
+      }
+
+      if (firstRes === "W" && streakCount >= 2) {
+        streakType = "win";
+        rawScore += streakCount * 4;
+        streakLabel = `🔥 ${streakCount}W WINNING STREAK`;
+        streakClass = "streak-win";
+      } else if (firstRes === "L" && streakCount >= 2) {
+        streakType = "loss";
+        rawScore -= streakCount * 4;
+        streakLabel = `❄️ ${streakCount}L LOSING SLUMP`;
+        streakClass = "streak-loss";
+      } else if (!last5.map(x => String(x).toUpperCase()).includes("L") && last5.length >= 3) {
+        streakType = "unbeaten";
+        rawScore += 6;
+        streakLabel = `🛡️ UNBEATEN (${last5.length} MATCHES)`;
+        streakClass = "streak-unbeaten";
+      } else if (firstRes === "W") {
+        streakLabel = "⚡ POSITIVE FORM";
+        streakClass = "streak-positive";
+      }
+    }
+
+    const momentumScore = Math.max(12, Math.min(99, Math.round(rawScore)));
+
+    const dotsHtml = last5.map((r, idx) => {
+      const res = String(r).toUpperCase();
+      const dotClass = res === "W" ? "dot-win" : res === "L" ? "dot-loss" : "dot-draw";
+      const title = res === "W" ? "Win" : res === "L" ? "Loss" : "Draw";
+      return `<span class="form-dot ${dotClass}" title="${title} (Match ${idx + 1})">${res}</span>`;
+    }).join("");
+
+    return {
+      score: momentumScore,
+      form: last5,
+      streakType,
+      streakCount,
+      streakLabel,
+      streakClass,
+      dotsHtml,
+      badgeText: `${streakType === "win" ? "🔥" : streakType === "loss" ? "❄️" : "⚡"} ${momentumScore}% MOMENTUM`
+    };
+  }
+
+  // Expose helper globally
+  global.calculateTeamMomentum = calculateTeamMomentum;
+
   // Load a match fixture into the Match Center
   function loadMatchCenter(fixture, roomTeams = {}) {
     currentFixture = fixture;
@@ -224,6 +357,8 @@
 
     const homeCrest = getClubCrest(currentFixture.homeTeam);
     const awayCrest = getClubCrest(currentFixture.awayTeam);
+    const homeMom = calculateTeamMomentum(currentFixture.homeTeam);
+    const awayMom = calculateTeamMomentum(currentFixture.awayTeam);
 
     container.innerHTML = `
       <div class="match-broadcast-container">
@@ -243,6 +378,23 @@
               <div class="crest-club-name">${currentFixture.homeTeam}</div>
               <div class="crest-stars">⭐⭐⭐⭐⭐</div>
               <div class="crest-status-badge">HOME CLUB</div>
+
+              <!-- TEAM MOMENTUM & STREAK INDICATOR -->
+              <div class="team-momentum-indicator ${homeMom.streakClass}" title="Momentum score: ${homeMom.score}%">
+                <div class="momentum-header">
+                  <span class="momentum-title">MOMENTUM</span>
+                  <span class="momentum-pct">${homeMom.score}%</span>
+                </div>
+                <div class="momentum-meter-track">
+                  <div class="momentum-meter-fill" style="width: ${homeMom.score}%;"></div>
+                </div>
+                <div class="momentum-form-dots">
+                  ${homeMom.dotsHtml}
+                </div>
+                <div class="momentum-streak-tag ${homeMom.streakClass}">
+                  ${homeMom.streakLabel}
+                </div>
+              </div>
             </div>
 
             <!-- SCORE & LIVE BROADCAST CLOCK -->
@@ -265,6 +417,23 @@
               <div class="crest-club-name">${currentFixture.awayTeam}</div>
               <div class="crest-stars">⭐⭐⭐⭐⭐</div>
               <div class="crest-status-badge">AWAY CLUB</div>
+
+              <!-- TEAM MOMENTUM & STREAK INDICATOR -->
+              <div class="team-momentum-indicator ${awayMom.streakClass}" title="Momentum score: ${awayMom.score}%">
+                <div class="momentum-header">
+                  <span class="momentum-title">MOMENTUM</span>
+                  <span class="momentum-pct">${awayMom.score}%</span>
+                </div>
+                <div class="momentum-meter-track">
+                  <div class="momentum-meter-fill" style="width: ${awayMom.score}%;"></div>
+                </div>
+                <div class="momentum-form-dots">
+                  ${awayMom.dotsHtml}
+                </div>
+                <div class="momentum-streak-tag ${awayMom.streakClass}">
+                  ${awayMom.streakLabel}
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -748,6 +917,7 @@
     replayMatch,
     setSpeed,
     setFilter,
+    getTeamMomentum: calculateTeamMomentum,
     get isPlaying() { return isPlaying; },
     get currentMinute() { return currentMinute; },
     destroy() {

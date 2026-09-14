@@ -1,0 +1,165 @@
+[gd_scene load_steps=2 format=3 uid="uid://c6v2n8m4j7k1w"]
+
+[ext_resource type="Script" path="res://scenes/Matchday/MatchArena.gd" id="1_match"]
+
+[node name="MatchArena" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_match")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.015, 0.035, 0.07, 1)
+
+[node name="MatchTimer" type="Timer" parent="."]
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 12
+
+[node name="TopNav" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="BtnBack" type="Button" parent="VBox/TopNav"]
+custom_minimum_size = Vector2(90, 32)
+layout_mode = 2
+text = "⬅️ Menu"
+
+[node name="Title" type="Label" parent="VBox/TopNav"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 18
+text = "🏟️ BROADCAST MATCH ARENA & MOMENTUM TRACKER"
+horizontal_alignment = 1
+
+[node name="Scoreboard" type="HBoxContainer" parent="VBox"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+alignment = 1
+
+[node name="HomeTeam" type="VBoxContainer" parent="VBox/Scoreboard"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="Name" type="Label" parent="VBox/Scoreboard/HomeTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "👑 Athul FC"
+horizontal_alignment = 2
+
+[node name="MomentumBadge" type="Label" parent="VBox/Scoreboard/HomeTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚡ 85% MOMENTUM"
+horizontal_alignment = 2
+
+[node name="StreakBadge" type="Label" parent="VBox/Scoreboard/HomeTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 12
+text = "🔥 3W STREAK"
+horizontal_alignment = 2
+
+[node name="ScoreBox" type="PanelContainer" parent="VBox/Scoreboard"]
+custom_minimum_size = Vector2(140, 60)
+layout_mode = 2
+
+[node name="ScoreText" type="Label" parent="VBox/Scoreboard/ScoreBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 32
+text = "0 - 0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Clock" type="Label" parent="VBox/Scoreboard"]
+custom_minimum_size = Vector2(60, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.4, 0.8, 0.4, 1)
+theme_override_font_sizes/font_size = 18
+text = "0'"
+horizontal_alignment = 1
+
+[node name="AwayTeam" type="VBoxContainer" parent="VBox/Scoreboard"]
+layout_mode = 2
+size_flags_horizontal = 3
+alignment = 1
+
+[node name="Name" type="Label" parent="VBox/Scoreboard/AwayTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Manchester City 🏙️"
+
+[node name="MomentumBadge" type="Label" parent="VBox/Scoreboard/AwayTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 13
+text = "⚡ 75% MOMENTUM"
+
+[node name="StreakBadge" type="Label" parent="VBox/Scoreboard/AwayTeam"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 12
+text = "⚖️ STEADY"
+
+[node name="Controls" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+alignment = 1
+
+[node name="BtnPlay" type="Button" parent="VBox/Controls"]
+custom_minimum_size = Vector2(120, 36)
+layout_mode = 2
+text = "▶️ Start Match"
+
+[node name="BtnSpeed" type="Button" parent="VBox/Controls"]
+custom_minimum_size = Vector2(100, 36)
+layout_mode = 2
+text = "⏩ 2x Speed"
+
+[node name="BottomSplit" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 16
+
+[node name="PitchPanel" type="PanelContainer" parent="VBox/BottomSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="PitchCanvas" type="Control" parent="VBox/BottomSplit/PitchPanel"]
+layout_mode = 2
+
+[node name="CommentaryPanel" type="PanelContainer" parent="VBox/BottomSplit"]
+custom_minimum_size = Vector2(400, 0)
+layout_mode = 2
+
+[node name="Feed" type="RichTextLabel" parent="VBox/BottomSplit/CommentaryPanel"]
+layout_mode = 2
+bbcode_enabled = true
+scroll_following = true
+
+[connection signal="pressed" from="VBox/TopNav/BtnBack" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="VBox/Controls/BtnPlay" to="." method="_on_btn_play_pressed"]
+[connection signal="pressed" from="VBox/Controls/BtnSpeed" to="." method="_on_btn_speed_pressed"]

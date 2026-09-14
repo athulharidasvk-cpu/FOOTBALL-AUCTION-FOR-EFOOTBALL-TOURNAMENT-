@@ -1,0 +1,177 @@
+[gd_scene load_steps=2 format=3 uid="uid://b7vy84n1c8jke"]
+
+[ext_resource type="Script" path="res://scenes/Auction/AuctionRoom.gd" id="1_auction"]
+
+[node name="AuctionRoom" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_auction")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.02, 0.04, 0.08, 1)
+
+[node name="AuctionTimer" type="Timer" parent="."]
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 20.0
+offset_top = 20.0
+offset_right = -20.0
+offset_bottom = -20.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 16
+
+[node name="Header" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+
+[node name="BtnBack" type="Button" parent="VBox/Header"]
+custom_minimum_size = Vector2(100, 36)
+layout_mode = 2
+text = "⬅️ Menu"
+
+[node name="Title" type="Label" parent="VBox/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 22
+text = "🔨 LIVE PREMIER AUCTION"
+horizontal_alignment = 1
+
+[node name="HBox" type="HBoxContainer" parent="VBox/Header"]
+layout_mode = 2
+
+[node name="UserBudget" type="Label" parent="VBox/Header/HBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 18
+text = "Your Budget: ₹120.00 Cr"
+
+[node name="MainSplit" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="CardPanel" type="PanelContainer" parent="VBox/MainSplit"]
+custom_minimum_size = Vector2(380, 0)
+layout_mode = 2
+
+[node name="CardVBox" type="VBoxContainer" parent="VBox/MainSplit/CardPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="PlayerBadge" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5, 0.6, 0.7, 1)
+theme_override_font_sizes/font_size = 12
+text = "ON THE AUCTION BLOCK"
+horizontal_alignment = 1
+
+[node name="PlayerAvatar" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "⭐"
+horizontal_alignment = 1
+
+[node name="PlayerName" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_font_sizes/font_size = 26
+text = "Player Name"
+horizontal_alignment = 1
+
+[node name="Position" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 16
+text = "Position: CF"
+horizontal_alignment = 1
+
+[node name="Overall" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 24
+text = "OVR: 90"
+horizontal_alignment = 1
+
+[node name="Stats" type="Label" parent="VBox/MainSplit/CardPanel/CardVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.7, 0.75, 0.85, 1)
+theme_override_font_sizes/font_size = 14
+text = "PAC: 90 | SHO: 85 | PAS: 80"
+horizontal_alignment = 1
+
+[node name="BiddingPanel" type="PanelContainer" parent="VBox/MainSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="BidVBox" type="VBoxContainer" parent="VBox/MainSplit/BiddingPanel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="TimerLabel" type="Label" parent="VBox/MainSplit/BiddingPanel/BidVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.3, 0.3, 1)
+theme_override_font_sizes/font_size = 20
+text = "⏱️ Time Left: 15s"
+horizontal_alignment = 1
+
+[node name="CurrentBid" type="Label" parent="VBox/MainSplit/BiddingPanel/BidVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.98, 0.8, 0.08, 1)
+theme_override_font_sizes/font_size = 28
+text = "Current Bid: ₹25.00 Cr"
+horizontal_alignment = 1
+
+[node name="HighestBidder" type="Label" parent="VBox/MainSplit/BiddingPanel/BidVBox"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.22, 0.74, 0.97, 1)
+theme_override_font_sizes/font_size = 16
+text = "Holding: No Bids"
+horizontal_alignment = 1
+
+[node name="ActionButtons" type="HBoxContainer" parent="VBox/MainSplit/BiddingPanel/BidVBox"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Btn50L" type="Button" parent="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ ₹0.50 Cr"
+
+[node name="Btn1Cr" type="Button" parent="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ ₹1.00 Cr"
+
+[node name="Btn2Cr" type="Button" parent="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "+ ₹2.00 Cr"
+
+[node name="ActivityLog" type="RichTextLabel" parent="VBox/MainSplit/BiddingPanel/BidVBox"]
+layout_mode = 2
+size_flags_vertical = 3
+bbcode_enabled = true
+scroll_following = true
+
+[connection signal="pressed" from="VBox/Header/BtnBack" to="." method="_on_back_pressed"]
+[connection signal="pressed" from="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons/Btn50L" to="." method="_on_bid_50l_pressed"]
+[connection signal="pressed" from="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons/Btn1Cr" to="." method="_on_bid_1cr_pressed"]
+[connection signal="pressed" from="VBox/MainSplit/BiddingPanel/BidVBox/ActionButtons/Btn2Cr" to="." method="_on_bid_2cr_pressed"]

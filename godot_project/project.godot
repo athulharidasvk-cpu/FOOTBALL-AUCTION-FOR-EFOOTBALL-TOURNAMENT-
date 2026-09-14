@@ -1,0 +1,31 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but it can also be edited manually.
+
+config_version=5
+
+[application]
+
+config/name="Football Auction & Matchday Tycoon"
+config/description="Football Club Tycoon with live player auctions, tactical squad builder, and 2D/3D match engine built in Godot 4."
+run/main_scene="res://scenes/MainMenu.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+boot_splash/bg_color=Color(0.02, 0.05, 0.1, 1)
+
+[autoload]
+
+Database="*res://autoload/Database.gd"
+GameManager="*res://autoload/GameManager.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/size/mode=0
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="forward_plus"
+environment/defaults/default_clear_color=Color(0.03, 0.07, 0.13, 1)

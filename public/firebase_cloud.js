@@ -6,4 +6,4 @@ import "./game_ui_reference_v2.js";
 import "./game_nav_reference_v2.js";
 import "./pls_2_5d_patch.js";
 import "./reference_assets_v3.js";
-import "./reference_dashboard_rebuild_v4.js";
+import "./reference_dashboard_boot_v5.js";

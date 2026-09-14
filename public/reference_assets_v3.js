@@ -1,6 +1,6 @@
 (function(){
   'use strict';
-  const FACE=['/player_face_1.svg','/player_face_2.svg','/player_face_3.svg'];
+  const FACE=['/player_face_1.svg','/player_face_2.svg','/player_face_3.svg','/player_face_4.svg','/player_face_5.svg','/player_face_6.svg'];
   const NS='http://www.w3.org/2000/svg';
   function icon(path,view='0 0 24 24'){return `<svg viewBox="${view}" xmlns="${NS}" fill="none" aria-hidden="true"><path d="${path}" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`;}
   const icons={
@@ -21,7 +21,7 @@
   function crest(i){const fills=['#0d294b','#2b1020','#123d2b','#271a45','#163d58'];const strokes=['#f5c542','#ff4d67','#25d58a','#9d7cff','#42b8ff'];const n=i%5;return `<svg viewBox="0 0 40 46" xmlns="${NS}"><path d="M20 2 35 7v14c0 10-6 18-15 23C11 39 5 31 5 21V7z" fill="${fills[n]}" stroke="${strokes[n]}" stroke-width="2"/><circle cx="20" cy="23" r="7" fill="#fff" opacity=".95"/><path d="m20 17 2 4 4 .5-3 3 1 4-4-2-4 2 1-4-3-3 4-.5z" fill="${strokes[n]}"/></svg>`;}
   function setOnce(el,html){if(el.dataset.refV3==='1')return;el.innerHTML=html;el.dataset.refV3='1';}
   function apply(){
-    if(!document.getElementById('athulReferenceV3')){const link=document.createElement('link');link.id='athulReferenceV3';link.rel='stylesheet';link.href='/game_ui_reference_v3.css?v=3';document.head.appendChild(link);}
+    if(!document.getElementById('athulReferenceV3')){const link=document.createElement('link');link.id='athulReferenceV3';link.rel='stylesheet';link.href='/game_ui_reference_v3.css?v=4';document.head.appendChild(link);}
     document.body.classList.add('game-screen-mode');
     document.querySelectorAll('.console-nav-tab .tab-icon').forEach((el,i)=>{const keys=['home','journey','squad','transfers','league','cup','finances','contracts'];setOnce(el,icons[keys[i]||'settings']);});
     document.querySelectorAll('.console-dock-tile-icon').forEach((el,i)=>{const keys=['home','squad','transfers','league','cup','settings'];setOnce(el,icons[keys[i]||'settings']);});
@@ -34,9 +34,9 @@
     document.querySelectorAll('.btn-auction-skip span:first-child').forEach(el=>setOnce(el,icons.skip));
     document.querySelectorAll('.btn-match-centre span:first-child').forEach(el=>{if(!el.dataset.refV3&&el.textContent.includes('PLAY')){el.textContent='PLAY';el.dataset.refV3='1';}});
     document.querySelectorAll('.match-schedule-date').forEach(el=>{if(!el.dataset.refV3){el.textContent=el.textContent.replace(/^\s*📅\s*/,'').trim();el.dataset.refV3='1';}});
-    document.querySelectorAll('.pitch-player-avatar-circle').forEach((img,i)=>{if(img.dataset.refV3!=='1'){img.src=FACE[i%FACE.length];img.removeAttribute('onerror');img.dataset.refV3='1';}});
-    const hero=document.querySelector('.fut-card-avatar-wrap');if(hero&&!hero.querySelector('img[data-original-face]'))hero.innerHTML=`<img data-original-face src="${FACE[0]}" alt="Original fictional football player portrait">`;
-    const transfer=document.querySelector('.transfer-star-silhouette');if(transfer&&!transfer.querySelector('img'))transfer.innerHTML=`<img src="${FACE[1]}" alt="Original fictional football player portrait">`;
+    document.querySelectorAll('.pitch-player-avatar-circle').forEach((img,i)=>{img.src=FACE[i%FACE.length];img.removeAttribute('onerror');img.dataset.refV3='1';});
+    const hero=document.querySelector('.fut-card-avatar-wrap');if(hero){let img=hero.querySelector('img[data-original-face]');if(!img){hero.innerHTML='';img=document.createElement('img');img.dataset.originalFace='1';img.alt='Original fictional football player portrait';hero.appendChild(img);}img.src=FACE[0];}
+    const transfer=document.querySelector('.transfer-star-silhouette');if(transfer){let img=transfer.querySelector('img');if(!img){transfer.innerHTML='';img=document.createElement('img');img.alt='Original fictional football player portrait';transfer.appendChild(img);}img.src=FACE[1];}
     const name=document.querySelector('.fut-card-name');if(name&&/MBAPP/i.test(name.textContent))name.textContent='V. MOREAU';
   }
   function start(){apply();let queued=false;new MutationObserver(()=>{if(queued)return;queued=true;requestAnimationFrame(()=>{queued=false;apply();});}).observe(document.body,{childList:true,subtree:true});}

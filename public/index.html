@@ -5726,6 +5726,22 @@ window.getSafeTeamName = function(fallback = "Athul FC") {
   return fallback;
 };
 
+window.getSafeCrestConfig = function() {
+  if (typeof CrestStudio !== "undefined") {
+    if (typeof CrestStudio.getCurrentConfig === "function") return CrestStudio.getCurrentConfig();
+    if (typeof CrestStudio.getConfig === "function") return CrestStudio.getConfig();
+    if (CrestStudio.activeConfig) return { ...CrestStudio.activeConfig };
+  }
+  return null;
+};
+
+window.getSafeCrestSvg = function(config, size = 48) {
+  if (typeof CrestStudio !== "undefined" && typeof CrestStudio.generateCrestSvg === "function") {
+    return CrestStudio.generateCrestSvg(config, size);
+  }
+  return null;
+};
+
 let gameState = null;
 
 let currentManagerPhoto = "/manager_photo.jpg";
@@ -5976,8 +5992,8 @@ function saveCurrentPlayerProgress(manual = false) {
     if (saveBtnIcon) saveBtnIcon.innerText = "⏳";
   }
 
-  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
-  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+  const crestConfig = window.getSafeCrestConfig();
+  const crestSvg = window.getSafeCrestSvg(crestConfig, 48);
 
   const teamData = gameState?.teams?.[teamName] || {};
   const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
@@ -6061,8 +6077,8 @@ async function syncWithCloudFirestore() {
   const teamData = gameState?.teams?.[activeName] || {};
   const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
   const currentPlayers = Array.isArray(teamData.players) ? teamData.players : [];
-  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
-  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+  const crestConfig = window.getSafeCrestConfig();
+  const crestSvg = window.getSafeCrestSvg(crestConfig, 48);
 
   const payload = {
     teamName: activeName,
@@ -6115,9 +6131,9 @@ function openSaveProfileModal() {
   if (squadEl) squadEl.innerText = squad;
 
   const crestSlot = document.getElementById("modalCrestSlot");
-  if (crestSlot && typeof CrestStudio !== "undefined") {
-    const cfg = CrestStudio.getCurrentConfig();
-    crestSlot.innerHTML = CrestStudio.generateCrestSvg(cfg, 48);
+  if (crestSlot) {
+    const cfg = window.getSafeCrestConfig();
+    crestSlot.innerHTML = window.getSafeCrestSvg(cfg, 48) || "⚽";
   }
 
   const remToggle = document.getElementById("modalRememberToggle");
@@ -6366,8 +6382,8 @@ function joinTeam() {
     localStorage.setItem(STORAGE_KEY_REMEMBER, rememberPlayerEnabled ? "1" : "0");
   }
 
-  const crestConfig = typeof CrestStudio !== "undefined" ? CrestStudio.getCurrentConfig() : null;
-  const crestSvg = typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(crestConfig, 48) : null;
+  const crestConfig = window.getSafeCrestConfig();
+  const crestSvg = window.getSafeCrestSvg(crestConfig, 48);
 
   let savedProgress = null;
   try {

@@ -268,17 +268,50 @@
     renderCrestPreview();
   }
 
+  function loadSavedConfig(cfg) {
+    if (!cfg || typeof cfg !== "object") return;
+    activeConfig = {
+      ...activeConfig,
+      ...cfg
+    };
+    const shapeEl = document.getElementById("crestShapeSelect");
+    const patternEl = document.getElementById("crestPatternSelect");
+    const pColEl = document.getElementById("crestPrimaryColor");
+    const sColEl = document.getElementById("crestSecondaryColor");
+    const aColEl = document.getElementById("crestAccentColor");
+    const monoEl = document.getElementById("crestMonogramInput");
+
+    if (shapeEl && activeConfig.shape) shapeEl.value = activeConfig.shape;
+    if (patternEl && activeConfig.pattern) patternEl.value = activeConfig.pattern;
+    if (pColEl && activeConfig.primary) pColEl.value = activeConfig.primary;
+    if (sColEl && activeConfig.secondary) sColEl.value = activeConfig.secondary;
+    if (aColEl && activeConfig.accent) aColEl.value = activeConfig.accent;
+    if (monoEl && activeConfig.monogram) monoEl.value = activeConfig.monogram;
+
+    if (activeConfig.emblem) {
+      document.querySelectorAll(".emblem-grid-btn").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.emblem === activeConfig.emblem);
+      });
+    }
+    renderCrestPreview();
+  }
+
   // Export API
   global.CrestStudio = {
     EMBLEMS,
     CREST_PRESETS,
     get activeConfig() { return activeConfig; },
-    setConfig(cfg) {
-      if (cfg) {
-        activeConfig = { ...activeConfig, ...cfg };
-        renderCrestPreview();
-      }
+    getCurrentConfig() {
+      return { ...activeConfig };
     },
+    getConfig() {
+      return { ...activeConfig };
+    },
+    setConfig(cfg) {
+      loadSavedConfig(cfg);
+    },
+    loadSavedConfig,
+    loadConfig: loadSavedConfig,
     generateCrestSvg,
     renderCrestPreview,
     updateField,

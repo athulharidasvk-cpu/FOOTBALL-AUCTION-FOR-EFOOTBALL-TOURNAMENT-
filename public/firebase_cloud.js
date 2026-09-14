@@ -9,7 +9,8 @@
     "./game_ui_reference_v2.js",
     "./game_nav_reference_v2.js",
     "./pls_2_5d_patch.js",
-    "./reference_assets_v3.js"
+    "./reference_assets_v3.js",
+    "./club_centers_restore_v1.js"
   ];
 
   for (const src of patches) {

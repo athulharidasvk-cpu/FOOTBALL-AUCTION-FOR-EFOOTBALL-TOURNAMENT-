@@ -50,7 +50,8 @@ const players = rawPlayers.filter(
 // CONSTANTS
 // =====================================================
 
-const STARTING_BUDGET = 500;
+// Small starter budget for Division 3 clubs (manageable & challenging)
+const STARTING_BUDGET = 50;
 
 const MAX_TEAMS = 12;
 
@@ -58,7 +59,7 @@ const MAX_SQUAD = 18;
 
 const AUCTION_TIME = 20;
 
-const BID_INCREMENT = 5;
+const BID_INCREMENT = 2;
 
 // Contract settings
 const CONTRACT_YEARS = 3;
@@ -81,6 +82,7 @@ const RELEASE_CLAUSE_MULTIPLIER = 1.6666667;
 let currentSeason = 1;
 
 let transferWindowOpen = true;
+let transferWindowType = "summer"; // "summer" | "winter" | "closed"
 
 const { LeagueManager, INITIAL_CLUBS } = require("./league.js");
 
@@ -112,7 +114,9 @@ function initGlobalRoom() {
 
     timer: AUCTION_TIME,
 
-    timerInterval: null
+    timerInterval: null,
+
+    isSoloMode: true
   };
 }
 
@@ -130,6 +134,8 @@ function saveGameProgressToFile() {
       savedAt: new Date().toISOString(),
       season: currentSeason,
       transferWindowOpen: transferWindowOpen,
+      transferWindowType: transferWindowType,
+      isSoloMode: Boolean(room.isSoloMode !== false),
       host: room.host,
       soldPlayers: Array.from(room.soldPlayers || []),
       teams: {}
@@ -174,13 +180,21 @@ function loadGameProgressFromFile() {
     if (typeof data.transferWindowOpen === "boolean") {
       transferWindowOpen = data.transferWindowOpen;
     }
+    if (data.transferWindowType) {
+      transferWindowType = data.transferWindowType;
+    }
+    if (typeof data.isSoloMode === "boolean") {
+      room.isSoloMode = data.isSoloMode;
+    }
     if (data.host) {
       room.host = data.host;
     }
     if (data.teams && typeof data.teams === "object") {
       for (const [tName, tData] of Object.entries(data.teams)) {
+        const rawBudget = Number(tData.budget);
+        const budgetVal = (Number.isFinite(rawBudget) && rawBudget > 0 && rawBudget <= 100) ? rawBudget : STARTING_BUDGET;
         room.teams[tName] = {
-          budget: Number(tData.budget) || STARTING_BUDGET,
+          budget: budgetVal,
           players: Array.isArray(tData.players) ? tData.players : [],
           socketId: null,
           season: tData.season || currentSeason,
@@ -245,6 +259,33 @@ function getAvailablePlayers(room) {
 }
 
 // -----------------------------------------------------
+// USER PURCHASING POWER & AFFORDABLE PLAYERS
+// -----------------------------------------------------
+
+function getUserPurchasingPower(room, requestingSocket) {
+  const teams = room.teams || {};
+  const teamEntries = Object.entries(teams);
+  if (teamEntries.length === 0) return STARTING_BUDGET;
+
+  // In Solo mode, the human manager's current budget is the active buying power
+  if (room.isSoloMode !== false && requestingSocket?.teamName && teams[requestingSocket.teamName]) {
+    const soloBudget = Number(teams[requestingSocket.teamName].budget);
+    return Number.isFinite(soloBudget) ? Math.max(0, soloBudget) : STARTING_BUDGET;
+  }
+
+  // In Multiplayer mode, consider all active user teams' money (highest balance available to buy players)
+  const budgets = teamEntries.map(([_, t]) => Number(t.budget) || 0);
+  const maxBudget = Math.max(...budgets, 0);
+  return maxBudget > 0 ? maxBudget : STARTING_BUDGET;
+}
+
+function getAffordablePlayers(room, maxBudget) {
+  const available = getAvailablePlayers(room);
+  const budgetCap = maxBudget !== undefined ? maxBudget : getUserPurchasingPower(room);
+  return available.filter(player => (Number(player.base) || 5) <= budgetCap);
+}
+
+// -----------------------------------------------------
 // ROUND NUMBER
 // -----------------------------------------------------
 
@@ -294,6 +335,146 @@ function createContractPlayer(player, price) {
       price
     )
   };
+}
+
+// -----------------------------------------------------
+// BASE STARTER TEAM GENERATOR (DIVISION 3 ROSTER)
+// -----------------------------------------------------
+
+function generateBaseStarterSquad(clubName, season) {
+  const baseTemplates = [
+    { name: "M. Hansen", pos: "GK", rat: 73, style: "Shot Stopper" },
+    { name: "D. O'Connor", pos: "RB", rat: 72, style: "Offensive Fullback" },
+    { name: "K. Lindberg", pos: "CB", rat: 74, style: "Build Up" },
+    { name: "T. Diallo", pos: "CB", rat: 73, style: "Destroyer" },
+    { name: "F. Rossi", pos: "LB", rat: 71, style: "Defensive Fullback" },
+    { name: "A. Kovacic", pos: "DMF", rat: 74, style: "Anchor" },
+    { name: "L. Becker", pos: "CMF", rat: 74, style: "Box to Box" },
+    { name: "N. Tanaka", pos: "AMF", rat: 73, style: "Creative Playmaker" },
+    { name: "S. Santos", pos: "RWF", rat: 74, style: "Speedster" },
+    { name: "J. Morales", pos: "CF", rat: 74, style: "Target Man" },
+    { name: "E. Larsson", pos: "LWF", rat: 73, style: "Inside Forward" },
+    // Bench Substitutes
+    { name: "C. Mendez", pos: "GK", rat: 69, style: "Shot Stopper" },
+    { name: "H. Bauer", pos: "CB", rat: 70, style: "Build Up" },
+    { name: "Y. Benali", pos: "CMF", rat: 71, style: "Orchestrator" }
+  ];
+
+  return baseTemplates.map(p => ({
+    name: `${p.name}`,
+    club: clubName,
+    position: p.pos,
+    rating: p.rat,
+    base: 5,
+    price: 5,
+    style: p.style,
+    isBaseStarter: true,
+    contract: {
+      startSeason: season,
+      endSeason: season + CONTRACT_YEARS - 1,
+      years: CONTRACT_YEARS,
+      salary: 2,
+      releaseClause: 15,
+      status: "active"
+    }
+  }));
+}
+
+// =====================================================
+// SOLO CAREER AI BIDDING ENGINE
+// =====================================================
+
+let aiBidTimeout = null;
+
+function clearAiBidding() {
+  if (aiBidTimeout) {
+    clearTimeout(aiBidTimeout);
+    aiBidTimeout = null;
+  }
+}
+
+const AI_BIDDER_CLUBS = [
+  "Real Madrid",
+  "Manchester City",
+  "Bayern Munich",
+  "Paris Saint-Germain",
+  "Arsenal",
+  "Liverpool",
+  "Borussia Dortmund",
+  "Atletico Madrid",
+  "Juventus",
+  "AC Milan",
+  "Bayer Leverkusen",
+  "Ajax",
+  "Benfica",
+  "Sporting CP",
+  "FC Porto",
+  "Aston Villa"
+];
+
+function scheduleAiAuctionParticipation(roomCode) {
+  clearAiBidding();
+  const room = rooms[roomCode];
+  if (!room || !room.auctionRunning || !room.currentPlayer) return;
+  if (room.isSoloMode === false) return;
+
+  const player = room.currentPlayer;
+  const base = Number(player.base) || 10;
+  const rating = Number(player.rating) || 80;
+
+  // Formulate 2-3 interested AI rivals
+  const shuffled = [...AI_BIDDER_CLUBS].sort(() => 0.5 - Math.random());
+  const interestedClubs = shuffled.slice(0, 3).map(club => {
+    // Valuation scaled by player tier
+    const multiplier = rating >= 89 ? (1.4 + Math.random() * 0.6) : (1.1 + Math.random() * 0.45);
+    return {
+      name: club,
+      maxVal: Math.max(base + BID_INCREMENT, Math.round(base * multiplier))
+    };
+  });
+
+  function triggerNextAiBid() {
+    clearAiBidding();
+    if (!room.auctionRunning || !room.currentPlayer) return;
+
+    // Thinking delay between 2000ms and 3800ms
+    const delay = Math.floor(Math.random() * 1800) + 2000;
+    aiBidTimeout = setTimeout(() => {
+      if (!room.auctionRunning || !room.currentPlayer) return;
+
+      const eligible = interestedClubs.filter(
+        c => c.name !== room.currentBidder && c.maxVal >= room.currentBid + BID_INCREMENT
+      );
+
+      if (eligible.length > 0) {
+        const bidder = eligible[Math.floor(Math.random() * eligible.length)];
+        const newBid = room.currentBid + BID_INCREMENT;
+
+        room.currentBid = newBid;
+        room.currentBidder = bidder.name;
+        room.timer = AUCTION_TIME;
+
+        io.to(roomCode).emit("bidUpdate", {
+          currentBid: room.currentBid,
+          currentBidder: room.currentBidder,
+          timer: room.timer,
+          isAi: true
+        });
+
+        managerMessage(
+          roomCode,
+          `🤖 ${bidder.name} placed a counter-bid of ₹${newBid}M for ${room.currentPlayer.name}!`
+        );
+
+        broadcastState(roomCode);
+
+        // Schedule another potential bid if another rival club wants to contest
+        triggerNextAiBid();
+      }
+    }, delay);
+  }
+
+  triggerNextAiBid();
 }
 
 // -----------------------------------------------------
@@ -367,13 +548,24 @@ function getGameState(room) {
     remainingPlayers:
       getAvailablePlayers(room).length,
 
+    purchasingPower:
+      getUserPurchasingPower(room),
+
+    affordablePlayers:
+      getAffordablePlayers(room).length,
+
     host: room.host,
 
     season: currentSeason,
 
     transferWindowOpen:
-
       transferWindowOpen,
+
+    transferWindowType:
+      transferWindowType,
+
+    isSoloMode:
+      Boolean(room.isSoloMode !== false),
 
     rules: {
       startingBudget: STARTING_BUDGET,
@@ -439,6 +631,7 @@ function managerMessage(roomCode, message) {
 // -----------------------------------------------------
 
 function stopTimer(room) {
+  clearAiBidding();
   if (room.timerInterval) {
     clearInterval(room.timerInterval);
 
@@ -565,6 +758,34 @@ function finishAuction(roomCode) {
   }
 
   // ===================================================
+  // PLAYER WON BY AI OPPONENT CLUB (SOLO CAREER)
+  // ===================================================
+
+  else if (room.currentBidder) {
+    const price = room.currentBid;
+    room.soldPlayers.add(
+      normalizeName(room.currentPlayer.name)
+    );
+
+    io.to(roomCode).emit(
+      "playerSold",
+      {
+        player: room.currentPlayer,
+        team: room.currentBidder,
+        price: price,
+        isAi: true
+      }
+    );
+
+    managerMessage(
+      roomCode,
+      `🔨 SOLD! ${room.currentPlayer.name} signs for ${room.currentBidder} for ₹${price}M in a major rival coup!`
+    );
+
+    saveGameProgressToFile();
+  }
+
+  // ===================================================
   // NO BID
   // ===================================================
 
@@ -664,6 +885,14 @@ io.on("connection", socket => {
           if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
         });
       }
+
+      // If still empty squad, grant base starter squad
+      if (!room.teams[teamName].players || room.teams[teamName].players.length === 0) {
+        room.teams[teamName].players = generateBaseStarterSquad(teamName, currentSeason);
+        room.teams[teamName].players.forEach(p => {
+          if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
+        });
+      }
     }
 
     // -------------------------------------------------
@@ -688,7 +917,13 @@ io.on("connection", socket => {
       let initialPlayers = [];
       if (data?.savedProgress) {
         if (data.savedProgress.budget !== undefined) {
-          initialBudget = Number(data.savedProgress.budget) || STARTING_BUDGET;
+          const raw = Number(data.savedProgress.budget);
+          // Migrate old 500M budget down to realistic small starting budget
+          if (raw > 100) {
+            initialBudget = STARTING_BUDGET;
+          } else {
+            initialBudget = (Number.isFinite(raw) && raw > 0) ? raw : STARTING_BUDGET;
+          }
         }
         if (Array.isArray(data.savedProgress.players)) {
           initialPlayers = data.savedProgress.players;
@@ -696,6 +931,14 @@ io.on("connection", socket => {
             if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
           });
         }
+      }
+
+      // Every new user team receives a Division 3 Base Starter Squad (14 players)
+      if (initialPlayers.length === 0) {
+        initialPlayers = generateBaseStarterSquad(teamName, currentSeason);
+        initialPlayers.forEach(p => {
+          if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
+        });
       }
 
       room.teams[teamName] = {
@@ -817,6 +1060,15 @@ io.on("connection", socket => {
         return;
       }
 
+      if (!transferWindowOpen) {
+        socket.emit(
+          "errorMessage",
+          "🔒 The Transfer Window & Auction are CLOSED during competitive league matchdays! Reinforcements can be signed when the market opens during the Winter Transfer Window (after Round 5) or Summer Transfer Window (Pre-Season)."
+        );
+
+        return;
+      }
+
       if (
         room.auctionRunning
       ) {
@@ -845,14 +1097,29 @@ io.on("connection", socket => {
         return;
       }
 
-      const randomIndex =
-        Math.floor(
-          Math.random() *
-          available.length
-        );
+      // Consider all user total money and make players appear who they can buy with their balance
+      const userPurchasingPower = getUserPurchasingPower(room, socket);
+      const affordableCandidates = getAffordablePlayers(room, userPurchasingPower);
 
-      room.currentPlayer =
-        available[randomIndex];
+      let chosenPlayer;
+      if (affordableCandidates.length > 0) {
+        // Pick from players who the manager(s) can actually buy with their balance
+        const randomIndex = Math.floor(Math.random() * affordableCandidates.length);
+        chosenPlayer = affordableCandidates[randomIndex];
+      } else {
+        // If current balance is lower than all remaining players (e.g. balance < 5M),
+        // pick the lowest valuation talent so it's as accessible as possible
+        const sorted = [...available].sort(
+          (a, b) => (Number(a.base) || 5) - (Number(b.base) || 5)
+        );
+        chosenPlayer = sorted[0];
+        managerMessage(
+          socket.roomCode,
+          `💡 Scouting Advisory: Your remaining treasury (₹${userPurchasingPower}M) is below market valuations. Displaying lowest available tier: ${chosenPlayer.name} (Base ₹${chosenPlayer.base}M). Generate revenue through matchdays or player sales to bid higher!`
+        );
+      }
+
+      room.currentPlayer = chosenPlayer;
 
       room.currentBid =
         Number(
@@ -874,19 +1141,29 @@ io.on("connection", socket => {
             room.currentPlayer,
 
           startingBid:
-            room.currentBid
+            room.currentBid,
+
+          affordable:
+            (Number(room.currentPlayer.base) || 5) <= userPurchasingPower,
+
+          userPurchasingPower:
+            userPurchasingPower
         }
       );
 
       managerMessage(
         socket.roomCode,
 
-        `🔥 ${room.currentPlayer.name} is now on the market! Starting bid: ₹${room.currentBid}M.`
+        `🔥 ${room.currentPlayer.name} (${room.currentPlayer.position} • ${room.currentPlayer.rating} ⭐) is on the market! Starting bid: ₹${room.currentBid}M (Matched to your ₹${userPurchasingPower}M budget range).`
       );
 
       startTimer(
         socket.roomCode
       );
+
+      if (room.isSoloMode !== false) {
+        scheduleAiAuctionParticipation(socket.roomCode);
+      }
 
       broadcastState(
         socket.roomCode
@@ -908,6 +1185,15 @@ io.on("connection", socket => {
         socket.emit(
           "errorMessage",
           "Join a team first."
+        );
+
+        return;
+      }
+
+      if (!transferWindowOpen) {
+        socket.emit(
+          "errorMessage",
+          "🔒 The transfer window is currently closed."
         );
 
         return;
@@ -1068,6 +1354,10 @@ io.on("connection", socket => {
         );
       }
 
+      if (room.isSoloMode !== false) {
+        scheduleAiAuctionParticipation(socket.roomCode);
+      }
+
       broadcastState(
         socket.roomCode
       );
@@ -1218,7 +1508,7 @@ io.on("connection", socket => {
       managerMessage(
         socket.roomCode,
 
-        "🔄 Auction reset! Every manager has ₹500M again."
+        `🔄 Auction reset! Every manager has ₹${STARTING_BUDGET}M again.`
       );
 
       league.initSeason(1, INITIAL_CLUBS);
@@ -2423,7 +2713,47 @@ io.on("connection", socket => {
       seasonSummary: res.seasonSummary
     });
 
+    // Automatic Transfer Window scheduling across the season:
+    if (res.round === 1) {
+      transferWindowOpen = false;
+      transferWindowType = "closed";
+      managerMessage(
+        GLOBAL_ROOM,
+        "🔒 Round 1 is underway! The Summer Transfer Window has CLOSED for the league season."
+      );
+    } else if (res.round === 5 && !res.isSeasonComplete) {
+      transferWindowOpen = true;
+      transferWindowType = "winter";
+      managerMessage(
+        GLOBAL_ROOM,
+        "❄️ MID-SEASON BREAK! The WINTER TRANSFER WINDOW is now OPEN! Squad reinforcements and auctions unlocked!"
+      );
+    } else if (res.round === 6) {
+      transferWindowOpen = false;
+      transferWindowType = "closed";
+      managerMessage(
+        GLOBAL_ROOM,
+        "🔒 Round 6 kicks off! The Winter Transfer Window has CLOSED for the championship run-in."
+      );
+    }
+
+    if (res.isSeasonComplete) {
+      transferWindowOpen = true;
+      transferWindowType = "summer";
+      managerMessage(
+        GLOBAL_ROOM,
+        "☀️ Campaign complete! The SUMMER TRANSFER WINDOW is OPEN for the upcoming season!"
+      );
+    }
+
+    io.to(GLOBAL_ROOM).emit("transferWindowState", {
+      transferWindowOpen,
+      transferWindowType
+    });
+
     broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(GLOBAL_ROOM);
+    saveGameProgressToFile();
 
     if (res.rivalryMatches && res.rivalryMatches.length > 0) {
       const topDerby = res.rivalryMatches[0];
@@ -2460,11 +2790,21 @@ io.on("connection", socket => {
     }
 
     const res = league.simulateFullSeason(room.teams);
+    transferWindowOpen = true;
+    transferWindowType = "summer";
+
+    io.to(GLOBAL_ROOM).emit("transferWindowState", {
+      transferWindowOpen,
+      transferWindowType
+    });
+
     broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(GLOBAL_ROOM);
+    saveGameProgressToFile();
 
     managerMessage(
       GLOBAL_ROOM,
-      `⚽ Full league season simulated! ${res.totalMatchesSimulated} matches completed.`
+      `⚽ Full league season simulated! ${res.totalMatchesSimulated} matches completed. Summer Transfer Window is OPEN!`
     );
 
     if (res.seasonSummary) {
@@ -2491,19 +2831,79 @@ io.on("connection", socket => {
     currentSeason++;
     const res = league.advanceToNextSeason(currentSeason, room.teams);
     transferWindowOpen = true;
+    transferWindowType = "summer";
 
     managerMessage(
       GLOBAL_ROOM,
-      `🌍 Welcome to Season ${currentSeason}! Promotions and relegations applied. New fixtures scheduled!`
+      `🌍 Welcome to Season ${currentSeason}! Promotions and relegations applied. Summer Transfer Window is OPEN!`
     );
 
     io.to(GLOBAL_ROOM).emit("seasonChanged", {
       season: currentSeason,
-      transferWindowOpen: transferWindowOpen
+      transferWindowOpen: transferWindowOpen,
+      transferWindowType: transferWindowType
+    });
+
+    io.to(GLOBAL_ROOM).emit("transferWindowState", {
+      transferWindowOpen,
+      transferWindowType
     });
 
     broadcastState(GLOBAL_ROOM);
     broadcastLeagueState(GLOBAL_ROOM);
+    saveGameProgressToFile();
+  });
+
+  // ===================================================
+  // SET GAME PLAY MODE (SOLO VS MULTIPLAYER)
+  // ===================================================
+  socket.on("setGameMode", data => {
+    const room = getRoom(socket);
+    if (!room) return;
+    const isSolo = data?.mode === "solo";
+    room.isSoloMode = isSolo;
+    managerMessage(
+      GLOBAL_ROOM,
+      isSolo
+        ? "🎮 Solo Career Mode Active: AI manager algorithms will contest auctions, submit bids, and compete across Division 1, 2, and 3."
+        : "👥 Multiplayer Mode Active: Real connected managers participate in the auction room."
+    );
+    broadcastState(GLOBAL_ROOM);
+    saveGameProgressToFile();
+  });
+
+  // ===================================================
+  // TOGGLE TRANSFER WINDOW (HOST OVERRIDE)
+  // ===================================================
+  socket.on("toggleTransferWindow", () => {
+    const room = getRoom(socket);
+    if (!room) return;
+    if (room.host && room.host !== socket.teamName) {
+      socket.emit("errorMessage", "Only the executive host manager can toggle the transfer window.");
+      return;
+    }
+
+    transferWindowOpen = !transferWindowOpen;
+    if (transferWindowOpen) {
+      transferWindowType = league.currentRound > 5 ? "winter" : "summer";
+      managerMessage(
+        GLOBAL_ROOM,
+        `🟢 Transfer Window & Auction manually OPENED (${transferWindowType === "winter" ? "Winter" : "Summer"} Window).`
+      );
+    } else {
+      transferWindowType = "closed";
+      managerMessage(
+        GLOBAL_ROOM,
+        "🔴 Transfer Window & Auction manually CLOSED for league matchdays."
+      );
+    }
+
+    io.to(GLOBAL_ROOM).emit("transferWindowState", {
+      transferWindowOpen,
+      transferWindowType
+    });
+    broadcastState(GLOBAL_ROOM);
+    saveGameProgressToFile();
   });
 
   // ===================================================

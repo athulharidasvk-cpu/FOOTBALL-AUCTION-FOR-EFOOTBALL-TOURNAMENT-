@@ -8,6 +8,43 @@
 <meta property="og:title" content="Football Auction">
 <meta property="og:description" content="Multiplayer football auction and club management app with Firebase Firestore cloud sync, procedural Web Audio stadium soundtrack &amp; jukebox, Pro League Soccer (PLS) 2D playable arcade match engine &amp; journey campaign, custom jersey kit editor, broadcast match center with crest studio, and awards trophy room.">
 
+<script>
+  // Safe circular-aware JSON.stringify guard to prevent third-party SDKs, event loggers, or debuggers from throwing on circular structures
+  (function() {
+    const _origStringify = JSON.stringify;
+    function createCircularReplacer(replacer) {
+      const seen = new WeakSet();
+      return function(key, val) {
+        if (typeof val === "object" && val !== null) {
+          if (seen.has(val)) {
+            return undefined;
+          }
+          seen.add(val);
+        }
+        if (typeof replacer === "function") {
+          return replacer.call(this, key, val);
+        }
+        return val;
+      };
+    }
+    JSON.stringify = function(value, replacer, space) {
+      try {
+        const safeRep = createCircularReplacer(replacer);
+        return _origStringify(value, safeRep, space);
+      } catch (err) {
+        if (err instanceof TypeError && /circular/i.test(err.message)) {
+          try {
+            return _origStringify(value, createCircularReplacer(null), space);
+          } catch (_) {
+            return "{}";
+          }
+        }
+        throw err;
+      }
+    };
+  })();
+</script>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="/d3/d3.min.js"></script>
 <script>
@@ -1488,6 +1525,157 @@ select {
   border-radius: 8px;
   margin-top: 15px;
   margin-left: 5px;
+}
+
+/* =====================================================
+   AUCTION SCOUT & AFFORDABILITY BADGES
+===================================================== */
+
+.badge-budget-cap {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.auction-scout-card {
+  max-width: 480px;
+  margin: 0 auto 12px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 12px;
+  padding: 14px 16px;
+  text-align: left;
+}
+
+.scout-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.scout-badge {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.scout-budget-pill {
+  font-size: 12px;
+  font-weight: 800;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.12);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid rgba(250, 204, 21, 0.3);
+}
+
+.scout-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.scout-stat-box {
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 8px;
+  text-align: center;
+}
+
+.scout-stat-label {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.scout-stat-value {
+  display: block;
+  font-size: 13px;
+  color: #f8fafc;
+  font-weight: 800;
+}
+
+.player-valuation-badge {
+  margin-top: 10px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(241, 196, 15, 0.35);
+  padding: 6px 12px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.player-valuation-badge .val-label {
+  color: #94a3b8;
+  font-size: 11px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.player-valuation-badge strong {
+  color: #facc15;
+  font-size: 15px;
+}
+
+.player-affordability-banner {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.player-affordability-banner.affordable {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid #10b981;
+  color: #34d399;
+}
+
+.player-affordability-banner.expensive {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid #ef4444;
+  color: #fca5a5;
+}
+
+.quick-bid-btn {
+  background: #0284c7;
+  color: white;
+  padding: 12px 14px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.quick-bid-btn:hover {
+  background: #0369a1;
 }
 
 /* =========================
@@ -3358,6 +3546,146 @@ select {
   opacity: 1;
   pointer-events: auto;
 }
+
+/* Solo vs Multiplayer Mode Switcher */
+.console-mode-switcher {
+  display: flex;
+  align-items: center;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.btn-console-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.btn-console-mode:hover {
+  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-console-mode.active {
+  background: #2563eb;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+#btnMode_solo.active {
+  background: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.4);
+}
+
+/* Badges for Auction Header */
+.badge-solo-ai {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: rgba(16, 185, 129, 0.18);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  white-space: nowrap;
+}
+
+.badge-window-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.badge-window-status.open {
+  background: rgba(16, 185, 129, 0.2);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.badge-window-status.closed {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* Transfer Window Closed Notice Card */
+.transfer-window-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 12px;
+  padding: 14px 18px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
+.window-card-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.window-card-icon {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.window-card-text strong {
+  display: block;
+  font-size: 14px;
+  color: #fca5a5;
+  margin-bottom: 3px;
+}
+
+.window-card-text p {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.btn-window-override {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-window-override:hover {
+  background: #ef4444;
+  color: #ffffff;
+}
 </style>
 </head>
 
@@ -3409,19 +3737,29 @@ select {
 
     <!-- Header Metrics -->
     <div class="console-header-metrics">
-      <div class="console-metric-pill" onclick="switchAppView('hq')" title="Club Treasury & Finances">
+      <!-- GAME MODE TOGGLE (SOLO VS MULTIPLAYER) -->
+      <div class="console-mode-switcher" id="consoleModeSwitcher" title="Switch between Solo Career (vs AI rivals) and Multiplayer Room">
+        <button type="button" class="btn-console-mode active" id="btnMode_solo" onclick="setGamePlayMode('solo')">
+          <span>🎮</span> SOLO (AI)
+        </button>
+        <button type="button" class="btn-console-mode" id="btnMode_multi" onclick="setGamePlayMode('multiplayer')">
+          <span>👥</span> PVP MULTI
+        </button>
+      </div>
+
+      <div class="console-metric-pill" onclick="switchAppView('hq')" title="Club Treasury & Finances (Division 3 Starting Club)">
         <div class="console-metric-icon">💵</div>
         <div class="console-metric-info">
-          <span class="console-metric-val" id="topBudgetDisplay">₹ 500M</span>
-          <span class="console-metric-sub">Club Budget</span>
+          <span class="console-metric-val" id="topBudgetDisplay">₹ 50M</span>
+          <span class="console-metric-sub">Club Budget (Div 3)</span>
         </div>
       </div>
 
-      <div class="console-metric-pill" onclick="switchAppView('auction')" title="Current Season & Window Status">
-        <div class="console-metric-icon">📅</div>
+      <div class="console-metric-pill" onclick="switchAppView('auction')" title="Current Season & Window Status (Click to go to Auction)">
+        <div class="console-metric-icon" id="topWindowIcon">☀️</div>
         <div class="console-metric-info">
-          <span class="console-metric-val">Season 1</span>
-          <span class="console-metric-sub">Transfer Window: <span style="color:#10b981; font-weight:800;">Open</span></span>
+          <span class="console-metric-val" id="topSeasonDisplay">Season 1</span>
+          <span class="console-metric-sub">Window: <span id="topWindowStatus" style="color:#10b981; font-weight:800;">Summer (Open)</span></span>
         </div>
       </div>
 
@@ -3500,6 +3838,10 @@ select {
         <span class="tab-icon">🎮</span>
         <span>Journey (PLS)</span>
       </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_auction" onclick="switchAppView('auction')">
+        <span class="tab-icon">🔨</span>
+        <span>Live Auction</span>
+      </button>
       <button type="button" class="console-nav-tab" id="sideBtn_squad" onclick="switchAppView('squad')">
         <span class="tab-icon">👥</span>
         <span>Squad</span>
@@ -3510,11 +3852,19 @@ select {
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_league" onclick="switchAppView('league')">
         <span class="tab-icon">🏆</span>
-        <span>League</span>
+        <span>League (Div 3)</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_jerseys" onclick="switchAppView('jerseys')">
+        <span class="tab-icon">👕</span>
+        <span>Jersey Studio</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_injuries" onclick="switchAppView('injuries')">
+        <span class="tab-icon">🏥</span>
+        <span>Injury Center</span>
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_cup" onclick="switchAppView('cup')">
-        <span class="tab-icon">🏆</span>
-        <span>Cup</span>
+        <span class="tab-icon">🎖️</span>
+        <span>Awards & Gala</span>
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_finances" onclick="switchAppView('finances')">
         <span class="tab-icon">💳</span>
@@ -3948,7 +4298,7 @@ select {
                   </div>
                   <div class="finance-row-text">
                     <span class="finance-row-label">Balance</span>
-                    <span class="finance-row-val" id="homeFinanceBalance">₹ 500M</span>
+                    <span class="finance-row-val" id="homeFinanceBalance">₹ 50M</span>
                   </div>
                 </div>
 
@@ -3997,12 +4347,18 @@ select {
 
           </div>
 
-          <!-- BOTTOM DOCK (6 LARGE NAVIGATION CARDS) -->
+          <!-- BOTTOM DOCK (LARGE NAVIGATION CARDS) -->
           <div class="console-bottom-grid" id="consoleBottomDock">
             <div class="console-dock-tile active" id="consoleDock_home" onclick="switchAppView('home')">
               <div class="console-dock-tile-icon">🏠</div>
               <div class="console-dock-tile-title">HOME</div>
               <div class="console-dock-tile-desc">Your club at a glance</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_auction" onclick="switchAppView('auction')">
+              <div class="console-dock-tile-icon">🔨</div>
+              <div class="console-dock-tile-title">AUCTION</div>
+              <div class="console-dock-tile-desc">Live Bidding Arena</div>
             </div>
 
             <div class="console-dock-tile" id="consoleDock_squad" onclick="switchAppView('squad')">
@@ -4020,19 +4376,31 @@ select {
             <div class="console-dock-tile" id="consoleDock_league" onclick="switchAppView('league')">
               <div class="console-dock-tile-icon">🏆</div>
               <div class="console-dock-tile-title">LEAGUE</div>
-              <div class="console-dock-tile-desc">Table / Fixtures / Results</div>
+              <div class="console-dock-tile-desc">Div 3 Table / Fixtures</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_jerseys" onclick="switchAppView('jerseys')">
+              <div class="console-dock-tile-icon">👕</div>
+              <div class="console-dock-tile-title">JERSEYS</div>
+              <div class="console-dock-tile-desc">Kit Designer & Merchandise</div>
+            </div>
+
+            <div class="console-dock-tile" id="consoleDock_injuries" onclick="switchAppView('injuries')">
+              <div class="console-dock-tile-icon">🏥</div>
+              <div class="console-dock-tile-title">MEDICAL</div>
+              <div class="console-dock-tile-desc">Injury Center & Rehab Clinic</div>
             </div>
 
             <div class="console-dock-tile" id="consoleDock_cup" onclick="switchAppView('cup')">
-              <div class="console-dock-tile-icon">🏆</div>
-              <div class="console-dock-tile-title">CUP</div>
-              <div class="console-dock-tile-desc">Knockout Competitions</div>
+              <div class="console-dock-tile-icon">🎖️</div>
+              <div class="console-dock-tile-title">AWARDS</div>
+              <div class="console-dock-tile-desc">Gala & Competitions</div>
             </div>
 
             <div class="console-dock-tile" id="consoleDock_club" onclick="switchAppView('hq')">
               <div class="console-dock-tile-icon">🛡️</div>
-              <div class="console-dock-tile-title">CLUB</div>
-              <div class="console-dock-tile-desc">Stadium / Finances / History</div>
+              <div class="console-dock-tile-title">CLUB HQ</div>
+              <div class="console-dock-tile-desc">Stadium / Finances</div>
             </div>
           </div>
 
@@ -4277,7 +4645,7 @@ select {
       <div class="dugout-speech-bubble" id="dugoutSpeechBubble">
         <div class="speech-quote-mark">“</div>
         <div class="speech-body" id="managerMessage">
-          Welcome to the auction room, boss! Build a formidable squad within your ₹500M budget, watch out for arch-rival derbies, and lead our club to the Division 1 championship!
+          Welcome to the auction room, boss! Build a formidable squad within your ₹50M budget, watch out for arch-rival derbies, and lead our club to the Division 1 championship!
         </div>
         <div class="dugout-quick-actions">
           <button type="button" class="dugout-chip" onclick="askManagerAdvice('tactics')">💬 Pep's Advice</button>
@@ -4388,7 +4756,7 @@ select {
         <div class="saved-resume-info">
           <h3 class="saved-resume-team" id="resumeTeamName">ATHUL FC</h3>
           <div class="saved-resume-manager">Manager: <strong id="resumeManagerName">Athul V V</strong> 👑</div>
-          <div class="saved-resume-stats" id="resumeStatsText">Squad: 0 players • Budget: ₹500M</div>
+          <div class="saved-resume-stats" id="resumeStatsText">Squad: 0 players • Budget: ₹50M</div>
         </div>
       </div>
       <div class="saved-resume-actions">
@@ -4540,7 +4908,7 @@ select {
 
       <div class="stat">
         <span>BUDGET</span>
-        <strong id="myBudget">₹500M</strong>
+        <strong id="myBudget">₹50M</strong>
       </div>
 
       <div class="stat">
@@ -4569,19 +4937,76 @@ select {
   <div class="auction">
 
     <div class="auction-title">
-      🔨 PLAYER AUCTION
+      <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;">
+        <span>🔨 PLAYER AUCTION ARENA</span>
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="badge-budget-cap" id="auctionBudgetCapBadge">💰 Buying Power: ₹50M</span>
+          <span class="badge-solo-ai" id="auctionModeBadge">🎮 SOLO CAREER (AI RIVALS)</span>
+          <span class="badge-window-status" id="auctionWindowBadge">☀️ SUMMER WINDOW (OPEN)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSFER WINDOW CLOSED NOTICE BANNER -->
+    <div id="transferWindowNotice" class="transfer-window-card" style="display: none; margin-bottom: 12px;">
+      <div class="window-card-content">
+        <span class="window-card-icon" id="windowCardIcon">🔒</span>
+        <div class="window-card-text">
+          <strong id="windowCardTitle">Transfer Window & Auction Market Closed</strong>
+          <p id="windowCardDesc">League matchdays are currently in active competition. The auction market will reopen during the <strong>Winter Transfer Window (Mid-Season Break after Round 5)</strong> and <strong>Summer Transfer Window (Pre-Season)</strong>.</p>
+        </div>
+      </div>
+      <button type="button" class="btn-window-override" onclick="requestToggleTransferWindow()" title="Executive Host can manually open or close the transfer market">
+        ⚡ Host: Override Market
+      </button>
     </div>
 
     <div id="noPlayer">
 
-      <p>Waiting for the next player...</p>
+      <div class="auction-scout-card" id="auctionScoutCard">
+        <div class="scout-header-row">
+          <span class="scout-badge">🎯 BALANCE-ALIGNED AUCTION</span>
+          <span class="scout-budget-pill" id="scoutActiveBudgetPill">Your Treasury: ₹50M</span>
+        </div>
+        <p id="noPlayerMessage" style="margin: 6px 0 8px; color: #cbd5e1; font-size: 13px; line-height: 1.5;">
+          The auction market automatically considers your total money so only players you can afford with your balance appear for bidding!
+        </p>
+        <div class="scout-stats-grid">
+          <div class="scout-stat-box">
+            <span class="scout-stat-label">Affordable In Pool</span>
+            <strong class="scout-stat-value" id="scoutAffordableCount">Calculating...</strong>
+          </div>
+          <div class="scout-stat-box">
+            <span class="scout-stat-label">Max Affordable Base</span>
+            <strong class="scout-stat-value" id="scoutMaxAffordableBase">₹50M</strong>
+          </div>
+          <div class="scout-stat-box">
+            <span class="scout-stat-label">Min Bid Step</span>
+            <strong class="scout-stat-value" id="scoutBidIncrement">₹2M</strong>
+          </div>
+        </div>
+      </div>
 
-      <button
-        class="start-button"
-        onclick="startAuction()"
-      >
-        START AUCTION
-      </button>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
+        <button
+          class="start-button"
+          id="btnStartAuction"
+          onclick="startAuction()"
+        >
+          🎲 START AUCTION (AFFORDABLE TARGET)
+        </button>
+
+        <button
+          type="button"
+          class="start-button"
+          id="btnOverrideWindow"
+          style="background: #334155; display: none;"
+          onclick="requestToggleTransferWindow()"
+          title="Host can open the window for testing"
+        >
+          🔓 OPEN TRANSFER WINDOW
+        </button>
+      </div>
 
     </div>
 
@@ -4634,6 +5059,16 @@ select {
           Playing Style: Standard
         </div>
 
+        <div class="player-valuation-badge" id="playerValuationBadge">
+          <span class="val-label">Starting Base:</span>
+          <strong id="playerBaseVal">₹20M</strong>
+        </div>
+
+        <div class="player-affordability-banner affordable" id="playerAffordabilityBanner">
+          <span id="playerAffordabilityIcon">✅</span>
+          <span id="playerAffordabilityText">Affordable with your current balance</span>
+        </div>
+
       </div>
 
       <div
@@ -4669,6 +5104,16 @@ select {
           onclick="placeBid()"
         >
           BID
+        </button>
+
+        <button
+          type="button"
+          class="quick-bid-btn"
+          id="btnQuickMinBid"
+          onclick="quickBidMinimum()"
+          title="Quickly place the minimum valid increment bid"
+        >
+          ⚡ +₹2M Min
         </button>
 
       </div>
@@ -5576,7 +6021,7 @@ select {
     <!-- Key Snapshot Stats -->
     <div class="save-stats-grid">
       <div class="save-stat-cell">
-        <div class="v" id="modalStatBudget">₹ 500M</div>
+        <div class="v" id="modalStatBudget">₹ 50M</div>
         <div class="l">Club Budget</div>
       </div>
       <div class="save-stat-cell">
@@ -5880,7 +6325,8 @@ function initRememberedPlayer() {
       if (resumeBtn) resumeBtn.innerText = "RESUME AS " + saved.teamName.toUpperCase();
       if (resumeStats) {
         const squadCount = Array.isArray(saved.players) ? saved.players.length : (saved.squadCount || 0);
-        const budget = saved.budget !== undefined ? saved.budget : 500;
+        const rawB = Number(saved.budget);
+        const budget = (Number.isFinite(rawB) && rawB > 0 && rawB <= 100) ? rawB : 50;
         resumeStats.innerText = `Squad: ${squadCount} players • Treasury: ₹${budget}M`;
       }
       if (resumeTime && saved.lastSaved) {
@@ -5930,11 +6376,11 @@ function initRememberedPlayer() {
             localStorage.setItem(STORAGE_KEY_SAVED_MANAGER, JSON.stringify(cloudData));
             showSaveToast(`☁️ Cloud Synced: Updated ${saved.teamName} from Firestore!`, "🔄");
           }
-        }).catch(e => console.warn("Cloud check warning:", e));
+        }).catch(e => console.warn("Cloud check warning:", e ? String(e.message || e) : "Check failed"));
       }
     }, 1500);
   } catch (err) {
-    console.error("Failed to init remembered player:", err);
+    console.warn("Init remembered player notice:", err ? String(err.message || err) : "Init notice");
   }
 }
 
@@ -5996,7 +6442,8 @@ function saveCurrentPlayerProgress(manual = false) {
   const crestSvg = window.getSafeCrestSvg(crestConfig, 48);
 
   const teamData = gameState?.teams?.[teamName] || {};
-  const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
+  const rawB = Number(teamData.budget);
+  const currentBudget = (Number.isFinite(rawB) && rawB > 0 && rawB <= 100) ? rawB : 50;
   const currentPlayers = Array.isArray(teamData.players) ? teamData.players : [];
 
   const progressPayload = {
@@ -6030,7 +6477,7 @@ function saveCurrentPlayerProgress(manual = false) {
           syncStatus.innerHTML = `<span style="color:#10b981;">☁️ Cloud Synced (${new Date().toLocaleTimeString()})</span> • advance-ocean-fq6d2`;
         }
       }
-    }).catch(e => console.warn("Firestore auto-save warning:", e));
+    }).catch(e => console.warn("Firestore auto-save warning:", e ? String(e.message || e) : "Auto-save failed"));
   }
 
   setTimeout(() => {
@@ -6075,7 +6522,8 @@ async function syncWithCloudFirestore() {
   }
 
   const teamData = gameState?.teams?.[activeName] || {};
-  const currentBudget = teamData.budget !== undefined ? teamData.budget : 500;
+  const rawB = Number(teamData.budget);
+  const currentBudget = (Number.isFinite(rawB) && rawB > 0 && rawB <= 100) ? rawB : 50;
   const currentPlayers = Array.isArray(teamData.players) ? teamData.players : [];
   const crestConfig = window.getSafeCrestConfig();
   const crestSvg = window.getSafeCrestSvg(crestConfig, 48);
@@ -6106,7 +6554,7 @@ async function syncWithCloudFirestore() {
       showSaveToast("Local & disk saved. Cloud sync pending.", "💾");
     }
   } catch (err) {
-    console.error("Cloud sync error:", err);
+    console.warn("Cloud sync notice:", err ? String(err.message || err) : "Sync notice");
     showSaveToast("Progress saved to local & server storage.", "💾");
   }
 }
@@ -6117,7 +6565,8 @@ function openSaveProfileModal() {
 
   const activeName = window.getSafeTeamName("Athul FC");
   const teamData = gameState?.teams?.[activeName] || {};
-  const budget = teamData.budget !== undefined ? teamData.budget : 500;
+  const rawB = Number(teamData.budget);
+  const budget = (Number.isFinite(rawB) && rawB > 0 && rawB <= 100) ? rawB : 50;
   const squad = Array.isArray(teamData.players) ? teamData.players.length : 0;
 
   const nameEl = document.getElementById("modalTeamNameDisplay");
@@ -6252,7 +6701,7 @@ function handleImportSaveFile(event) {
 
 function confirmResetProgress() {
   const activeName = myTeam || "Club";
-  if (!confirm(`⚠️ Are you sure you want to reset progress for ${activeName}? This will clear your squad roster and reset treasury to ₹500M.`)) {
+  if (!confirm(`⚠️ Are you sure you want to reset progress for ${activeName}? This will clear your squad roster and reset treasury to ₹50M.`)) {
     return;
   }
 
@@ -6481,6 +6930,22 @@ function startAuction() {
    PLACE BID
 ===================================================== */
 
+function quickBidMinimum() {
+  const inc = gameState?.rules?.bidIncrement || 2;
+  const current = Number(gameState?.currentBid) || 0;
+  const targetBid = current + inc;
+
+  const myTeamData = (myTeam && gameState?.teams) ? gameState.teams[myTeam] : null;
+  const currentBudget = myTeamData ? Number(myTeamData.budget) : 50;
+
+  if (targetBid > currentBudget) {
+    showError(`Insufficient funds! Bid of ₹${targetBid}M exceeds your balance of ₹${currentBudget}M.`);
+    return;
+  }
+
+  socket.emit("placeBid", { amount: targetBid });
+}
+
 function placeBid() {
 
   const input =
@@ -6488,15 +6953,23 @@ function placeBid() {
       "bidAmount"
     );
 
-  const amount =
+  let amount =
     Number(input.value);
 
+  const inc = gameState?.rules?.bidIncrement || 2;
+  const current = Number(gameState?.currentBid) || 0;
+  const minValidBid = current + inc;
+
+  // If no amount was typed, auto-place the minimum valid increment bid
   if (!amount) {
+    amount = minValidBid;
+  }
 
-    showError(
-      "Enter a bid amount."
-    );
+  const myTeamData = (myTeam && gameState?.teams) ? gameState.teams[myTeam] : null;
+  const currentBudget = myTeamData ? Number(myTeamData.budget) : 50;
 
+  if (amount > currentBudget) {
+    showError(`Insufficient funds! Your bid of ₹${amount}M exceeds your balance of ₹${currentBudget}M.`);
     return;
   }
 
@@ -6573,15 +7046,45 @@ socket.on(
       state.teams[myTeam]
     ) {
 
+      const teamBudget = state.teams[myTeam].budget;
       document.getElementById(
         "myBudget"
       ).innerText =
         "₹" +
-        state.teams[
-          myTeam
-        ].budget +
+        teamBudget +
         "M";
 
+      const topBudgetEl = document.getElementById("topBudgetDisplay");
+      if (topBudgetEl) topBudgetEl.innerText = "₹ " + teamBudget + "M";
+
+      const homeFinEl = document.getElementById("homeFinanceBalance");
+      if (homeFinEl) homeFinEl.innerText = "₹ " + teamBudget + "M";
+
+      const scoutActiveBudget = document.getElementById("scoutActiveBudgetPill");
+      if (scoutActiveBudget) scoutActiveBudget.innerText = `Your Treasury: ₹${teamBudget}M`;
+
+      const scoutMaxBase = document.getElementById("scoutMaxAffordableBase");
+      if (scoutMaxBase) scoutMaxBase.innerText = `₹${teamBudget}M`;
+
+      const capBadge = document.getElementById("auctionBudgetCapBadge");
+      if (capBadge) capBadge.innerText = `💰 Buying Power: ₹${teamBudget}M`;
+
+    }
+
+    const scoutAffordableEl = document.getElementById("scoutAffordableCount");
+    if (scoutAffordableEl) {
+      if (typeof state.affordablePlayers === "number") {
+        scoutAffordableEl.innerText = `${state.affordablePlayers} Affordable`;
+      } else {
+        scoutAffordableEl.innerText = `${state.remainingPlayers || 0} In Market`;
+      }
+    }
+
+    const scoutIncEl = document.getElementById("scoutBidIncrement");
+    if (scoutIncEl && state.rules?.bidIncrement) {
+      scoutIncEl.innerText = `₹${state.rules.bidIncrement}M`;
+      const quickBtn = document.getElementById("btnQuickMinBid");
+      if (quickBtn) quickBtn.innerText = `⚡ +₹${state.rules.bidIncrement}M Min`;
     }
 
     updateTeams();
@@ -6625,8 +7128,148 @@ socket.on(
 
     }
 
+    updateTransferWindowUI(state.transferWindowOpen, state.transferWindowType, state.season);
+    updateGameModeUI(state.isSoloMode);
+
   }
 );
+
+/* =====================================================
+   TRANSFER WINDOW & GAME MODE UI CONTROLS
+===================================================== */
+
+function updateTransferWindowUI(isOpen, windowType, season) {
+  const isWindowOpen = Boolean(isOpen);
+  const type = windowType || (isWindowOpen ? "summer" : "closed");
+  const seasonNum = season || (gameState ? gameState.season : 1);
+
+  // Top header elements
+  const topStatus = document.getElementById("topWindowStatus");
+  const topIcon = document.getElementById("topWindowIcon");
+  const topSeason = document.getElementById("topSeasonDisplay");
+  if (topSeason) topSeason.innerText = `Season ${seasonNum}`;
+
+  let labelText = "Closed (League)";
+  let icon = "🔒";
+
+  if (isWindowOpen) {
+    if (type === "winter") {
+      labelText = "Winter Window (Open)";
+      icon = "❄️";
+    } else {
+      labelText = "Summer Window (Open)";
+      icon = "☀️";
+    }
+  }
+
+  if (topIcon) topIcon.innerText = icon;
+  if (topStatus) {
+    topStatus.innerText = labelText;
+    topStatus.style.color = isWindowOpen ? "#10b981" : "#ef4444";
+  }
+
+  // Auction area badges
+  const auctionBadge = document.getElementById("auctionWindowBadge");
+  if (auctionBadge) {
+    auctionBadge.innerText = `${icon} ${labelText.toUpperCase()}`;
+    auctionBadge.style.background = isWindowOpen ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)";
+    auctionBadge.style.color = isWindowOpen ? "#10b981" : "#ef4444";
+    auctionBadge.style.borderColor = isWindowOpen ? "rgba(16, 185, 129, 0.4)" : "rgba(239, 68, 68, 0.4)";
+  }
+
+  // Transfer closed notice banner in auction view
+  const noticeBanner = document.getElementById("transferWindowNotice");
+  const btnStart = document.getElementById("btnStartAuction");
+  const btnOverride = document.getElementById("btnOverrideWindow");
+  const noPlayerMsg = document.getElementById("noPlayerMessage");
+
+  if (!isWindowOpen) {
+    if (noticeBanner) noticeBanner.style.display = "flex";
+    if (btnStart) {
+      btnStart.disabled = true;
+      btnStart.style.opacity = "0.5";
+      btnStart.style.cursor = "not-allowed";
+      btnStart.title = "Market closed during league matches. Window opens after Round 5 (Winter) or Season end (Summer).";
+    }
+    if (btnOverride) {
+      btnOverride.style.display = "inline-block";
+      btnOverride.innerText = "🔓 Host: Open Window Now";
+    }
+    if (noPlayerMsg) {
+      noPlayerMsg.innerHTML = `<span style="color:#ef4444; font-weight:700;">Market Closed:</span> The auction opens after summer and winter transfer windows. League matchdays in progress.`;
+    }
+  } else {
+    if (noticeBanner) noticeBanner.style.display = "none";
+    if (btnStart) {
+      btnStart.disabled = false;
+      btnStart.style.opacity = "1";
+      btnStart.style.cursor = "pointer";
+      btnStart.title = "Start bidding on players";
+    }
+    if (btnOverride) {
+      btnOverride.style.display = "none";
+    }
+    if (noPlayerMsg) {
+      noPlayerMsg.innerText = "Waiting for the next player to be nominated...";
+    }
+  }
+}
+
+function updateGameModeUI(isSoloMode) {
+  const isSolo = isSoloMode !== false;
+  const btnSolo = document.getElementById("btnMode_solo");
+  const btnMulti = document.getElementById("btnMode_multi");
+  const auctionBadge = document.getElementById("auctionModeBadge");
+
+  if (btnSolo) {
+    if (isSolo) btnSolo.classList.add("active");
+    else btnSolo.classList.remove("active");
+  }
+  if (btnMulti) {
+    if (!isSolo) btnMulti.classList.add("active");
+    else btnMulti.classList.remove("active");
+  }
+
+  if (auctionBadge) {
+    if (isSolo) {
+      auctionBadge.innerText = "🎮 SOLO CAREER (AI RIVALS ACTIVE)";
+      auctionBadge.style.background = "rgba(16, 185, 129, 0.18)";
+      auctionBadge.style.color = "#10b981";
+      auctionBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
+    } else {
+      auctionBadge.innerText = "👥 MULTIPLAYER (PVP MANAGERS)";
+      auctionBadge.style.background = "rgba(56, 189, 248, 0.18)";
+      auctionBadge.style.color = "#38bdf8";
+      auctionBadge.style.borderColor = "rgba(56, 189, 248, 0.4)";
+    }
+  }
+}
+
+function setGamePlayMode(mode) {
+  socket.emit("setGameMode", { mode: mode });
+  if (typeof showSaveToast === "function") {
+    showSaveToast(
+      mode === "solo"
+        ? "🎮 Solo Career Enabled: AI clubs (Real Madrid, Man City, Bayern) will bid in auctions!"
+        : "👥 Multiplayer Mode Enabled: Connected human managers compete in real-time.",
+      mode === "solo" ? "🎮" : "👥"
+    );
+  }
+}
+
+function requestToggleTransferWindow() {
+  socket.emit("toggleTransferWindow");
+}
+
+socket.on("transferWindowState", data => {
+  if (data) {
+    if (gameState) {
+      gameState.transferWindowOpen = data.transferWindowOpen;
+      gameState.transferWindowType = data.transferWindowType;
+    }
+    updateTransferWindowUI(data.transferWindowOpen, data.transferWindowType, gameState ? gameState.season : 1);
+  }
+});
 
 /* =====================================================
    NEW PLAYER
@@ -6716,6 +7359,38 @@ function showPlayer(
   } else {
     photo.innerHTML = "⚽";
   }
+
+  // Update starting valuation and affordability tag
+  const basePrice = Number(player.base) || 5;
+  const baseEl = document.getElementById("playerBaseVal");
+  if (baseEl) baseEl.innerText = "₹" + basePrice + "M";
+
+  const myTeamData = (myTeam && gameState?.teams) ? gameState.teams[myTeam] : null;
+  const currentBudget = myTeamData ? Number(myTeamData.budget) : 50;
+
+  const affBanner = document.getElementById("playerAffordabilityBanner");
+  const affIcon = document.getElementById("playerAffordabilityIcon");
+  const affText = document.getElementById("playerAffordabilityText");
+
+  if (affBanner && affText && affIcon) {
+    if (basePrice <= currentBudget) {
+      affBanner.className = "player-affordability-banner affordable";
+      affIcon.innerText = "✅";
+      affText.innerText = `Affordable: Base ₹${basePrice}M is within your ₹${currentBudget}M balance`;
+    } else {
+      affBanner.className = "player-affordability-banner expensive";
+      affIcon.innerText = "⚠️";
+      affText.innerText = `Market Alert: Base ₹${basePrice}M exceeds your ₹${currentBudget}M balance`;
+    }
+  }
+
+  const bidInput = document.getElementById("bidAmount");
+  if (bidInput) {
+    const inc = gameState?.rules?.bidIncrement || 2;
+    bidInput.value = "";
+    bidInput.placeholder = `Bid ₹${basePrice + inc}M+`;
+    bidInput.min = basePrice + inc;
+  }
 }
 
 /* =====================================================
@@ -6758,6 +7433,32 @@ socket.on(
       "timer"
     ).innerText =
       data.timer;
+
+    const myTeamData = (myTeam && gameState?.teams) ? gameState.teams[myTeam] : null;
+    const currentBudget = myTeamData ? Number(myTeamData.budget) : 50;
+
+    const affBanner = document.getElementById("playerAffordabilityBanner");
+    const affIcon = document.getElementById("playerAffordabilityIcon");
+    const affText = document.getElementById("playerAffordabilityText");
+
+    if (affBanner && affText && affIcon) {
+      if (data.currentBid <= currentBudget) {
+        affBanner.className = "player-affordability-banner affordable";
+        affIcon.innerText = "✅";
+        affText.innerText = `Current bid ₹${data.currentBid}M is within your ₹${currentBudget}M balance`;
+      } else {
+        affBanner.className = "player-affordability-banner expensive";
+        affIcon.innerText = "⚠️";
+        affText.innerText = `Out of range: ₹${data.currentBid}M exceeds your ₹${currentBudget}M balance`;
+      }
+    }
+
+    const bidInput = document.getElementById("bidAmount");
+    if (bidInput) {
+      const inc = gameState?.rules?.bidIncrement || 2;
+      bidInput.placeholder = `Bid ₹${data.currentBid + inc}M+`;
+      bidInput.min = data.currentBid + inc;
+    }
 
     playBidSound();
   }

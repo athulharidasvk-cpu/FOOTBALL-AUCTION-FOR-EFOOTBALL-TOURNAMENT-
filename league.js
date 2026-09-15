@@ -982,19 +982,19 @@ class LeagueManager {
       }
 
       // If this is a new custom user club not already in any division,
-      // place it into Division 1 by converting or swapping with the lowest rated AI club in Div 1
+      // place it into Division 3 by converting or swapping with an AI club in Div 3
       if (!isAlreadyInDivision) {
-        const div1 = this.divisions[1];
-        // Find an AI club to replace in Division 1
-        const aiClubIdx = div1.clubs.findIndex(c => c.isAi);
+        const div3 = this.divisions[3];
+        // Find an AI club to replace in Division 3
+        const aiClubIdx = div3.clubs.findIndex(c => c.isAi);
         if (aiClubIdx !== -1) {
-          const replacedClub = div1.clubs[aiClubIdx];
+          const replacedClub = div3.clubs[aiClubIdx];
           const oldName = replacedClub.name;
           const userTeamData = roomTeams[teamName] || {};
           const customLogo = userTeamData.customLogo || userTeamData.crestSvg || null;
 
           // Replace club data
-          div1.clubs[aiClubIdx] = {
+          div3.clubs[aiClubIdx] = {
             name: teamName,
             rating: this.getClubRating(teamName, roomTeams),
             logo: customLogo ? "🛡️" : (userTeamData.logo || "👤"),
@@ -1003,17 +1003,17 @@ class LeagueManager {
           };
 
           // Update standings
-          const standingIdx = div1.standings.findIndex(s => s.name === oldName);
+          const standingIdx = div3.standings.findIndex(s => s.name === oldName);
           if (standingIdx !== -1) {
-            div1.standings[standingIdx].name = teamName;
-            div1.standings[standingIdx].rating = div1.clubs[aiClubIdx].rating;
-            div1.standings[standingIdx].logo = div1.clubs[aiClubIdx].logo;
-            div1.standings[standingIdx].customLogo = customLogo;
-            div1.standings[standingIdx].isAi = false;
+            div3.standings[standingIdx].name = teamName;
+            div3.standings[standingIdx].rating = div3.clubs[aiClubIdx].rating;
+            div3.standings[standingIdx].logo = div3.clubs[aiClubIdx].logo;
+            div3.standings[standingIdx].customLogo = customLogo;
+            div3.standings[standingIdx].isAi = false;
           }
 
           // Update fixtures with new team name
-          div1.fixtures.forEach(f => {
+          div3.fixtures.forEach(f => {
             if (f.homeTeam === oldName) f.homeTeam = teamName;
             if (f.awayTeam === oldName) f.awayTeam = teamName;
           });

@@ -37,23 +37,20 @@ try {
   app = initializeApp(FIREBASE_CONFIG);
   db = getFirestore(app, FIREBASE_CONFIG.firestoreDatabaseId);
 } catch (err) {
-  console.error("Firebase init error:", err);
+  console.warn("Firebase init warning:", err ? String(err.message || err) : "Init error");
 }
 
-// Connection test with timeout guard to prevent 10s unhandled backend timeout errors
+// Connection test with timeout guard to prevent unhandled background rejection
 async function testConnection() {
   if (!db) return false;
   try {
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Firebase connection timeout")), 2500)
-    );
-    await Promise.race([
-      getDoc(doc(db, "test", "connection")),
-      timeoutPromise
-    ]);
-    isConnected = true;
-    updateCloudStatusBadge(true);
-    return true;
+    const docRef = doc(db, "test", "connection");
+    const checkPromise = getDocFromServer(docRef).catch(() => null);
+    const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 3000));
+    const snap = await Promise.race([checkPromise, timeoutPromise]);
+    isConnected = !!snap;
+    updateCloudStatusBadge(isConnected);
+    return isConnected;
   } catch (error) {
     // Graceful fallback to offline/server mode without noise
     isConnected = false;
@@ -68,13 +65,13 @@ function updateCloudStatusBadge(online) {
     if (online) {
       syncLabel.innerHTML = `<span style="color:#10b981;">☁️ Connected to Cloud Firestore</span> • Project: <strong>advance-ocean-fq6d2</strong>`;
     } else {
-      syncLabel.innerHTML = `<span style="color:#f59e0b;">● Local & Server Cache</span> • Connecting to cloud...`;
+      syncLabel.innerHTML = `<span style="color:#f59e0b;">● Local & Server Cache</span> • Ready`;
     }
   }
 }
 
-// Test initial connection
-testConnection();
+// Test initial connection safely
+testConnection().catch(() => {});
 
 // Expose public API on window.FirebaseCloud
 window.FirebaseCloud = {
@@ -94,29 +91,41 @@ window.FirebaseCloud = {
     const docId = sanitizeDocId(clubData.teamName);
     const docRef = doc(db, "clubs", docId);
 
+    const safePlayers = Array.isArray(clubData.players) ? clubData.players.map(p => ({
+      name: String(p.name || ""),
+      role: String(p.role || ""),
+      rating: Number(p.rating) || 75,
+      baseValuation: Number(p.baseValuation) || 5,
+      currentBid: Number(p.currentBid) || 5,
+      boughtFor: Number(p.boughtFor) || 5,
+      nationality: String(p.nationality || "INT"),
+      photo: typeof p.photo === "string" ? p.photo : ""
+    })) : [];
+
     const payload = {
-      teamName: clubData.teamName,
-      managerName: clubData.managerName || "Athul V V",
-      managerPhoto: clubData.managerPhoto || "/manager_photo.jpg",
-      budget: clubData.budget !== undefined ? Number(clubData.budget) : 500,
-      squadCount: Array.isArray(clubData.players) ? clubData.players.length : (clubData.squadCount || 0),
-      players: Array.isArray(clubData.players) ? clubData.players : [],
-      crestConfig: clubData.crestConfig || null,
-      crestSvg: clubData.crestSvg || null,
-      season: clubData.season || 1,
-      division: clubData.division || "Division 3",
-      lastSaved: new Date().toISOString(),
-      updatedAt: serverTimestamp()
+      teamName: String(clubData.teamName),
+      managerName: String(clubData.managerName || "Athul V V"),
+      managerPhoto: String(clubData.managerPhoto || "/manager_photo.jpg"),
+      budget: Number.isFinite(Number(clubData.budget)) ? Number(clubData.budget) : 50,
+      squadCount: safePlayers.length,
+      players: safePlayers,
+      crestConfig: clubData.crestConfig && typeof clubData.crestConfig === "object" ? clubData.crestConfig : null,
+      crestSvg: typeof clubData.crestSvg === "string" ? clubData.crestSvg : null,
+      season: Number(clubData.season) || 1,
+      division: String(clubData.division || "Division 3"),
+      lastSaved: new Date().toISOString()
     };
 
     try {
-      await setDoc(docRef, payload, { merge: true });
+      await setDoc(docRef, payload, { merge: true }).catch(err => {
+        throw new Error(err ? String(err.message || err) : "Save error");
+      });
       isConnected = true;
       updateCloudStatusBadge(true);
       return { success: true, docId, lastSaved: payload.lastSaved };
     } catch (err) {
-      console.error("Firestore saveClub error:", err);
-      return { success: false, error: err.message };
+      console.warn("Firestore saveClub non-fatal:", err ? String(err.message || err) : "Unknown error");
+      return { success: false, error: err ? String(err.message || err) : "Save failed" };
     }
   },
 
@@ -127,16 +136,29 @@ window.FirebaseCloud = {
     const docRef = doc(db, "clubs", docId);
 
     try {
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const data = snap.data();
+      const snap = await getDoc(docRef).catch(() => null);
+      if (snap && snap.exists && snap.exists()) {
+        const raw = snap.data();
+        if (!raw || typeof raw !== "object") return null;
         isConnected = true;
         updateCloudStatusBadge(true);
-        return data;
+        return {
+          teamName: String(raw.teamName || teamName),
+          managerName: String(raw.managerName || "Athul V V"),
+          managerPhoto: String(raw.managerPhoto || "/manager_photo.jpg"),
+          budget: Number.isFinite(Number(raw.budget)) ? Number(raw.budget) : 50,
+          squadCount: Number.isFinite(Number(raw.squadCount)) ? Number(raw.squadCount) : 0,
+          players: Array.isArray(raw.players) ? raw.players : [],
+          crestConfig: raw.crestConfig && typeof raw.crestConfig === "object" ? raw.crestConfig : null,
+          crestSvg: typeof raw.crestSvg === "string" ? raw.crestSvg : null,
+          season: Number.isFinite(Number(raw.season)) ? Number(raw.season) : 1,
+          division: String(raw.division || "Division 3"),
+          lastSaved: typeof raw.lastSaved === "string" ? raw.lastSaved : new Date().toISOString()
+        };
       }
       return null;
     } catch (err) {
-      console.error("Firestore loadClub error:", err);
+      console.warn("Firestore loadClub non-fatal:", err ? String(err.message || err) : "Unknown error");
       return null;
     }
   },
@@ -145,20 +167,39 @@ window.FirebaseCloud = {
     if (!db || !teamName || typeof onUpdate !== "function") return () => {};
 
     if (activeUnsubscribe) {
-      activeUnsubscribe();
+      try { activeUnsubscribe(); } catch (_) {}
       activeUnsubscribe = null;
     }
 
     const docId = sanitizeDocId(teamName);
     const docRef = doc(db, "clubs", docId);
 
-    activeUnsubscribe = onSnapshot(docRef, (snap) => {
-      if (snap.exists()) {
-        onUpdate(snap.data());
-      }
-    }, (err) => {
-      console.warn("Firestore snapshot listener error:", err);
-    });
+    try {
+      activeUnsubscribe = onSnapshot(docRef, (snap) => {
+        if (snap && snap.exists && snap.exists()) {
+          const raw = snap.data();
+          if (raw && typeof raw === "object") {
+            onUpdate({
+              teamName: String(raw.teamName || teamName),
+              managerName: String(raw.managerName || "Athul V V"),
+              managerPhoto: String(raw.managerPhoto || "/manager_photo.jpg"),
+              budget: Number.isFinite(Number(raw.budget)) ? Number(raw.budget) : 50,
+              squadCount: Number.isFinite(Number(raw.squadCount)) ? Number(raw.squadCount) : 0,
+              players: Array.isArray(raw.players) ? raw.players : [],
+              crestConfig: raw.crestConfig && typeof raw.crestConfig === "object" ? raw.crestConfig : null,
+              crestSvg: typeof raw.crestSvg === "string" ? raw.crestSvg : null,
+              season: Number.isFinite(Number(raw.season)) ? Number(raw.season) : 1,
+              division: String(raw.division || "Division 3"),
+              lastSaved: typeof raw.lastSaved === "string" ? raw.lastSaved : new Date().toISOString()
+            });
+          }
+        }
+      }, (err) => {
+        console.warn("Firestore snapshot listener non-fatal:", err ? String(err.message || err) : "Listener error");
+      });
+    } catch (err) {
+      console.warn("Firestore onSnapshot setup warning:", err ? String(err.message || err) : "Setup failed");
+    }
 
     return activeUnsubscribe;
   },

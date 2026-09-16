@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "node -r ./world_v4_preload.js -r ./world_features.js server.js",
+    "dev": "node -r ./world_v4_preload.js server.js",
     "build": "echo 'Build complete'",
-    "lint": "node --check server.js public/players.js && node --check world_v4_preload.js && node --check world_engine.js && node --check world_features.js && node --check public/world_features_client.js && node -e 'const fs=require(\"fs\"),vm=require(\"vm\");const html=fs.readFileSync(\"public/index.html\",\"utf8\");for(const m of html.matchAll(/<script[\\s\\S]*?>([\\s\\S]*?)<\\/script>/gi)){if(m[1].trim())new vm.Script(m[1]);}'",
-    "start": "node -r ./world_v4_preload.js -r ./world_features.js server.js"
+    "lint": "node --check server.js && node --check world_v4_preload.js && node --check world_engine.js && node --check public/players.js",
+    "start": "node -r ./world_v4_preload.js server.js"
   },
   "dependencies": {
     "d3": "^7.9.0",

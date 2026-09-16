@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Club World — Football Management</title>
+<script src="/socket.io/socket.io.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#050b14;color:#e8eef7;font-family:Inter,system-ui,Arial,sans-serif}.wrap{max-width:1180px;margin:auto;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;background:linear-gradient(135deg,#0c1c31,#07111e);border:1px solid #243b58;border-radius:18px;padding:18px;position:sticky;top:8px;z-index:5}.eyebrow{font-size:11px;letter-spacing:2px;color:#5fd7ff;font-weight:800}.title{font-size:25px;font-weight:900;margin-top:4px}.sub{font-size:12px;color:#8fa2b9}.btn{background:#10253d;color:#eaf7ff;border:1px solid #2e587d;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}.btn:hover{border-color:#5fd7ff}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:14px 0}.card{background:linear-gradient(145deg,#0c1929,#08111d);border:1px solid #20354e;border-radius:16px;padding:15px;box-shadow:0 8px 28px #0005}.label{font-size:10px;color:#8296ad;letter-spacing:1.2px;font-weight:800}.big{font-size:28px;font-weight:900;margin-top:5px}.bar{height:7px;background:#14253a;border-radius:20px;overflow:hidden;margin-top:9px}.bar i{display:block;height:100%;background:linear-gradient(90deg,#39b9ff,#6cf0a9);border-radius:20px}.section{margin-top:14px}.section h2{font-size:17px;margin:0 0 10px}.cols{display:grid;grid-template-columns:1.3fr 1fr;gap:12px}.list{display:grid;gap:8px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:11px;border:1px solid #1c3048;background:#091524;border-radius:11px}.muted{color:#8ea1b8}.pill{display:inline-block;padding:4px 8px;border-radius:999px;background:#122b45;border:1px solid #284e70;font-size:10px;font-weight:800}.green{color:#70e4a2}.cyan{color:#64d8ff}.gold{color:#f6d878}.red{color:#ff8e8e}.tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}.tab{cursor:pointer}.hidden{display:none}.history{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.history .row{display:block}.player{display:grid;grid-template-columns:1fr auto;gap:6px}.interest{font-size:20px;font-weight:900}.news{border-left:3px solid #55c8ff}.foot{color:#70859e;font-size:11px;margin:16px 0;text-align:center}@media(max-width:800px){.grid{grid-template-columns:repeat(2,1fr)}.cols{grid-template-columns:1fr}.history{grid-template-columns:1fr 1fr}}@media(max-width:500px){.grid{grid-template-columns:1fr 1fr}.top{position:static}.title{font-size:20px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top"><div><div class="eyebrow">CLUB WORLD / CAREER MODE</div><div class="title" id="clubTitle">Your Club</div><div class="sub" id="clubSub">Living football world • Season 1</div></div><button class="btn" onclick="location.href='/'">BACK TO GAME</button></header>
+
+<section class="grid">
+<div class="card"><div class="label">CLUB REPUTATION</div><div class="big" id="rep">60</div><div class="bar"><i id="repBar" style="width:60%"></i></div><div class="sub" id="repTier">Established</div></div>
+<div class="card"><div class="label">FAN BASE</div><div class="big" id="fans">100,000</div><div class="sub">Satisfaction <b id="fanSat" class="green">80%</b></div></div>
+<div class="card"><div class="label">SQUAD MORALE</div><div class="big" id="morale">82%</div><div class="bar"><i id="moraleBar" style="width:82%"></i></div><div class="sub">Results • playing time • contracts</div></div>
+<div class="card"><div class="label">CLUB TREASURY</div><div class="big" id="budget">₹50M</div><div class="sub" id="seasonLabel">Season 1</div></div>
+</section>
+
+<div class="tabs"><button class="btn tab" onclick="showTab('overview')">OVERVIEW</button><button class="btn tab" onclick="showTab('book')">CLUB BOOK</button><button class="btn tab" onclick="showTab('players')">PLAYER WANTS</button><button class="btn tab" onclick="showTab('world')">GLOBAL WORLD</button></div>
+
+<div id="overview" class="tabpane">
+<div class="cols">
+<section class="card"><h2>Club Identity</h2><div class="list" id="identity"></div></section>
+<section class="card"><h2>Fan & Reputation Engine</h2><div class="list"><div class="row"><span>Recent results</span><b id="resultsImpact">+0</b></div><div class="row"><span>Club history</span><b id="historyImpact">+0</b></div><div class="row"><span>European status</span><b id="europeImpact">+0</b></div><div class="row"><span>Stadium / facilities</span><b id="stadiumImpact">+0</b></div></div></section>
+</div>
+<section class="section card"><h2>Global Transfer News</h2><div class="list" id="news"></div></section>
+</div>
+
+<div id="book" class="tabpane hidden">
+<section class="card"><h2>Club Book</h2><div class="history" id="history"></div></section>
+<section class="section card"><h2>Club Records</h2><div class="history" id="records"></div></section>
+</div>
+
+<div id="players" class="tabpane hidden">
+<section class="card"><h2>Players Decide Where They Want To Play</h2><div class="sub" style="margin-bottom:12px">Transfer fee is only one factor. Salary, reputation, European football, playing time, form and mentality all affect interest.</div><div class="list" id="playersList"></div></section>
+</div>
+
+<div id="world" class="tabpane hidden">
+<section class="card"><h2>Global Competition Ladder</h2><div class="list" id="competitions"></div></section>
+<section class="section card"><h2>League Network</h2><div class="list" id="leagues"></div></section>
+<section class="section card"><h2>Two-Season World Champions Tournament</h2><div class="row"><span>Qualification</span><b class="gold">Top 4 from each qualifying major league</b></div><div class="row"><span>Format</span><b>40 clubs • 8 groups × 5 • top 2 advance</b></div><div class="row"><span>Pathway</span><b>Domestic → Continental → Global</b></div></section>
+</div>
+
+<div class="foot">Club World is connected to the existing Football Auction career data when available. Local club history is retained in this browser.</div>
+</div>
+<script>
+const socket=window.io?io():null;
+const KEY='clubWorldProfile_v1';
+const leagues=['England','Spain','Germany','Italy','France','Portugal','Netherlands','Belgium','Türkiye','Saudi Arabia','India','Brazil','Argentina','Japan','South Korea','USA','Mexico','Australia','Scotland','Austria'];
+const competitions=[['World Champions Tournament','Every 2 seasons • Top 4 pathways'],['World Elite Cup','Elite continental qualification'],['World Challengers Cup','Developing clubs and lower divisions'],['Regional Promotion Cup','Lower-tier qualification and promotion']];
+const samplePlayers=[
+['Kylian Mbappé',92,94,'European Ambition','Real Madrid • Manchester City • Bayern Munich'],
+['Florian Wirtz',88,91,'Competitive / Career-Minded','Bayern Munich • Manchester City • Real Madrid'],
+['Victor Osimhen',89,87,'Money-Minded / Star','PSG • Chelsea • Manchester United'],
+['Rising Prospect',79,83,'Playing-Time Focused','Athul FC • Ajax • Sporting CP'],
+['Loyal Captain',84,89,'Loyal / Team-Oriented','Current club preferred unless project collapses']
+];
+let profile=JSON.parse(localStorage.getItem(KEY)||'null')||{club:'Your Club',country:'India',division:3,season:1,reputation:60,fans:100000,fanSat:80,morale:82,budget:50,titles:0,cups:0,promotions:0,relegations:0,europe:0,bestFinish:'—',topScorer:'—',biggestTransfer:'—',seasons:[]};
+function save(){localStorage.setItem(KEY,JSON.stringify(profile))}
+function tier(v){return v>=90?'World Power':v>=80?'Elite':v>=70?'Strong':v>=60?'Established':v>=45?'Developing':'Small Club'}
+function clamp(v){return Math.max(0,Math.min(100,Math.round(v)))}
+function render(){
+ document.getElementById('clubTitle').textContent=profile.club;
+ document.getElementById('clubSub').textContent=`${profile.country} • Division ${profile.division} • Season ${profile.season}`;
+ document.getElementById('rep').textContent=profile.reputation;document.getElementById('repBar').style.width=profile.reputation+'%';document.getElementById('repTier').textContent=tier(profile.reputation);
+ document.getElementById('fans').textContent=Number(profile.fans).toLocaleString();document.getElementById('fanSat').textContent=profile.fanSat+'%';document.getElementById('morale').textContent=profile.morale+'%';document.getElementById('moraleBar').style.width=profile.morale+'%';document.getElementById('budget').textContent='₹'+profile.budget+'M';document.getElementById('seasonLabel').textContent='Season '+profile.season;
+ document.getElementById('identity').innerHTML=[['Country',profile.country],['Division','Division '+profile.division],['Reputation',profile.reputation+' • '+tier(profile.reputation)],['Fans',Number(profile.fans).toLocaleString()],['European trophies',profile.europe],['Promotions',profile.promotions],['Relegations',profile.relegations]].map(x=>`<div class="row"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+ document.getElementById('resultsImpact').textContent=(profile.titles*4-profile.relegations*5)>=0?'+ '+(profile.titles*4-profile.relegations*5):profile.titles*4-profile.relegations*5;
+ document.getElementById('historyImpact').textContent='+'+(profile.titles*3+profile.cups*2+profile.promotions*2);
+ document.getElementById('europeImpact').textContent='+'+(profile.europe*5);
+ document.getElementById('stadiumImpact').textContent='+0';
+ document.getElementById('history').innerHTML=[['League titles',profile.titles],['Domestic cups',profile.cups],['Promotions',profile.promotions],['Relegations',profile.relegations],['European trophies',profile.europe],['Best finish',profile.bestFinish]].map(x=>`<div class="row"><b>${x[0]}</b><strong class="cyan">${x[1]}</strong></div>`).join('');
+ document.getElementById('records').innerHTML=[['Top scorer',profile.topScorer],['Biggest transfer',profile.biggestTransfer],['Best season','Season '+(profile.seasons.length?profile.seasons[profile.seasons.length-1].season:'—')],['Current reputation',profile.reputation]].map(x=>`<div class="row"><b>${x[0]}</b><span>${x[1]}</span></div>`).join('');
+ document.getElementById('playersList').innerHTML=samplePlayers.map(p=>{let interest=clamp(p[2]+(profile.reputation-60)*.35+(profile.europe>0?6:0)+(profile.division===1?8:profile.division===2?2:-3));return `<div class="row player"><div><b>${p[0]}</b><div class="muted">OVR ${p[1]} • ${p[3]}</div><div class="muted">Wants: ${p[4]}</div></div><div class="interest ${interest>=85?'green':interest>=70?'cyan':'gold'}">${interest}%</div></div>`}).join('');
+ document.getElementById('competitions').innerHTML=competitions.map(c=>`<div class="row"><div><b>${c[0]}</b><div class="muted">${c[1]}</div></div><span class="pill">GLOBAL</span></div>`).join('');
+ document.getElementById('leagues').innerHTML=leagues.map(x=>`<div class="row"><span>${x}</span><span class="pill">D1 • D2 • D3 • D4</span></div>`).join('');
+ document.getElementById('news').innerHTML=[`Club reputation is ${tier(profile.reputation)} (${profile.reputation}/100).`,`Players with European Ambition prioritize clubs offering continental football.`,`Loyal players can reject larger offers when their relationship with a club is strong.`,`Money-Minded players react strongly to salary and bonuses.`,`Playing-Time Focused players value guaranteed starts over club prestige.`,`A hijack can happen before a contract is finalized; the original club can improve its package.`].map(x=>`<div class="row news"><span>${x}</span></div>`).join('');
+}
+function showTab(id){document.querySelectorAll('.tabpane').forEach(x=>x.classList.add('hidden'));document.getElementById(id).classList.remove('hidden')}
+function syncGameState(s){if(!s)return;const teams=s.teams||{};const name=s.myTeam||s.teamName||profile.club;if(name&&teams[name]){profile.club=name;profile.budget=Number(teams[name].budget??profile.budget);profile.morale=clamp(profile.morale);profile.season=Number(s.season||profile.season);save();render()}}
+if(socket){socket.on('gameState',syncGameState);socket.emit('requestState');socket.on('seasonChanged',d=>{if(d?.season){profile.season=Number(d.season);save();render()}});socket.on('leagueState',state=>{if(state?.season)profile.season=Number(state.season);render()});socket.on('playerSold',()=>{profile.morale=clamp(profile.morale+1);save();render()});socket.on('transferCompleted',d=>{if(d?.to===profile.club){profile.morale=clamp(profile.morale+2)}if(d?.from===profile.club){profile.morale=clamp(profile.morale-1)}save();render()});}
+render();
+</script>
+</body></html>

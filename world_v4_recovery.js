@@ -36,7 +36,7 @@ try {
 }
 
 // If an old browser session points at a world that was not persisted,
-// create a fresh solo world instead of returning "World not found".
+// bind a fresh world to that same session ID instead of returning "World not found".
 const originalGetWorld = world.getWorld;
 world.getWorld = function(ref) {
   const existing = originalGetWorld(ref);
@@ -44,6 +44,10 @@ world.getWorld = function(ref) {
 
   if (ref?.soloId) {
     const fresh = world.createSolo();
+    world.soloWorlds.delete(fresh.soloId);
+    fresh.soloId = String(ref.soloId);
+    world.soloWorlds.set(fresh.soloId, fresh);
+    world.persist();
     return fresh;
   }
 

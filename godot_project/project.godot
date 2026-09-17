@@ -16,6 +16,7 @@ boot_splash/bg_color=Color(0.02, 0.05, 0.1, 1)
 
 Database="*res://autoload/Database.gd"
 GameManager="*res://autoload/GameManager.gd"
+InteractionCinematics="*res://autoload/InteractionCinematics.gd"
 
 [display]
 

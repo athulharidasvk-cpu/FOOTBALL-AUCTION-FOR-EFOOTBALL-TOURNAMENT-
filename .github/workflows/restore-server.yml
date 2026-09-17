@@ -1,0 +1,24 @@
+name: Restore server.js
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  restore:
+    if: github.sha == 'c3ef461e733c22729e969179cfeb62e075329a0b'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Restore server.js from the previous good commit
+        run: |
+          git checkout 9f3b33bc37f9919403aee3299fce018c1e811bb5 -- server.js
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add server.js
+          git commit -m "Restore server.js after accidental truncation"
+          git push

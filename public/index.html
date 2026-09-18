@@ -4,9 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Football Auction</title>
-<meta name="description" content="Multiplayer football auction and club management app with Firebase Firestore cloud sync, procedural Web Audio stadium soundtrack &amp; jukebox, Pro League Soccer (PLS) 2D playable arcade match engine &amp; journey campaign, custom jersey kit editor, broadcast match center with crest studio, and awards trophy room.">
+<meta name="description" content="Multiplayer football auction and club management app with matchday simulation (single match and full season), first-person player POV match simulation, automatic transfer market unlocking after specific matches are played, and authentic European league management.">
 <meta property="og:title" content="Football Auction">
-<meta property="og:description" content="Multiplayer football auction and club management app with Firebase Firestore cloud sync, procedural Web Audio stadium soundtrack &amp; jukebox, Pro League Soccer (PLS) 2D playable arcade match engine &amp; journey campaign, custom jersey kit editor, broadcast match center with crest studio, and awards trophy room.">
+<meta property="og:description" content="Multiplayer football auction and club management app with matchday simulation (single match and full season), first-person player POV match simulation, automatic transfer market unlocking after specific matches are played, and authentic European league management.">
 
 <script>
   // Safe circular-aware JSON.stringify guard to prevent third-party SDKs, event loggers, or debuggers from throwing on circular structures
@@ -61,7 +61,7 @@
 <script src="/crest_studio.js"></script>
 <script src="/injury_center.js"></script>
 <script src="/music_engine.js"></script>
-<script src="/pls_match_game.js"></script>
+<script src="/player_pov_match.js"></script>
 <script type="module" src="/firebase_cloud.js"></script>
 
 <style>
@@ -3686,6 +3686,149 @@ select {
   background: #ef4444;
   color: #ffffff;
 }
+
+/* Server & Private Lobby Pill & Styles */
+.console-server-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+.console-server-pill:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+}
+.server-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 8px #10b981;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.lobby-toggle-btn.active {
+  border-color: #38bdf8 !important;
+  background: rgba(56, 189, 248, 0.18) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.server-lobby-card {
+  background: rgba(10, 27, 45, 0.85);
+  border: 1px solid #1e3a5f;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  transition: all 0.2s ease;
+}
+
+.server-lobby-card:hover {
+  border-color: #2563eb;
+}
+
+.server-lobby-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.server-status-pill {
+  font-size: 11px;
+  font-weight: 800;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #10b981;
+}
+
+.server-mode-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.server-tab {
+  background: #071524;
+  border: 1.5px solid #1a3654;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  transition: all 0.2s ease;
+}
+
+.server-tab:hover {
+  border-color: #38bdf8;
+  background: rgba(14, 38, 66, 0.8);
+}
+
+.server-tab.active {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.2);
+}
+
+.btn-room-action {
+  background: #0f2744;
+  border: 1px solid #1e4976;
+  color: #38bdf8;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.btn-room-action:hover {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.room-browser-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #0b1d31;
+  border: 1px solid #1a385b;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.room-browser-item:hover {
+  border-color: #38bdf8;
+  background: #0f2641;
+}
+
+.room-badge-pill {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: monospace;
+}
 </style>
 </head>
 
@@ -3771,6 +3914,13 @@ select {
         </div>
       </div>
 
+      <!-- SERVER & PRIVATE ROOM PILL -->
+      <button type="button" class="console-server-pill" id="topServerLobbyPill" onclick="openRoomBrowserModal()" title="Current Server & Private Room (Click to switch or invite friends)">
+        <span class="server-status-dot"></span>
+        <span id="headerRoomLabel">🌐 Community Arena</span>
+        <span style="font-size: 9px; opacity: 0.7; margin-left: 3px;">▼</span>
+      </button>
+
       <!-- SAVE PROGRESS BUTTON -->
       <button type="button" class="console-save-btn" id="consoleSaveBtn" onclick="manualSaveProgress()" title="Save Player Progress (Auto-save is ON)">
         <span id="saveBtnIcon">💾</span>
@@ -3835,8 +3985,8 @@ select {
         <span>Home</span>
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_journey" onclick="switchAppView('journey')">
-        <span class="tab-icon">🎮</span>
-        <span>Journey (PLS)</span>
+        <span class="tab-icon">👤</span>
+        <span>Player POV</span>
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_auction" onclick="switchAppView('auction')">
         <span class="tab-icon">🔨</span>
@@ -3873,6 +4023,10 @@ select {
       <button type="button" class="console-nav-tab" id="sideBtn_contracts" onclick="switchAppView('contracts')">
         <span class="tab-icon">📋</span>
         <span>Contracts</span>
+      </button>
+      <button type="button" class="console-nav-tab" id="sideBtn_lobby" onclick="openRoomBrowserModal()" title="Game Servers & Private Rooms">
+        <span class="tab-icon">🌐</span>
+        <span>Server Rooms</span>
       </button>
       <button type="button" class="console-nav-tab" id="sideBtn_settings" onclick="openSaveProfileModal()">
         <span class="tab-icon">⚙️</span>
@@ -3950,8 +4104,8 @@ select {
                   </div>
 
                   <div style="display: flex; gap: 8px; width: 100%; margin-top: 10px;">
-                    <button type="button" class="btn-match-centre" onclick="openPLSGameModal(0)" style="flex: 1.3; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-color: rgba(16, 185, 129, 0.5);" title="Play Interactive 2D Arcade Match (PLS Style)">
-                      <span>🎮 PLAY (PLS)</span>
+                    <button type="button" class="btn-match-centre" onclick="launchNextPovMatch()" style="flex: 1.3; background: linear-gradient(135deg, #059669 0%, #10b981 100%); border-color: rgba(16, 185, 129, 0.5);" title="Play in First-Person 3D Player POV">
+                      <span>👤 PLAY POV</span>
                     </button>
                     <button type="button" class="btn-match-centre" onclick="switchAppView('match')" style="flex: 1;" title="Open Broadcast Match Center">
                       <span>MATCH CENTRE ›</span>
@@ -4409,24 +4563,46 @@ select {
 
 
   <!-- =====================================================
-       VIEW: JOURNEY CAMPAIGN (PRO LEAGUE SOCCER)
+       VIEW: FIRST-PERSON PLAYER POV MATCHDAY ARENA
   ====================================================== -->
   <div class="app-view-container" id="view_journey">
     <div class="journey-dashboard-view">
       <!-- HERO BANNER -->
-      <div class="journey-hero-card">
+      <div class="journey-hero-card" style="background: linear-gradient(135deg, #064e3b 0%, #0b1523 100%); border: 1px solid rgba(16, 185, 129, 0.4);">
         <div class="journey-hero-title">
-          <h2>🎮 PRO LEAGUE SOCCER (PLS) • JOURNEY CAMPAIGN</h2>
-          <p>Take direct control of your squad! Dribble, pass, charge up thunderous shots, and slide tackle through 5 tiers of elite competition to earn massive prize money and claim the World Champions Trophy.</p>
+          <h2>👤 FIRST-PERSON PLAYER POV MATCHDAY ARENA</h2>
+          <p>Step onto the pitch in the boots of your star player! Control your footballer in 3D perspective with realistic running stride, sprint bursts, calling for passes from AI teammates, charging powerful long-range screamers, and scoring decisive goals in official league fixtures.</p>
         </div>
-        <button type="button" class="btn-play-stage" style="padding: 12px 24px; font-size: 14px;" onclick="PLS_MatchGame.playStage(0)">
-          <span>⚡ QUICK MATCH</span>
+        <button type="button" class="btn-play-stage" style="padding: 12px 24px; font-size: 14px; background: linear-gradient(135deg, #059669, #10b981); border: 1px solid #34d399; font-weight: 800; cursor: pointer;" onclick="launchNextPovMatch()">
+          <span>⚡ PLAY NEXT MATCH (POV)</span>
         </button>
       </div>
 
-      <!-- JOURNEY STAGES LIST -->
-      <div class="journey-stages-container" id="journeyStagesList">
-        <!-- Injected dynamically by PLS_MatchGame.initJourney() -->
+      <!-- FEATURES ROW -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 20px;">
+        <div class="console-card" style="padding: 18px; border: 1px solid rgba(16, 185, 129, 0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 24px;">👟</span>
+            <strong style="color: #34d399; font-size: 15px;">True Player Perspective</strong>
+          </div>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">First-person eye-level camera with head-bobbing running mechanics, visible kicking boots, sprint rush effects, and pitch mowing bands.</p>
+        </div>
+
+        <div class="console-card" style="padding: 18px; border: 1px solid rgba(59, 130, 246, 0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 24px;">🎯</span>
+            <strong style="color: #60a5fa; font-size: 15px;">Tactical AI Teammates</strong>
+          </div>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">Teammates make diagonal runs, link up with ground passes, and deliver crisp through balls to your feet when you press Call (E).</p>
+        </div>
+
+        <div class="console-card" style="padding: 18px; border: 1px solid rgba(245, 158, 11, 0.3);">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+            <span style="font-size: 24px;">⚽</span>
+            <strong style="color: #facc15; font-size: 15px;">Official League Results</strong>
+          </div>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">Goals scored and match results in Player POV update the league table, advance fixture rounds, and contribute towards unlocking the Transfer Market!</p>
+        </div>
       </div>
     </div>
   </div>
@@ -4743,6 +4919,61 @@ select {
 
     <h2>Join Your Team & Club Identity</h2>
 
+    <!-- SERVER & LOBBY SELECTION CARD -->
+    <div class="server-selection-card" id="serverSelectionCard" style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 14px; padding: 14px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
+        <span style="font-size: 11px; font-weight: 800; color: #38bdf8; text-transform: uppercase; letter-spacing: 0.05em; display: flex; align-items: center; gap: 6px;">
+          <span>🌐</span> SERVER & MULTIPLAYER LOBBY
+        </span>
+        <button type="button" onclick="openRoomBrowserModal()" style="background: transparent; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+          <span>📋</span> All Rooms (<span id="quickRoomCountBadge">1</span>)
+        </button>
+      </div>
+
+      <!-- Segmented Control: Community Arena vs Private Room -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px;">
+        <button type="button" id="lobbyModeCommunityBtn" class="lobby-toggle-btn active" onclick="setLobbyMode('community')" style="padding: 10px 12px; border-radius: 8px; border: 1px solid #38bdf8; background: rgba(56, 189, 248, 0.15); color: #fff; font-weight: 700; font-size: 12px; cursor: pointer; text-align: left; transition: all 0.2s;">
+          <div style="font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+            <span>🌐</span> Public Arena
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; font-weight: 500; margin-top: 2px;">Global community server</div>
+        </button>
+
+        <button type="button" id="lobbyModePrivateBtn" class="lobby-toggle-btn" onclick="setLobbyMode('private')" style="padding: 10px 12px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.2); background: rgba(30, 41, 59, 0.6); color: #cbd5e1; font-weight: 700; font-size: 12px; cursor: pointer; text-align: left; transition: all 0.2s;">
+          <div style="font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+            <span>🔒</span> Private Room
+          </div>
+          <div style="font-size: 10px; color: #94a3b8; font-weight: 500; margin-top: 2px;">Play with your own group</div>
+        </button>
+      </div>
+
+      <!-- Private Room Settings Panel -->
+      <div id="privateRoomPanel" style="display: none; background: rgba(30, 41, 59, 0.5); border: 1px dashed rgba(56, 189, 248, 0.4); border-radius: 10px; padding: 12px; margin-bottom: 8px;">
+        <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 8px;">
+          <div style="flex: 1;">
+            <label style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; display: block;">Private Room Code</label>
+            <input type="text" id="privateRoomCodeInput" placeholder="e.g. TITANS-2026 or FC-77" maxlength="15" style="width: 100%; text-transform: uppercase; font-family: monospace; font-size: 14px; font-weight: 800; letter-spacing: 0.05em; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 8px 10px; color: #38bdf8;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, ''); updateInviteLinkPreview();">
+          </div>
+          <button type="button" onclick="generateRandomRoomCode()" style="background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; font-weight: 700; font-size: 11px; padding: 9px 12px; border-radius: 6px; cursor: pointer; white-space: nowrap; height: 38px;">
+            🎲 New Code
+          </button>
+        </div>
+
+        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; background: rgba(15, 23, 42, 0.6); padding: 6px 10px; border-radius: 6px;">
+          <span style="color: #94a3b8; font-family: monospace; font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px;" id="inviteLinkText">...</span>
+          <button type="button" onclick="copyRoomInviteLink()" style="background: none; border: none; color: #38bdf8; font-weight: 700; cursor: pointer; font-size: 11px; padding: 0 4px;">
+            📋 Copy Invite Link
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Room Browser Dropdown -->
+      <div id="roomBrowserContainer" style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: #94a3b8; padding-top: 4px;">
+        <span id="activeRoomStatusSummary">Selected: <strong style="color: #38bdf8;">🌐 Community Arena</strong></span>
+        <button type="button" onclick="openRoomBrowserModal()" style="background: none; border: none; color: #38bdf8; cursor: pointer; font-size: 11px; font-weight: 700;">Browse All Active Rooms</button>
+      </div>
+    </div>
+
     <!-- REMEMBERED PLAYER RESUME CARD (Populated if saved club exists) -->
     <div class="saved-player-resume-card" id="savedPlayerResumeCard" style="display: none;">
       <div class="saved-resume-header">
@@ -4952,13 +5183,13 @@ select {
       <div class="window-card-content">
         <span class="window-card-icon" id="windowCardIcon">🔒</span>
         <div class="window-card-text">
-          <strong id="windowCardTitle">Transfer Window & Auction Market Closed</strong>
-          <p id="windowCardDesc">League matchdays are currently in active competition. The auction market will reopen during the <strong>Winter Transfer Window (Mid-Season Break after Round 5)</strong> and <strong>Summer Transfer Window (Pre-Season)</strong>.</p>
+          <strong id="windowCardTitle">Transfer Market Closed</strong>
+          <p id="windowCardDesc">League matchdays are currently in progress. The transfer window operates automatically on official periods (4 min Open / 3 min Closed) with live notifications.</p>
         </div>
       </div>
-      <button type="button" class="btn-window-override" onclick="requestToggleTransferWindow()" title="Executive Host can manually open or close the transfer market">
-        ⚡ Host: Override Market
-      </button>
+      <div class="window-schedule-indicator" id="windowScheduleIndicator" style="display: flex; align-items: center; gap: 8px; background: rgba(15, 23, 42, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); padding: 6px 14px; border-radius: 9999px; font-size: 13px; font-weight: 600; color: #f1f5f9; white-space: nowrap;">
+        <span id="windowCountdownClock">⏳ Next window in: --:--</span>
+      </div>
     </div>
 
     <div id="noPlayer">
@@ -4994,17 +5225,6 @@ select {
           onclick="startAuction()"
         >
           🎲 START AUCTION (AFFORDABLE TARGET)
-        </button>
-
-        <button
-          type="button"
-          class="start-button"
-          id="btnOverrideWindow"
-          style="background: #334155; display: none;"
-          onclick="requestToggleTransferWindow()"
-          title="Host can open the window for testing"
-        >
-          🔓 OPEN TRANSFER WINDOW
         </button>
       </div>
 
@@ -5170,27 +5390,38 @@ select {
       </button>
     </div>
 
-    <!-- HOST-ONLY SIMULATION CONTROLS -->
-    <div class="host-league-panel" id="hostLeaguePanel">
-      <div class="host-panel-info">
-        <span class="host-badge">👑 HOST SIMULATION</span>
-        <span id="hostSimulationStatus">Host controls round simulation for all divisions.</span>
+    <!-- LEAGUE OPERATIONS & MATCHDAY CONTROLS -->
+    <div class="host-league-panel" id="hostLeaguePanel" style="display: flex; flex-direction: column; gap: 10px;">
+      <div class="host-panel-info" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+          <span class="host-badge" style="background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.4);">🏟️ MATCHDAY OPERATIONS</span>
+          <span class="transfer-window-milestone-pill" id="transferMarketMilestoneBadge" style="background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.35); font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: 700;">
+            ⏳ Transfer Market: Unlocks after 5 matches (5 remaining)
+          </span>
+        </div>
+        <span id="hostSimulationStatus" style="font-size: 12px; color: #94a3b8;">Simulate fixtures or play from the first-person Player POV!</span>
       </div>
-      <div class="host-actions">
-        <button class="btn-sim" id="btnSimRound" onclick="simulateLeagueRound()">
-          ⚽ SIMULATE ROUND <span id="simRoundNum">1</span>
+      <div class="host-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <button class="btn-simulate-match" id="btnSimulateSingleMatch" onclick="simulateSingleMatch()" style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: #fff; font-weight: 800; padding: 8px 14px; border-radius: 8px; border: 1px solid #60a5fa; cursor: pointer; font-size: 12px;" title="Simulate next fixture">
+          ⚡ SIMULATE MATCH
+        </button>
+        <button class="btn-simulate-round" id="btnSimulateLeagueRound" onclick="simulateCurrentRound()" style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); color: #fff; font-weight: 800; padding: 8px 14px; border-radius: 8px; border: 1px solid #a78bfa; cursor: pointer; font-size: 12px;" title="Simulate all fixtures in current round">
+          ⏩ SIMULATE ROUND
+        </button>
+        <button class="btn-simulate-season" id="btnSimulateFullSeason" onclick="simulateFullSeason()" style="background: linear-gradient(135deg, #d97706, #f59e0b); color: #000; font-weight: 900; padding: 8px 14px; border-radius: 8px; border: 1px solid #fbbf24; cursor: pointer; font-size: 12px;" title="Simulate all remaining fixtures in the season">
+          🏆 SIMULATE FULL SEASON
+        </button>
+        <button class="btn-pov-match" id="btnLaunchNextPovMatch" onclick="launchNextPovMatch()" style="background: linear-gradient(135deg, #059669, #10b981); color: #fff; font-weight: 800; padding: 8px 14px; border-radius: 8px; border: 1px solid #34d399; cursor: pointer; font-size: 12px;" title="Play next match in first-person 3D Player POV">
+          👤 PLAY POV
         </button>
         <button class="btn-3d-arena" id="btnOpen3DArena" onclick="open3DMatchArena()" title="Watch Broadcast Match with team logos, minute-by-minute live feed & statistics">
           🏟️ MATCH CENTER
         </button>
-        <button class="btn-trophy-lift" id="btnOpenTrophyCeremony" onclick="triggerTrophyPresentation()" style="background: linear-gradient(135deg, #ca8a04, #eab308); color: #000; font-weight: 900; padding: 9px 16px; border-radius: 8px;" title="Celebrate Champions with Trophy Lifting">
-          🏆 CELEBRATE CHAMPIONS
-        </button>
-        <button class="btn-sim-full" id="btnSimSeason" onclick="simulateFullSeason()">
-          ⏩ SIMULATE ALL ROUNDS
+        <button class="btn-trophy-lift" id="btnOpenTrophyCeremony" onclick="triggerTrophyPresentation()" style="background: linear-gradient(135deg, #ca8a04, #eab308); color: #000; font-weight: 900; padding: 8px 14px; border-radius: 8px; border: none; cursor: pointer; font-size: 12px;" title="Celebrate Champions with Trophy Lifting">
+          🏆 CELEBRATE
         </button>
         <button class="btn-advance-season hidden" id="btnAdvanceLeagueSeason" onclick="advanceLeagueSeason()">
-          🔄 NEXT SEASON (APPLY PROMO/RELEG)
+          🔄 NEXT SEASON
         </button>
       </div>
     </div>
@@ -5764,89 +5995,112 @@ select {
   </div> <!-- /#view_auction_ops -->
 
   <!-- =====================================================
-       PRO LEAGUE SOCCER (PLS) PLAYABLE MATCH ARENA MODAL
+       FIRST-PERSON PLAYER POV MATCHDAY SIMULATION MODAL
   ===================================================== -->
-  <div id="plsGameModal" class="pls-match-modal" role="dialog" aria-modal="true">
+  <div id="playerPovModal" class="player-pov-modal" role="dialog" aria-modal="true">
     <!-- Top Bar -->
-    <div class="pls-modal-topbar">
-      <div class="pls-top-title-lockup">
-        <span class="pls-badge-icon">PLS 2D ARCADE</span>
-        <span class="pls-header-title">Pro League Soccer • Playable Match</span>
+    <div class="pov-modal-topbar">
+      <div class="pov-top-title-lockup">
+        <span class="pov-badge-icon">PLAYER POV 3D</span>
+        <span class="pov-header-title">First-Person Player Matchday Simulation</span>
       </div>
-      <div class="pls-top-actions">
-        <button type="button" class="btn-pls-pill" id="plsPauseBtn" onclick="PLS_MatchGame.pause()">⏸️ PAUSE</button>
-        <button type="button" class="btn-pls-pill" onclick="PLS_MatchGame.restart()">🔄 RESTART</button>
-        <button type="button" class="btn-pls-close" onclick="closePLSGameModal()">✕ EXIT</button>
+      <div class="pov-top-actions">
+        <button type="button" class="btn-pov-pill" id="povPauseBtn" onclick="PlayerPovEngine.togglePause()">⏸️ PAUSE</button>
+        <button type="button" class="btn-pov-pill" onclick="PlayerPovEngine.finishMatch()">🏁 FINISH</button>
+        <button type="button" class="btn-pov-close" onclick="closePlayerPovModal()">✕ EXIT</button>
       </div>
     </div>
 
     <!-- Live Scoreboard -->
-    <div class="pls-scoreboard-bar">
-      <div class="pls-team-score-side">
+    <div class="pov-scoreboard-bar">
+      <div class="pov-team-score-side">
         <span style="font-size: 20px;">🛡️</span>
-        <span class="pls-team-name-tag" id="plsHomeName">ATHUL FC</span>
+        <span class="pov-team-name-tag" id="povHomeName">ATHUL FC</span>
       </div>
 
-      <div class="pls-score-center-digital">
-        <span class="pls-digits" id="plsScoreDisplay">0 - 0</span>
-        <span class="pls-clock-badge" id="plsMatchClock">0' (H1)</span>
+      <div class="pov-score-center-digital">
+        <span class="pov-digits" id="povScoreDisplay">0 - 0</span>
+        <span class="pov-clock-badge" id="povMatchClock">1' (H1)</span>
       </div>
 
-      <div class="pls-team-score-side">
-        <span class="pls-team-name-tag" id="plsAwayName">KOCHI FC</span>
+      <div class="pov-team-score-side">
+        <span class="pov-team-name-tag" id="povAwayName">KOCHI FC</span>
         <span style="font-size: 20px;">⚡</span>
       </div>
     </div>
 
-    <!-- Match Canvas Pitch & Controls Layer -->
-    <div class="pls-canvas-wrapper">
-      <canvas id="plsMatchCanvas"></canvas>
+    <!-- Match Canvas Pitch & HUD Layer -->
+    <div class="pov-canvas-wrapper">
+      <canvas id="povMatchCanvas"></canvas>
+
+      <!-- Player HUD Top Left -->
+      <div class="pov-hud-top-left">
+        <div class="pov-player-card-name" id="povPlayerNameCard">You (Captain #9 • 88 OVR)</div>
+        <div class="pov-hud-stats-row">
+          <span>Rating: <strong id="povPlayerRating">7.2 ★</strong></span>
+          <span>Goals: <strong id="povPlayerGoals">0</strong></span>
+          <span>Assists: <strong id="povPlayerAssists">0</strong></span>
+          <span>Distance: <strong id="povPlayerDistance">0.00 km</strong></span>
+        </div>
+        <div class="pov-meter-container">
+          <span>⚡ STAMINA</span>
+          <div class="pov-meter-track">
+            <div class="pov-meter-fill-stamina" id="povStaminaFill"></div>
+          </div>
+        </div>
+        <div class="pov-meter-container">
+          <span>🚀 SHOT POWER</span>
+          <div class="pov-meter-track">
+            <div class="pov-meter-fill-power" id="povPowerMeterFill"></div>
+          </div>
+        </div>
+      </div>
 
       <!-- Commentary Ticker -->
-      <div class="pls-commentary-bar" id="plsCommentaryTicker">
-        Welcome to Pro League Soccer! Match kicked off.
+      <div class="pov-commentary-bar" id="povCommentaryTicker">
+        ⚽ Welcome to Player POV Matchday Arena! You are on the pitch!
       </div>
 
       <!-- Goal Celebration Banner -->
-      <div class="pls-event-banner" id="plsEventBanner">
-        <div class="pls-banner-title" id="plsBannerTitle">⚽ GOAL!</div>
-        <div class="pls-banner-subtitle" id="plsBannerSubtitle">Spectacular strike!</div>
-        <div class="pls-banner-extra" id="plsBannerExtra">1 - 0</div>
+      <div class="pov-event-banner" id="povEventBanner">
+        <div class="pov-banner-title" id="povBannerTitle">⚽ GOAL!</div>
+        <div class="pov-banner-subtitle" id="povBannerSubtitle">Spectacular strike!</div>
+        <div class="pov-banner-extra" id="povBannerExtra">1 - 0</div>
       </div>
 
       <!-- Touch Controls Layer (for touch devices and mobile) -->
-      <div class="pls-controls-overlay">
+      <div class="pov-controls-overlay">
         <!-- Left Analog Virtual Joystick -->
-        <div class="pls-joystick-zone" id="plsJoystickZone">
-          <div class="pls-joystick-knob" id="plsJoystickKnob"></div>
+        <div class="pls-joystick-zone" id="povJoystickZone">
+          <div class="pls-joystick-knob" id="povJoystickKnob"></div>
         </div>
 
         <!-- Right Action Cluster -->
-        <div class="pls-buttons-cluster">
-          <button type="button" class="btn-pls-action btn-pls-through" onclick="PLS_MatchGame.through()" title="Through Ball (L / C)">
-            <span>🟡</span><span>THRU</span>
+        <div class="pov-buttons-cluster">
+          <button type="button" class="btn-pov-action btn-pov-call" onclick="PlayerPovEngine.callForBall()" title="Call for Ball (E / C)">
+            <span>🗣️</span><span>CALL</span>
           </button>
-          <button type="button" class="btn-pls-action btn-pls-shoot" onmousedown="PLS_MatchGame.shootStart()" onmouseup="PLS_MatchGame.shootRelease()" ontouchstart="PLS_MatchGame.shootStart()" ontouchend="PLS_MatchGame.shootRelease()" title="Shoot / Charge (K / X)">
-            <span>🔴</span><span>SHOOT</span>
+          <button type="button" class="btn-pov-action btn-pov-shoot" onmousedown="PlayerPovEngine.startChargeShot()" onmouseup="PlayerPovEngine.releaseChargeShot()" ontouchstart="PlayerPovEngine.startChargeShot()" ontouchend="PlayerPovEngine.releaseChargeShot()" title="Hold to Charge Shot (Space / K)">
+            <span>🚀</span><span>SHOOT</span>
           </button>
-          <button type="button" class="btn-pls-action btn-pls-pass" onclick="PLS_MatchGame.pass()" title="Pass (J / Z / Space)">
-            <span>🟢</span><span>PASS</span>
+          <button type="button" class="btn-pov-action btn-pov-pass" onclick="PlayerPovEngine.passBall()" title="Pass to Teammate (F / J)">
+            <span>👟</span><span>PASS</span>
           </button>
-          <button type="button" class="btn-pls-action btn-pls-sprint" onclick="PLS_MatchGame.tackle()" title="Sprint / Slide Tackle (Shift / E)">
-            <span>🔵</span><span>TACKLE</span>
+          <button type="button" class="btn-pov-action btn-pov-sprint" onmousedown="PlayerPovEngine.touchSprint=true" onmouseup="PlayerPovEngine.touchSprint=false" ontouchstart="PlayerPovEngine.touchSprint=true" ontouchend="PlayerPovEngine.touchSprint=false" title="Sprint Boost (Shift)">
+            <span>⚡</span><span>SPRINT</span>
           </button>
         </div>
       </div>
     </div>
 
     <!-- Keyboard Control Bar (Desktop) -->
-    <div class="pls-keyboard-hints">
-      <span><span class="pls-key-pill">WASD</span> or <span class="pls-key-pill">ARROWS</span>: Move/Dribble</span>
-      <span><span class="pls-key-pill">J</span> / <span class="pls-key-pill">SPACE</span>: Pass</span>
-      <span><span class="pls-key-pill">K</span> / <span class="pls-key-pill">X</span>: Hold & Release to Shoot</span>
-      <span><span class="pls-key-pill">L</span> / <span class="pls-key-pill">C</span>: Through Ball</span>
-      <span><span class="pls-key-pill">SHIFT</span>: Sprint / Tackle</span>
-      <span><span class="pls-key-pill">Q</span>: Switch Player</span>
+    <div class="pov-keyboard-hints">
+      <span><span class="pov-key-pill">WASD</span> or <span class="pov-key-pill">ARROWS</span>: Move / Turn</span>
+      <span><span class="pov-key-pill">SHIFT</span>: Sprint</span>
+      <span><span class="pov-key-pill">SPACE</span> / <span class="pov-key-pill">K</span>: Hold & Release to Shoot</span>
+      <span><span class="pov-key-pill">F</span> / <span class="pov-key-pill">J</span>: Pass to Teammate</span>
+      <span><span class="pov-key-pill">E</span> / <span class="pov-key-pill">C</span>: Call for Ball</span>
+      <span><span class="pov-key-pill">P</span>: Pause</span>
     </div>
   </div>
 
@@ -6096,6 +6350,73 @@ select {
   </div>
 </div>
 
+<!-- =====================================================
+     SERVER & PRIVATE ROOM BROWSER MODAL
+====================================================== -->
+<div id="roomBrowserModal" class="save-profile-modal-overlay" style="display: none;" role="dialog" aria-modal="true">
+  <div class="save-profile-modal-content" style="max-width: 560px;">
+    <div class="save-modal-header">
+      <div class="save-modal-title">
+        <span>🌐</span><span>SERVERS & MULTIPLAYER ROOMS</span>
+      </div>
+      <button type="button" onclick="closeRoomBrowserModal()" style="background:#1e293b; border:1px solid #334155; color:#cbd5e1; border-radius:8px; padding:4px 10px; cursor:pointer; font-weight:700;">✕ CLOSE</button>
+    </div>
+
+    <!-- Active Room Status Banner -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid rgba(56, 189, 248, 0.35); border-radius: 12px; padding: 14px; margin-bottom: 16px;">
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <span style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em;">YOUR CURRENT LOBBY</span>
+          <h3 style="margin: 2px 0 0 0; font-size: 17px; color: #38bdf8; font-weight: 900; display: flex; align-items: center; gap: 8px;">
+            <span id="modalActiveRoomIcon">🌐</span> <span id="modalActiveRoomName">Community Arena</span>
+          </h3>
+        </div>
+        <div style="text-align: right;">
+          <span id="modalActiveRoomCodeBadge" style="background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; padding: 4px 10px; border-radius: 6px; font-family: monospace; font-size: 12px; font-weight: 800;">CODE: MAIN</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 8px; margin-top: 12px;">
+        <button type="button" onclick="copyActiveRoomInviteLink()" style="flex: 1; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.4); color: #38bdf8; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          📋 Copy Room Invite Link
+        </button>
+      </div>
+    </div>
+
+    <!-- Create or Join Actions -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px;">
+      <!-- Quick Create Room -->
+      <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 4px;">➕ Create Private Room</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 8px; line-height: 1.3;">Start a private room with a code for your friends.</div>
+        <button type="button" onclick="handleCreateNewRoomModalAction()" style="width: 100%; background: #0284c7; border: none; color: #fff; padding: 8px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+          CREATE NEW ROOM
+        </button>
+      </div>
+
+      <!-- Quick Join by Code -->
+      <div style="background: rgba(30, 41, 59, 0.6); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 12px;">
+        <div style="font-size: 12px; font-weight: 800; color: #fff; margin-bottom: 4px;">🔑 Join with Code</div>
+        <div style="font-size: 10px; color: #94a3b8; margin-bottom: 6px; line-height: 1.3;">Enter friend's room code to enter their arena.</div>
+        <div style="display: flex; gap: 4px;">
+          <input type="text" id="modalDirectRoomCodeInput" placeholder="ROOM CODE" maxlength="15" style="flex: 1; text-transform: uppercase; font-family: monospace; font-size: 11px; font-weight: 800; background: rgba(15, 23, 42, 0.9); border: 1px solid rgba(56, 189, 248, 0.3); border-radius: 6px; padding: 6px 8px; color: #38bdf8;" oninput="this.value = this.value.toUpperCase().replace(/[^A-Z0-9_-]/g, '')">
+          <button type="button" onclick="handleJoinByCodeModalAction()" style="background: #10b981; border: none; color: #fff; padding: 6px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; cursor: pointer;">
+            JOIN
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Rooms List -->
+    <div style="margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;">
+      <span style="font-size: 11px; font-weight: 800; color: #94a3b8; text-transform: uppercase;">ACTIVE MULTIPLAYER ROOMS</span>
+      <button type="button" onclick="fetchAndRenderRoomList()" style="background: none; border: none; color: #38bdf8; font-size: 11px; cursor: pointer; font-weight: 700;">🔄 Refresh</button>
+    </div>
+    <div id="modalRoomsListContainer" style="max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; padding-right: 4px;">
+      <!-- Populated via API / socket -->
+    </div>
+  </div>
+</div>
+
 <!-- FLOATING SAVE TOAST BANNER -->
 <div class="save-toast-banner" id="saveToastBanner">
   <span id="saveToastIcon" style="font-size: 18px;">💾</span>
@@ -6127,6 +6448,261 @@ socket.on("connect", () => {
 socket.on("connect_error", (err) => {
   console.warn("Socket connection notice:", err.message);
 });
+
+/* =====================================================
+   ROOM & LOBBY ARCHITECTURE
+===================================================== */
+let currentRoomCode = "MAIN";
+let currentLobbyMode = "community";
+window.currentRoomCode = "MAIN";
+
+// Extract room from query string if available (e.g. ?room=TITANS or ?lobby=XYZ)
+const initialRoomParam = urlParams.get("room") || urlParams.get("roomCode") || urlParams.get("lobby");
+if (initialRoomParam) {
+  const cleanCode = initialRoomParam.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  if (cleanCode && cleanCode !== "MAIN") {
+    currentRoomCode = cleanCode;
+    window.currentRoomCode = cleanCode;
+    currentLobbyMode = "private";
+  }
+}
+
+function setLobbyMode(mode) {
+  currentLobbyMode = mode;
+  const commBtn = document.getElementById("lobbyModeCommunityBtn");
+  const privBtn = document.getElementById("lobbyModePrivateBtn");
+  const panel = document.getElementById("privateRoomPanel");
+  const summary = document.getElementById("activeRoomStatusSummary");
+
+  if (mode === "private") {
+    if (commBtn) commBtn.classList.remove("active");
+    if (privBtn) privBtn.classList.add("active");
+    if (panel) panel.style.display = "block";
+    
+    const input = document.getElementById("privateRoomCodeInput");
+    if (input && !input.value.trim()) {
+      generateRandomRoomCode();
+    } else {
+      updateInviteLinkPreview();
+    }
+    const targetCode = (input && input.value.trim()) ? input.value.trim().toUpperCase() : "PRIVATE";
+    if (summary) summary.innerHTML = `Selected: <strong style="color: #38bdf8;">🔒 Private Room (${targetCode})</strong>`;
+  } else {
+    if (commBtn) commBtn.classList.add("active");
+    if (privBtn) privBtn.classList.remove("active");
+    if (panel) panel.style.display = "none";
+    currentRoomCode = "MAIN";
+    window.currentRoomCode = "MAIN";
+    if (summary) summary.innerHTML = `Selected: <strong style="color: #38bdf8;">🌐 Community Arena</strong>`;
+  }
+}
+
+function generateRandomRoomCode() {
+  const prefixes = ["ARENA", "TITANS", "LEAGUE", "CHAMPS", "WARRIORS", "FC", "STARS", "PRO"];
+  const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+  const num = Math.floor(1000 + Math.random() * 9000);
+  const code = `${prefix}-${num}`;
+  const input = document.getElementById("privateRoomCodeInput");
+  if (input) {
+    input.value = code;
+  }
+  updateInviteLinkPreview();
+  const summary = document.getElementById("activeRoomStatusSummary");
+  if (summary && currentLobbyMode === "private") {
+    summary.innerHTML = `Selected: <strong style="color: #38bdf8;">🔒 Private Room (${code})</strong>`;
+  }
+  return code;
+}
+
+function getSelectedRoomCode() {
+  if (currentLobbyMode === "private") {
+    const input = document.getElementById("privateRoomCodeInput");
+    const code = (input ? input.value : "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+    return code || generateRandomRoomCode();
+  }
+  return "MAIN";
+}
+
+function updateInviteLinkPreview() {
+  const input = document.getElementById("privateRoomCodeInput");
+  const code = (input ? input.value : "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "") || "MAIN";
+  const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
+  const textEl = document.getElementById("inviteLinkText");
+  if (textEl) textEl.innerText = url;
+}
+
+function copyRoomInviteLink() {
+  const input = document.getElementById("privateRoomCodeInput");
+  const code = (input ? input.value : "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "") || "MAIN";
+  const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showSaveToast(`Invite link copied! Share with friends to join room ${code}`, "📋");
+    }).catch(() => {
+      showSaveToast(`Room Code: ${code}`, "📋");
+    });
+  } else {
+    showSaveToast(`Room Code: ${code}`, "📋");
+  }
+}
+
+function copyActiveRoomInviteLink() {
+  const code = currentRoomCode || "MAIN";
+  const url = `${window.location.origin}${window.location.pathname}?room=${encodeURIComponent(code)}`;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => {
+      showSaveToast(`Invite link for ${code} copied to clipboard!`, "📋");
+    }).catch(() => {
+      showSaveToast(`Room Code: ${code}`, "📋");
+    });
+  } else {
+    showSaveToast(`Room Code: ${code}`, "📋");
+  }
+}
+
+function updateRoomUI(roomCode, isHost = false) {
+  currentRoomCode = roomCode || "MAIN";
+  window.currentRoomCode = currentRoomCode;
+
+  const headerLabel = document.getElementById("headerRoomLabel");
+  if (headerLabel) {
+    headerLabel.innerText = currentRoomCode === "MAIN" ? "🌐 Community Arena" : `🔒 Room: ${currentRoomCode}`;
+  }
+
+  const modalIcon = document.getElementById("modalActiveRoomIcon");
+  if (modalIcon) modalIcon.innerText = currentRoomCode === "MAIN" ? "🌐" : "🔒";
+
+  const modalName = document.getElementById("modalActiveRoomName");
+  if (modalName) modalName.innerText = currentRoomCode === "MAIN" ? "Community Arena" : `Private Room (${currentRoomCode})`;
+
+  const modalBadge = document.getElementById("modalActiveRoomCodeBadge");
+  if (modalBadge) modalBadge.innerText = `CODE: ${currentRoomCode}`;
+
+  try {
+    const url = new URL(window.location);
+    if (currentRoomCode === "MAIN") {
+      url.searchParams.delete("room");
+      url.searchParams.delete("roomCode");
+      url.searchParams.delete("lobby");
+    } else {
+      url.searchParams.set("room", currentRoomCode);
+    }
+    window.history.replaceState({}, "", url);
+  } catch (e) {}
+}
+
+function openRoomBrowserModal() {
+  const modal = document.getElementById("roomBrowserModal");
+  if (!modal) return;
+  modal.style.display = "flex";
+  fetchAndRenderRoomList();
+}
+
+function closeRoomBrowserModal() {
+  const modal = document.getElementById("roomBrowserModal");
+  if (modal) modal.style.display = "none";
+}
+
+async function fetchAndRenderRoomList() {
+  const container = document.getElementById("modalRoomsListContainer");
+  if (!container) return;
+  container.innerHTML = `<div style="text-align:center; padding: 15px; color: #94a3b8; font-size:12px;">⏳ Fetching active rooms...</div>`;
+
+  try {
+    const res = await fetch("/api/rooms");
+    const data = await res.json();
+    const rooms = data.rooms || [];
+
+    const badge = document.getElementById("quickRoomCountBadge");
+    if (badge) badge.innerText = rooms.length;
+
+    if (rooms.length === 0) {
+      container.innerHTML = `<div style="text-align:center; padding: 15px; color: #94a3b8; font-size:12px;">No active rooms found.</div>`;
+      return;
+    }
+
+    container.innerHTML = rooms.map(r => {
+      const isCurrent = r.code === currentRoomCode;
+      const isPublic = r.isGlobal;
+      return `
+        <div style="background: rgba(30, 41, 59, 0.7); border: 1px solid ${isCurrent ? '#38bdf8' : 'rgba(148, 163, 184, 0.2)'}; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+          <div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+              <span style="font-size: 14px;">${isPublic ? '🌐' : '🔒'}</span>
+              <strong style="font-size: 13px; color: #fff;">${r.name}</strong>
+              ${isCurrent ? '<span style="background: #10b981; color: #042f2e; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px;">CURRENT</span>' : ''}
+              ${r.auctionRunning ? '<span style="background: #ef4444; color: #fff; font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 4px;">AUCTION LIVE</span>' : ''}
+            </div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">
+              <span>${r.teamsCount} ${r.teamsCount === 1 ? 'Club' : 'Clubs'}</span> •
+              <span>Season ${r.season || 1}</span> •
+              <span>Host: ${r.host || 'Open'}</span>
+            </div>
+          </div>
+          <div>
+            ${isCurrent ? `
+              <button type="button" onclick="closeRoomBrowserModal()" style="background: rgba(56, 189, 248, 0.2); border: 1px solid #38bdf8; color: #38bdf8; font-size: 11px; font-weight: 800; padding: 5px 10px; border-radius: 6px; cursor: pointer;">
+                IN ROOM
+              </button>
+            ` : `
+              <button type="button" onclick="switchRoom('${r.code}')" style="background: #0284c7; border: none; color: #fff; font-size: 11px; font-weight: 800; padding: 5px 12px; border-radius: 6px; cursor: pointer;">
+                ENTER
+              </button>
+            `}
+          </div>
+        </div>
+      `;
+    }).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center; padding: 15px; color: #ef4444; font-size:12px;">Failed to load rooms list.</div>`;
+  }
+}
+
+function handleCreateNewRoomModalAction() {
+  const code = generateRandomRoomCode();
+  setLobbyMode("private");
+  const input = document.getElementById("privateRoomCodeInput");
+  if (input) input.value = code;
+  switchRoom(code);
+}
+
+function handleJoinByCodeModalAction() {
+  const input = document.getElementById("modalDirectRoomCodeInput");
+  const code = (input ? input.value : "").trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "");
+  if (!code) {
+    showError("Please enter a valid room code.");
+    return;
+  }
+  setLobbyMode("private");
+  const privInput = document.getElementById("privateRoomCodeInput");
+  if (privInput) privInput.value = code;
+  switchRoom(code);
+}
+
+function switchRoom(newRoomCode) {
+  const target = (newRoomCode || "MAIN").toUpperCase().trim();
+  closeRoomBrowserModal();
+
+  const activeName = (typeof myTeam === "string" && myTeam && myTeam !== "Not Joined") ? myTeam : (document.getElementById("teamName")?.value?.trim() || "ATHUL FC");
+
+  const crestConfig = window.getSafeCrestConfig ? window.getSafeCrestConfig() : {};
+  const crestSvg = window.getSafeCrestSvg ? window.getSafeCrestSvg(crestConfig, 48) : "";
+
+  socket.emit("joinTeam", {
+    teamName: activeName,
+    roomCode: target,
+    managerName: currentManagerName || "Athul V V",
+    customLogo: crestSvg,
+    crestSvg: crestSvg,
+    crestConfig: crestConfig,
+    managerPhoto: currentManagerPhoto || "/manager_photo.jpg",
+    rememberMe: true
+  });
+
+  updateRoomUI(target);
+  showSaveToast(`Switched to room: ${target}`, "🌐");
+  socket.emit("requestState");
+}
 
 let myTeam = null;
 window.myTeam = null;
@@ -6352,8 +6928,10 @@ function initRememberedPlayer() {
 
       const crestSvg = saved.crestSvg || (saved.crestConfig && typeof CrestStudio !== "undefined" ? CrestStudio.generateCrestSvg(saved.crestConfig, 48) : null);
 
+      const currentRoom = getSelectedRoomCode();
       socket.emit("joinTeam", {
         teamName: saved.teamName,
+        roomCode: currentRoom,
         managerName: saved.managerName || "Athul V V",
         customLogo: crestSvg,
         crestSvg: crestSvg,
@@ -6361,6 +6939,7 @@ function initRememberedPlayer() {
         managerPhoto: saved.managerPhoto || currentManagerPhoto,
         savedProgress: saved
       });
+      updateRoomUI(currentRoom);
 
       showSaveToast(`👋 Welcome back, Manager ${saved.managerName || "Athul V V"}! Resumed ${saved.teamName}.`, "👑");
     } else {
@@ -6680,8 +7259,10 @@ function handleImportSaveFile(event) {
       myTeam = data.teamName;
       updateClubProfileUI(data.teamName, data.managerName, data.managerPhoto, data.crestConfig, data.crestSvg);
 
+      const currentRoom = getSelectedRoomCode();
       socket.emit("joinTeam", {
         teamName: data.teamName,
+        roomCode: currentRoom,
         managerName: data.managerName || "Athul V V",
         customLogo: data.crestSvg,
         crestSvg: data.crestSvg,
@@ -6689,6 +7270,7 @@ function handleImportSaveFile(event) {
         managerPhoto: data.managerPhoto || currentManagerPhoto,
         savedProgress: data
       });
+      updateRoomUI(currentRoom);
 
       closeSaveProfileModal();
       showSaveToast(`📤 Successfully restored progress for ${data.teamName}!`, "🎉");
@@ -6845,10 +7427,13 @@ function joinTeam() {
     }
   } catch (e) {}
 
+  const selectedRoomCode = getSelectedRoomCode();
+
   socket.emit(
     "joinTeam",
     {
       teamName: name,
+      roomCode: selectedRoomCode,
       managerName: currentManagerName,
       customLogo: crestSvg,
       crestSvg: crestSvg,
@@ -6858,6 +7443,8 @@ function joinTeam() {
       savedProgress: savedProgress
     }
   );
+
+  updateRoomUI(selectedRoomCode);
 
   setAppMyTeam(name);
   const badgeEl1 = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
@@ -6879,6 +7466,10 @@ socket.on(
   data => {
 
     setAppMyTeam(data.teamName);
+
+    if (data.roomCode) {
+      updateRoomUI(data.roomCode, data.host);
+    }
 
     const badgeEl2 = document.getElementById("myTeamBadge") || document.getElementById("myTeam");
     if (badgeEl2) badgeEl2.innerText = data.teamName;
@@ -7005,6 +7596,10 @@ socket.on(
 
     gameState = state;
 
+    if (state.roomCode) {
+      updateRoomUI(state.roomCode);
+    }
+
     document.getElementById(
       "playersLeft"
     ).innerText =
@@ -7128,7 +7723,7 @@ socket.on(
 
     }
 
-    updateTransferWindowUI(state.transferWindowOpen, state.transferWindowType, state.season);
+    updateTransferWindowUI(state.transferWindowOpen, state.transferWindowType, state.season, state.nextWindowChange);
     updateGameModeUI(state.isSoloMode);
 
   }
@@ -7138,10 +7733,55 @@ socket.on(
    TRANSFER WINDOW & GAME MODE UI CONTROLS
 ===================================================== */
 
-function updateTransferWindowUI(isOpen, windowType, season) {
+let windowCountdownTimerId = null;
+
+function startWindowCountdown(targetTimestamp, isOpen, windowType) {
+  if (windowCountdownTimerId) {
+    clearInterval(windowCountdownTimerId);
+    windowCountdownTimerId = null;
+  }
+  if (!targetTimestamp) return;
+
+  function updateClock() {
+    const now = Date.now();
+    const diff = Math.max(0, Math.round((targetTimestamp - now) / 1000));
+    const mins = Math.floor(diff / 60);
+    const secs = diff % 60;
+    const timeStr = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+
+    const clock = document.getElementById("windowCountdownClock");
+    if (clock) {
+      clock.innerText = isOpen
+        ? `🟢 Market Closes in: ${timeStr}`
+        : `🔒 Market Opens in: ${timeStr}`;
+    }
+
+    const auctionBadge = document.getElementById("auctionWindowBadge");
+    if (auctionBadge) {
+      const typeLabel = windowType === "winter" ? "WINTER" : "SUMMER";
+      if (isOpen) {
+        auctionBadge.innerText = `☀️ ${typeLabel} WINDOW (OPEN • ${timeStr})`;
+        auctionBadge.style.background = "rgba(16, 185, 129, 0.2)";
+        auctionBadge.style.color = "#10b981";
+        auctionBadge.style.borderColor = "rgba(16, 185, 129, 0.4)";
+      } else {
+        auctionBadge.innerText = `🔒 MARKET CLOSED (OPENS IN ${timeStr})`;
+        auctionBadge.style.background = "rgba(239, 68, 68, 0.2)";
+        auctionBadge.style.color = "#ef4444";
+        auctionBadge.style.borderColor = "rgba(239, 68, 68, 0.4)";
+      }
+    }
+  }
+
+  updateClock();
+  windowCountdownTimerId = setInterval(updateClock, 1000);
+}
+
+function updateTransferWindowUI(isOpen, windowType, season, nextChangeTimestamp) {
   const isWindowOpen = Boolean(isOpen);
   const type = windowType || (isWindowOpen ? "summer" : "closed");
   const seasonNum = season || (gameState ? gameState.season : 1);
+  const nextChange = nextChangeTimestamp || (gameState ? gameState.nextWindowChange : null);
 
   // Top header elements
   const topStatus = document.getElementById("topWindowStatus");
@@ -7168,9 +7808,14 @@ function updateTransferWindowUI(isOpen, windowType, season) {
     topStatus.style.color = isWindowOpen ? "#10b981" : "#ef4444";
   }
 
+  // Start live countdown
+  if (nextChange) {
+    startWindowCountdown(nextChange, isWindowOpen, type);
+  }
+
   // Auction area badges
   const auctionBadge = document.getElementById("auctionWindowBadge");
-  if (auctionBadge) {
+  if (auctionBadge && !nextChange) {
     auctionBadge.innerText = `${icon} ${labelText.toUpperCase()}`;
     auctionBadge.style.background = isWindowOpen ? "rgba(16, 185, 129, 0.2)" : "rgba(239, 68, 68, 0.2)";
     auctionBadge.style.color = isWindowOpen ? "#10b981" : "#ef4444";
@@ -7180,7 +7825,6 @@ function updateTransferWindowUI(isOpen, windowType, season) {
   // Transfer closed notice banner in auction view
   const noticeBanner = document.getElementById("transferWindowNotice");
   const btnStart = document.getElementById("btnStartAuction");
-  const btnOverride = document.getElementById("btnOverrideWindow");
   const noPlayerMsg = document.getElementById("noPlayerMessage");
 
   if (!isWindowOpen) {
@@ -7189,14 +7833,10 @@ function updateTransferWindowUI(isOpen, windowType, season) {
       btnStart.disabled = true;
       btnStart.style.opacity = "0.5";
       btnStart.style.cursor = "not-allowed";
-      btnStart.title = "Market closed during league matches. Window opens after Round 5 (Winter) or Season end (Summer).";
-    }
-    if (btnOverride) {
-      btnOverride.style.display = "inline-block";
-      btnOverride.innerText = "🔓 Host: Open Window Now";
+      btnStart.title = "Transfer Market runs on scheduled periods. Next window opens automatically.";
     }
     if (noPlayerMsg) {
-      noPlayerMsg.innerHTML = `<span style="color:#ef4444; font-weight:700;">Market Closed:</span> The auction opens after summer and winter transfer windows. League matchdays in progress.`;
+      noPlayerMsg.innerHTML = `<span style="color:#ef4444; font-weight:700;">Market Closed:</span> Transfer market operates strictly on official scheduled periods (4 min Open / 3 min Closed). League matchdays in progress.`;
     }
   } else {
     if (noticeBanner) noticeBanner.style.display = "none";
@@ -7205,9 +7845,6 @@ function updateTransferWindowUI(isOpen, windowType, season) {
       btnStart.style.opacity = "1";
       btnStart.style.cursor = "pointer";
       btnStart.title = "Start bidding on players";
-    }
-    if (btnOverride) {
-      btnOverride.style.display = "none";
     }
     if (noPlayerMsg) {
       noPlayerMsg.innerText = "Waiting for the next player to be nominated...";
@@ -7258,7 +7895,9 @@ function setGamePlayMode(mode) {
 }
 
 function requestToggleTransferWindow() {
-  socket.emit("toggleTransferWindow");
+  if (typeof showSaveToast === "function") {
+    showSaveToast("The transfer market runs strictly on an official automated schedule.", "ℹ️");
+  }
 }
 
 socket.on("transferWindowState", data => {
@@ -7266,8 +7905,42 @@ socket.on("transferWindowState", data => {
     if (gameState) {
       gameState.transferWindowOpen = data.transferWindowOpen;
       gameState.transferWindowType = data.transferWindowType;
+      if (data.nextChangeTime) gameState.nextWindowChange = data.nextChangeTime;
     }
-    updateTransferWindowUI(data.transferWindowOpen, data.transferWindowType, gameState ? gameState.season : 1);
+    updateTransferWindowUI(data.transferWindowOpen, data.transferWindowType, gameState ? gameState.season : 1, data.nextChangeTime);
+  }
+});
+
+// Notifications for automated market window changes and warnings
+socket.on("marketWindowAlert", data => {
+  if (!data) return;
+  if (typeof playWhistleSound === "function") {
+    playWhistleSound();
+  }
+  if (typeof showSaveToast === "function") {
+    showSaveToast(data.message, data.status === "open" ? "📢" : "🔒");
+  }
+  if (typeof updateManagerPop === "function") {
+    updateManagerPop(data.message, 6000);
+  }
+  if (gameState) {
+    gameState.transferWindowOpen = data.status === "open";
+    gameState.transferWindowType = data.type;
+    gameState.nextWindowChange = data.nextChangeTime;
+  }
+  updateTransferWindowUI(data.status === "open", data.type, gameState ? gameState.season : 1, data.nextChangeTime);
+});
+
+socket.on("marketCountdownWarning", data => {
+  if (!data) return;
+  if (typeof playRadarSound === "function") {
+    playRadarSound();
+  }
+  if (typeof showSaveToast === "function") {
+    showSaveToast(data.message, data.status === "closing_soon" ? "⏳" : "⏰");
+  }
+  if (typeof updateManagerPop === "function") {
+    updateManagerPop(data.message, 5000);
   }
 });
 
@@ -8377,15 +9050,63 @@ socket.on("leagueState", data => {
 socket.on("leagueRoundSimulated", data => {
   if (data && data.round) {
     currentViewingRound = data.round;
-    updateManagerPop(`Round ${data.round} has been simulated! Check the fixtures or click "🎮 3D MATCHDAY ARENA" to watch full 3D gameplay highlights.`);
+    updateManagerPop(`Round ${data.round} has been simulated! Check the updated standings and fixtures.`);
   }
-  playWhistleSound();
+  if (typeof playWhistleSound === "function") playWhistleSound();
   if (data && data.rivalryMatches && data.rivalryMatches.length > 0) {
-    setTimeout(() => playRivalrySound(), 350);
+    if (typeof playRivalrySound === "function") setTimeout(() => playRivalrySound(), 350);
   } else {
-    setTimeout(() => playGoalSound(), 300);
+    if (typeof playGoalSound === "function") setTimeout(() => playGoalSound(), 300);
   }
   socket.emit("requestLeagueState");
+});
+
+socket.on("matchSimulated", data => {
+  if (data) {
+    const fix = data.fixture;
+    if (fix && typeof showSaveToast === "function") {
+      showSaveToast(`⚡ Match Result: ${fix.homeTeam} ${fix.homeScore} - ${fix.awayScore} ${fix.awayTeam}`, "⚽");
+    } else if (typeof showSaveToast === "function") {
+      showSaveToast(data.message || "Match simulated!", "⚽");
+    }
+    if (typeof playGoalSound === "function") playGoalSound();
+    socket.emit("requestLeagueState");
+  }
+});
+
+socket.on("roundSimulated", data => {
+  if (data) {
+    if (typeof showSaveToast === "function") {
+      showSaveToast(data.message || `Round ${data.round} simulated!`, "⏩");
+    }
+    if (typeof updateManagerPop === "function") {
+      updateManagerPop(`Round ${data.round} concluded across all divisions!`, 5000);
+    }
+    if (typeof playWhistleSound === "function") playWhistleSound();
+    socket.emit("requestLeagueState");
+  }
+});
+
+socket.on("seasonSimulated", data => {
+  if (data) {
+    if (typeof showSaveToast === "function") {
+      showSaveToast(data.message || "Full Season Simulated!", "🏆");
+    }
+    if (typeof updateManagerPop === "function") {
+      updateManagerPop("🏆 Full season simulation complete! Check the champions!", 7000);
+    }
+    if (typeof playTrophySound === "function") playTrophySound();
+    socket.emit("requestLeagueState");
+  }
+});
+
+socket.on("povMatchResultSaved", data => {
+  if (data) {
+    if (typeof showSaveToast === "function") {
+      showSaveToast(`Player POV Match saved! Final: ${data.fixture?.homeScore ?? 0} - ${data.fixture?.awayScore ?? 0}`, "🌟");
+    }
+    socket.emit("requestLeagueState");
+  }
 });
 
 function switchDivision(divId) {
@@ -8415,19 +9136,158 @@ function nextRound() {
   }
 }
 
+// MATCHDAY SIMULATION FUNCTIONS
+function simulateSingleMatch(divisionId, round, fixtureIndex) {
+  const div = divisionId || currentDivisionTab || 1;
+  const rnd = round || currentViewingRound || 1;
+  socket.emit("simulateSingleMatch", {
+    divisionId: div,
+    round: rnd,
+    fixtureIndex: fixtureIndex !== undefined ? fixtureIndex : null
+  });
+  if (typeof showSaveToast === "function") {
+    showSaveToast("⚡ Simulating match...", "⚽");
+  }
+}
+
+function simulateSingleFixture(divisionId, round, fixtureIndex) {
+  simulateSingleMatch(divisionId, round, fixtureIndex);
+}
+
+function simulateCurrentRound() {
+  const rnd = currentViewingRound || 1;
+  socket.emit("simulateLeagueRound", { round: rnd });
+  if (typeof showSaveToast === "function") {
+    showSaveToast(`⏩ Simulating Round ${rnd} across all divisions...`, "⚽");
+  }
+}
+
 function simulateLeagueRound() {
-  socket.emit("simulateLeagueRound");
+  simulateCurrentRound();
 }
 
 function simulateFullSeason() {
-  if (confirm("Simulate all remaining rounds of Season " + (leagueData?.season || 1) + "?")) {
+  if (confirm("Simulate all remaining fixtures in the season automatically?")) {
     socket.emit("simulateFullSeason");
+    if (typeof showSaveToast === "function") {
+      showSaveToast("🏆 Simulating remaining league season...", "⏳");
+    }
+  }
+}
+
+// PLAYER POV LAUNCHERS
+function launchPlayerPovMatch(divisionId, round, fixtureIndex) {
+  let fixture = null;
+  const div = divisionId || currentDivisionTab || 1;
+  const rnd = round || currentViewingRound || 1;
+
+  if (leagueData?.divisions?.[div]?.fixtures) {
+    const roundFixes = leagueData.divisions[div].fixtures.filter(f => f.round === rnd);
+    if (roundFixes && roundFixes[fixtureIndex !== undefined ? fixtureIndex : 0]) {
+      fixture = roundFixes[fixtureIndex !== undefined ? fixtureIndex : 0];
+    }
+  }
+
+  const modal = document.getElementById("playerPovModal");
+  if (modal) {
+    modal.style.display = "flex";
+    if (window.PlayerPovEngine) {
+      window.PlayerPovEngine.startMatch({
+        divisionId: div,
+        round: rnd,
+        fixtureIndex: fixtureIndex !== undefined ? fixtureIndex : 0,
+        homeTeam: fixture ? fixture.homeTeam : (window.myTeam || "Athul FC"),
+        awayTeam: fixture ? fixture.awayTeam : "Kochi FC"
+      });
+    }
+  }
+}
+
+function launchNextPovMatch() {
+  let targetDiv = currentDivisionTab || 1;
+  let targetRound = currentViewingRound || 1;
+  let targetIndex = 0;
+
+  if (leagueData?.divisions) {
+    const userTeam = window.myTeam;
+    let found = false;
+    // 1. Prioritize user team's next unplayed fixture
+    if (userTeam) {
+      for (const divId of [1, 2, 3]) {
+        const fixList = leagueData.divisions[divId]?.fixtures || [];
+        const userFix = fixList.find(f => !f.played && (f.homeTeam === userTeam || f.awayTeam === userTeam));
+        if (userFix) {
+          targetDiv = divId;
+          targetRound = userFix.round;
+          const roundFixes = fixList.filter(f => f.round === targetRound);
+          targetIndex = roundFixes.indexOf(userFix);
+          if (targetIndex < 0) targetIndex = 0;
+          found = true;
+          break;
+        }
+      }
+    }
+    // 2. Otherwise find first unplayed fixture in viewing division
+    if (!found) {
+      const fixList = leagueData.divisions[targetDiv]?.fixtures || [];
+      const unplayed = fixList.find(f => !f.played && f.round === targetRound);
+      if (unplayed) {
+        const roundFixes = fixList.filter(f => f.round === targetRound);
+        targetIndex = roundFixes.indexOf(unplayed);
+        if (targetIndex < 0) targetIndex = 0;
+      }
+    }
+  }
+
+  launchPlayerPovMatch(targetDiv, targetRound, targetIndex);
+}
+
+function closePlayerPovModal() {
+  const modal = document.getElementById("playerPovModal");
+  if (modal) {
+    modal.style.display = "none";
+    if (window.PlayerPovEngine) {
+      window.PlayerPovEngine.stop();
+    }
   }
 }
 
 function advanceLeagueSeason() {
   if (confirm("Advance to the next season and apply promotions & relegations?")) {
     socket.emit("advanceLeagueSeason");
+  }
+}
+
+function updateTransferMarketMilestoneUI(isOpen, remaining, played) {
+  const badge = document.getElementById("transferMarketMilestoneBadge");
+  if (badge) {
+    if (isOpen) {
+      badge.innerText = "📢 TRANSFER MARKET OPEN (Auctions Active)";
+      badge.style.background = "rgba(16, 185, 129, 0.25)";
+      badge.style.color = "#10b981";
+      badge.style.borderColor = "rgba(16, 185, 129, 0.6)";
+    } else {
+      const rem = remaining !== undefined ? remaining : 5;
+      badge.innerText = `⏳ Transfer Market: Unlocks every 5 matches (${rem} remaining)`;
+      badge.style.background = "rgba(234, 179, 8, 0.15)";
+      badge.style.color = "#facc15";
+      badge.style.borderColor = "rgba(234, 179, 8, 0.4)";
+    }
+  }
+
+  const noticeBanner = document.getElementById("transferWindowNotice");
+  const windowDesc = document.getElementById("windowCardDesc");
+  const countdownClock = document.getElementById("windowCountdownClock");
+  if (countdownClock) {
+    if (isOpen) {
+      countdownClock.innerText = "📢 Live Window Open!";
+    } else {
+      const rem = remaining !== undefined ? remaining : 5;
+      countdownClock.innerText = `⏳ Unlocks after 5 matches (${rem} remaining)`;
+    }
+  }
+  if (windowDesc) {
+    windowDesc.innerText = "The transfer market opens automatically every 5 matches played across the league. Play or simulate matches to unlock auctions!";
   }
 }
 
@@ -8450,19 +9310,12 @@ function renderLeague() {
   }
 
   // Host buttons & info
-  const simBtn = document.getElementById("btnSimRound");
-  const simFullBtn = document.getElementById("btnSimSeason");
   const advBtn = document.getElementById("btnAdvanceLeagueSeason");
-  const simNum = document.getElementById("simRoundNum");
   const hostInfo = document.getElementById("hostSimulationStatus");
-
-  if (simNum) simNum.innerText = currentRound;
 
   // Check if current user is host
   const amHost = Boolean(gameState?.host && myTeam && gameState.host === myTeam);
 
-  if (simBtn) simBtn.disabled = !amHost || isComplete;
-  if (simFullBtn) simFullBtn.disabled = !amHost || isComplete;
   if (advBtn) {
     if (isComplete && amHost) {
       advBtn.classList.remove("hidden");
@@ -8472,12 +9325,15 @@ function renderLeague() {
   }
 
   if (hostInfo) {
-    if (amHost) {
-      hostInfo.innerHTML = `You are the <strong>Host</strong>. Click below to simulate league rounds.`;
+    if (isComplete) {
+      hostInfo.innerHTML = `🏆 Season Complete! ${amHost ? "Host can advance to the next season." : "Waiting for Host to advance to next season."}`;
     } else {
-      hostInfo.innerHTML = `Simulation is controlled by room host: <strong>${gameState?.host || "Host"}</strong>.`;
+      hostInfo.innerHTML = `Round ${currentRound} of ${totalRounds} • Simulate single matches, full rounds, full seasons, or play in <strong>Player POV</strong>!`;
     }
   }
+
+  // Update milestone pill
+  updateTransferMarketMilestoneUI(gameState?.transferWindowOpen, gameState?.matchesRemaining, gameState?.matchesPlayedInCycle);
 
   renderStandings();
   renderFixtures();
@@ -8710,9 +9566,21 @@ function renderFixtures() {
         ${scorersHtml}
         ${matchdayPillHtml}
         ${userDerbyTag}
-        <div class="fixture-actions">
-          <button type="button" class="fixture-btn-3d" onclick="launch3DMatchByIndex(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})">
-            🎮 Watch 3D Match
+        <div class="fixture-actions" style="display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap;">
+          ${!fix.played ? `
+            <button type="button" class="fixture-btn-pov" style="flex: 1; background: linear-gradient(135deg, #059669, #10b981); color: #ffffff; font-weight: 800; font-size: 11px; padding: 6px 8px; border-radius: 6px; border: 1px solid #34d399; cursor: pointer;" onclick="launchPlayerPovMatch(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})" title="Play this fixture in first-person 3D Player POV">
+              👤 PLAY POV
+            </button>
+            <button type="button" class="fixture-btn-sim" style="flex: 1; background: linear-gradient(135deg, #2563eb, #3b82f6); color: #ffffff; font-weight: 800; font-size: 11px; padding: 6px 8px; border-radius: 6px; border: 1px solid #60a5fa; cursor: pointer;" onclick="simulateSingleFixture(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})" title="Instant Simulation">
+              ⚡ SIMULATE
+            </button>
+          ` : `
+            <button type="button" class="fixture-btn-pov" style="flex: 1; background: rgba(5, 150, 105, 0.25); color: #34d399; font-weight: 700; font-size: 11px; padding: 6px 8px; border-radius: 6px; border: 1px solid rgba(52, 211, 153, 0.4); cursor: pointer;" onclick="launchPlayerPovMatch(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})" title="Replay match in Player POV">
+              👤 REPLAY POV
+            </button>
+          `}
+          <button type="button" class="fixture-btn-3d" style="flex: 1; font-size: 11px; padding: 6px 8px;" onclick="launch3DMatchByIndex(${currentDivisionTab}, ${currentViewingRound}, ${fixIndex})" title="Watch 3D Match Center Broadcast">
+            🏟️ BROADCAST
           </button>
         </div>
       </div>
@@ -9502,6 +10370,115 @@ function playNetSound() {
 
   noise.start(now);
   noise.stop(now + 0.22);
+}
+
+// 12. Scouting Radar Sonar Ping (Two rapid high-resonance pings with exponential fade)
+function playRadarSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [0, 0.22].forEach((offset, idx) => {
+    const t = now + offset;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sine";
+    const freq = idx === 0 ? 1174.66 : 1480;
+    osc.frequency.setValueAtTime(freq, t);
+    osc.frequency.exponentialRampToValueAtTime(freq * 0.96, t + 0.32);
+
+    gain.gain.setValueAtTime(0.24, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.32);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.32);
+  });
+}
+
+// 13. Stadium Construction / Facility Renovation Impact (Rhythmic hammer strikes & metallic resonance)
+function playConstructionSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  [0, 0.11, 0.22].forEach((offset, i) => {
+    const t = now + offset;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "triangle";
+    osc.frequency.setValueAtTime(320 + i * 40, t);
+    osc.frequency.exponentialRampToValueAtTime(80, t + 0.08);
+
+    gain.gain.setValueAtTime(0.25 - i * 0.04, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + 0.09);
+  });
+}
+
+// 14. Triumphant Fanfare (Ascending major brass arpeggio for managerial signing & milestones)
+function playFanfareSound() {
+  if (!soundEnabled) return;
+  const ctx = getAudioCtx();
+  if (!ctx) return;
+  const now = ctx.currentTime;
+
+  const notes = [523.25, 659.25, 783.99, 1046.50];
+  notes.forEach((freq, idx) => {
+    const t = now + idx * 0.09;
+    const isLast = idx === notes.length - 1;
+    const dur = isLast ? 0.45 : 0.12;
+
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const filter = ctx.createBiquadFilter();
+
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(freq, t);
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(2200, t);
+
+    gain.gain.setValueAtTime(0.001, t);
+    gain.gain.linearRampToValueAtTime(0.18, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(t);
+    osc.stop(t + dur);
+  });
+}
+
+// 15. Unified Audio Dispatcher
+function playSound(type) {
+  switch (type) {
+    case "whistle": playWhistleSound(); break;
+    case "gavel": playGavelSound(); break;
+    case "bid": playBidSound(); break;
+    case "goal": playGoalSound(); break;
+    case "tick": playTickSound(); break;
+    case "cash": playCashSound(); break;
+    case "rivalry": playRivalrySound(); break;
+    case "click": playClickSound(); break;
+    case "kick": playKickSound(); break;
+    case "net": playNetSound(); break;
+    case "radar": playRadarSound(); break;
+    case "construction": playConstructionSound(); break;
+    case "fanfare": playFanfareSound(); break;
+    default: playClickSound(); break;
+  }
 }
 
 // Audio Toggle Button
@@ -10594,8 +11571,10 @@ function switchAppView(viewName) {
   if (viewName === "awards") {
     loadAwardsData();
   }
-  if (viewName === "journey" && typeof PLS_MatchGame !== "undefined") {
-    PLS_MatchGame.initJourney();
+  if (viewName === "journey") {
+    if (typeof updateManagerPop === "function") {
+      updateManagerPop("Welcome to Player POV Matchday Arena! Step onto the pitch in first-person 3D!");
+    }
   }
 }
 
@@ -10618,25 +11597,13 @@ function toggleMusicJukebox() {
   modal.style.display = isShown ? "none" : "flex";
 }
 
-// PLS Playable Match Game Modal Open/Close
+// First-Person Player POV Match Simulation Launchers & Legacy Fallbacks
 function openPLSGameModal(stageIdx = 0) {
-  const modal = document.getElementById("plsGameModal");
-  if (modal) {
-    modal.style.display = "flex";
-    if (window.PLS_MatchGame) {
-      window.PLS_MatchGame.start(stageIdx);
-    }
-  }
+  launchNextPovMatch();
 }
 
 function closePLSGameModal() {
-  const modal = document.getElementById("plsGameModal");
-  if (modal) {
-    modal.style.display = "none";
-    if (window.PLS_MatchGame) {
-      window.PLS_MatchGame.stop();
-    }
-  }
+  closePlayerPovModal();
 }
 
 // Console Live Auction Interaction Handlers
@@ -11049,8 +12016,19 @@ window.addEventListener("keydown", (e) => {
   }
 });
 
-// Auto-initialize Jersey Studio, Remembered Player, and periodic auto-save
+// Auto-initialize Jersey Studio, Remembered Player, Room setup, and periodic auto-save
 window.addEventListener("DOMContentLoaded", () => {
+  if (currentLobbyMode === "private" && currentRoomCode && currentRoomCode !== "MAIN") {
+    setLobbyMode("private");
+    const privInput = document.getElementById("privateRoomCodeInput");
+    if (privInput) privInput.value = currentRoomCode;
+    updateInviteLinkPreview();
+    updateRoomUI(currentRoomCode);
+    showSaveToast(`🔗 Private Room: ${currentRoomCode} active`, "🔒");
+  } else {
+    updateRoomUI(currentRoomCode || "MAIN");
+  }
+
   if (typeof initRememberedPlayer === "function") {
     initRememberedPlayer();
   }

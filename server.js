@@ -89,6 +89,16 @@ const { LeagueManager, INITIAL_CLUBS } = require("./league.js");
 const league = new LeagueManager(currentSeason);
 
 // =====================================================
+// AUTOMATED TRANSFER MARKET OFFICIAL PERIODS
+// =====================================================
+// The transfer market operates automatically on scheduled periods:
+// - OPEN: 4 minutes (auctions, bids, contracts, release clauses)
+// - CLOSED: 3 minutes (matchday competitions)
+// Host manual authority is removed; all managers are notified on window shifts.
+const TRANSFER_WINDOW_OPEN_MS = 4 * 60 * 1000;   // 240 seconds
+const TRANSFER_WINDOW_CLOSED_MS = 3 * 60 * 1000; // 180 seconds
+
+// =====================================================
 // ROOMS
 // =====================================================
 
@@ -96,27 +106,58 @@ const rooms = {};
 
 const GLOBAL_ROOM = "MAIN";
 
+function createOrGetRoom(roomCode, hostName = null) {
+  const code = (roomCode && String(roomCode).trim())
+    ? String(roomCode).trim().toUpperCase()
+    : GLOBAL_ROOM;
+
+  if (!rooms[code]) {
+    const roomLeague = new LeagueManager(currentSeason);
+    roomLeague.initSeason(currentSeason, INITIAL_CLUBS);
+    rooms[code] = {
+      code: code,
+      host: hostName || null,
+      teams: {},
+      soldPlayers: new Set(),
+      currentPlayer: null,
+      currentBid: 0,
+      currentBidder: null,
+      auctionRunning: false,
+      timer: AUCTION_TIME,
+      timerInterval: null,
+      isSoloMode: code === GLOBAL_ROOM,
+      season: currentSeason,
+      transferWindowOpen: true,
+      transferWindowType: "summer",
+      nextWindowChange: Date.now() + TRANSFER_WINDOW_OPEN_MS,
+      warningSent30s: false,
+      league: roomLeague,
+      createdAt: new Date().toISOString()
+    };
+  }
+  return rooms[code];
+}
+
 function initGlobalRoom() {
   rooms[GLOBAL_ROOM] = {
+    code: GLOBAL_ROOM,
     host: null,
-
     teams: {},
-
     soldPlayers: new Set(),
-
     currentPlayer: null,
-
     currentBid: 0,
-
     currentBidder: null,
-
     auctionRunning: false,
-
     timer: AUCTION_TIME,
-
     timerInterval: null,
-
-    isSoloMode: true
+    isSoloMode: true,
+    season: currentSeason,
+    transferWindowOpen: true,
+    transferWindowType: "summer",
+    nextWindowChange: Date.now() + TRANSFER_WINDOW_OPEN_MS,
+    warningSent30s: false,
+    league: league,
+    createdAt: new Date().toISOString()
   };
 }
 
@@ -135,6 +176,7 @@ function saveGameProgressToFile() {
       season: currentSeason,
       transferWindowOpen: transferWindowOpen,
       transferWindowType: transferWindowType,
+      nextWindowChange: room.nextWindowChange || null,
       isSoloMode: Boolean(room.isSoloMode !== false),
       host: room.host,
       soldPlayers: Array.from(room.soldPlayers || []),
@@ -179,9 +221,20 @@ function loadGameProgressFromFile() {
     }
     if (typeof data.transferWindowOpen === "boolean") {
       transferWindowOpen = data.transferWindowOpen;
+      room.transferWindowOpen = data.transferWindowOpen;
     }
     if (data.transferWindowType) {
       transferWindowType = data.transferWindowType;
+      room.transferWindowType = data.transferWindowType;
+    }
+    if (data.nextWindowChange && Number(data.nextWindowChange) > Date.now()) {
+      room.nextWindowChange = Number(data.nextWindowChange);
+    } else {
+      room.nextWindowChange = Date.now() + TRANSFER_WINDOW_OPEN_MS;
+      room.transferWindowOpen = true;
+      room.transferWindowType = "summer";
+      transferWindowOpen = true;
+      transferWindowType = "summer";
     }
     if (typeof data.isSoloMode === "boolean") {
       room.isSoloMode = data.isSoloMode;
@@ -233,7 +286,20 @@ app.use("/three", express.static(path.join(__dirname, "node_modules", "three", "
 // =====================================================
 
 function getRoom(socket) {
-  return rooms[GLOBAL_ROOM] || null;
+  const code = (socket && socket.roomCode) ? socket.roomCode : GLOBAL_ROOM;
+  return rooms[code] || rooms[GLOBAL_ROOM] || null;
+}
+
+function getRoomLeague(roomOrSocket) {
+  let room = null;
+  if (typeof roomOrSocket === "string") {
+    room = rooms[roomOrSocket];
+  } else if (roomOrSocket && roomOrSocket.roomCode) {
+    room = rooms[roomOrSocket.roomCode];
+  } else if (roomOrSocket && roomOrSocket.teams) {
+    room = roomOrSocket;
+  }
+  return room?.league || league;
 }
 
 // -----------------------------------------------------
@@ -530,7 +596,10 @@ function findPlayerInTeam(team, playerName) {
 // -----------------------------------------------------
 
 function getGameState(room) {
+  const code = room.code || GLOBAL_ROOM;
   return {
+    roomCode: code,
+
     teams: room.teams,
 
     currentPlayer: room.currentPlayer,
@@ -556,13 +625,19 @@ function getGameState(room) {
 
     host: room.host,
 
-    season: currentSeason,
+    season: room.season || currentSeason,
 
     transferWindowOpen:
-      transferWindowOpen,
+      (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen,
 
     transferWindowType:
-      transferWindowType,
+      room.transferWindowType || transferWindowType,
+
+    nextWindowChange:
+      room.nextWindowChange || null,
+
+    windowRemainingSec:
+      room.nextWindowChange ? Math.max(0, Math.round((room.nextWindowChange - Date.now()) / 1000)) : null,
 
     isSoloMode:
       Boolean(room.isSoloMode !== false),
@@ -592,12 +667,13 @@ function getGameState(room) {
 // BROADCAST STATE
 // -----------------------------------------------------
 
-function broadcastState(roomCode) {
-  const room = rooms[roomCode];
+function broadcastState(roomCode = GLOBAL_ROOM) {
+  const code = roomCode || GLOBAL_ROOM;
+  const room = rooms[code];
 
   if (!room) return;
 
-  io.to(roomCode).emit(
+  io.to(code).emit(
     "gameState",
     getGameState(room)
   );
@@ -608,11 +684,13 @@ function broadcastState(roomCode) {
 // -----------------------------------------------------
 
 function broadcastLeagueState(roomCode = GLOBAL_ROOM) {
-  const room = rooms[roomCode] || rooms[GLOBAL_ROOM];
+  const code = roomCode || GLOBAL_ROOM;
+  const room = rooms[code] || rooms[GLOBAL_ROOM];
+  const activeLeague = room?.league || league;
   if (room) {
-    league.syncUserClubs(room.teams);
+    activeLeague.syncUserClubs(room.teams);
   }
-  io.to(roomCode).emit("leagueState", league.getLeagueState());
+  io.to(code).emit("leagueState", activeLeague.getLeagueState());
 }
 
 // -----------------------------------------------------
@@ -625,6 +703,82 @@ function managerMessage(roomCode, message) {
     message
   );
 }
+
+// -----------------------------------------------------
+// MATCH-BASED TRANSFER MARKET SYSTEM
+// The transfer market ONLY opens after a specific number of matches are played (every 5 matches).
+// Host authority to manually control or override the transfer market is completely removed.
+// -----------------------------------------------------
+const MATCHES_PER_TRANSFER_WINDOW = 5;
+
+function checkMatchesMilestoneForTransferMarket(room, matchesPlayedCount = 1) {
+  if (!room) return;
+  const roomCode = room.code || GLOBAL_ROOM;
+  room.totalMatchesPlayed = (room.totalMatchesPlayed || 0) + matchesPlayedCount;
+  room.matchesPlayedInCurrentCycle = (room.matchesPlayedInCurrentCycle || 0) + matchesPlayedCount;
+
+  // If currently closed and target match threshold reached -> OPEN MARKET!
+  if (!room.transferWindowOpen && room.matchesPlayedInCurrentCycle >= MATCHES_PER_TRANSFER_WINDOW) {
+    room.transferWindowOpen = true;
+    room.matchesPlayedInCurrentCycle = 0;
+    const roomLeague = getRoomLeague(room);
+    const isWinter = roomLeague && (roomLeague.currentRound >= 5 && roomLeague.currentRound < 10);
+    const isSummer = roomLeague && (roomLeague.isSeasonComplete || roomLeague.currentRound >= 10);
+    room.transferWindowType = isSummer ? "summer" : (isWinter ? "winter" : "summer");
+    if (roomCode === GLOBAL_ROOM) transferWindowOpen = true;
+
+    const windowName = room.transferWindowType === "winter" ? "Winter Transfer Window (Mid-Season)" : "Summer Transfer Window (Official)";
+    const msg = `📢 TRANSFER MARKET IS NOW OPEN! Opened automatically after 5 matches were played! (${windowName}). Squad auctions, trades, and release clauses are unlocked!`;
+    managerMessage(room.code, msg);
+    io.to(room.code).emit("marketWindowAlert", {
+      status: "open",
+      type: room.transferWindowType,
+      windowName: windowName,
+      message: msg,
+      matchesPlayed: room.totalMatchesPlayed,
+      matchesRequired: MATCHES_PER_TRANSFER_WINDOW
+    });
+    io.to(room.code).emit("transferWindowState", {
+      transferWindowOpen: true,
+      transferWindowType: room.transferWindowType,
+      windowName: windowName,
+      matchesPlayedInCurrentCycle: 0,
+      matchesRequired: MATCHES_PER_TRANSFER_WINDOW,
+      matchesRemainingToOpen: 0
+    });
+    broadcastState(room.code);
+    broadcastLeagueState(room.code);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
+  } else {
+    // Broadcast progress towards next transfer window
+    const remaining = Math.max(0, MATCHES_PER_TRANSFER_WINDOW - (room.matchesPlayedInCurrentCycle || 0));
+    io.to(room.code).emit("transferWindowState", {
+      transferWindowOpen: Boolean(room.transferWindowOpen),
+      transferWindowType: room.transferWindowType || "closed",
+      matchesPlayedInCurrentCycle: room.matchesPlayedInCurrentCycle || 0,
+      matchesRequired: MATCHES_PER_TRANSFER_WINDOW,
+      matchesRemainingToOpen: remaining
+    });
+  }
+}
+
+function tickTransferWindowScheduler() {
+  const roomCodes = Object.keys(rooms);
+  for (const code of roomCodes) {
+    const room = rooms[code];
+    if (!room) continue;
+    const remaining = Math.max(0, MATCHES_PER_TRANSFER_WINDOW - (room.matchesPlayedInCurrentCycle || 0));
+    io.to(room.code).emit("transferWindowState", {
+      transferWindowOpen: Boolean(room.transferWindowOpen),
+      transferWindowType: room.transferWindowType || "closed",
+      matchesPlayedInCurrentCycle: room.matchesPlayedInCurrentCycle || 0,
+      matchesRequired: MATCHES_PER_TRANSFER_WINDOW,
+      matchesRemainingToOpen: remaining
+    });
+  }
+}
+
+setInterval(tickTransferWindowScheduler, 5000);
 
 // -----------------------------------------------------
 // STOP TIMER
@@ -838,7 +992,7 @@ io.on("connection", socket => {
   );
 
   // ===================================================
-  // JOIN TEAM
+  // JOIN TEAM (WITH MULTI-ROOM / PRIVATE LOBBY SUPPORT)
   // ===================================================
 
   socket.on("joinTeam", data => {
@@ -855,8 +1009,11 @@ io.on("connection", socket => {
       return;
     }
 
-    const room =
-      rooms[GLOBAL_ROOM];
+    const targetRoomCode = (data?.roomCode && String(data.roomCode).trim())
+      ? String(data.roomCode).trim().toUpperCase()
+      : GLOBAL_ROOM;
+
+    const room = createOrGetRoom(targetRoomCode);
 
     // -------------------------------------------------
     // EXISTING TEAM
@@ -888,7 +1045,7 @@ io.on("connection", socket => {
 
       // If still empty squad, grant base starter squad
       if (!room.teams[teamName].players || room.teams[teamName].players.length === 0) {
-        room.teams[teamName].players = generateBaseStarterSquad(teamName, currentSeason);
+        room.teams[teamName].players = generateBaseStarterSquad(teamName, room.season || currentSeason);
         room.teams[teamName].players.forEach(p => {
           if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
         });
@@ -906,7 +1063,7 @@ io.on("connection", socket => {
       ) {
         socket.emit(
           "errorMessage",
-          "This room is full."
+          `Room ${targetRoomCode} is full (maximum ${MAX_TEAMS} teams).`
         );
 
         return;
@@ -918,7 +1075,6 @@ io.on("connection", socket => {
       if (data?.savedProgress) {
         if (data.savedProgress.budget !== undefined) {
           const raw = Number(data.savedProgress.budget);
-          // Migrate old 500M budget down to realistic small starting budget
           if (raw > 100) {
             initialBudget = STARTING_BUDGET;
           } else {
@@ -935,7 +1091,7 @@ io.on("connection", socket => {
 
       // Every new user team receives a Division 3 Base Starter Squad (14 players)
       if (initialPlayers.length === 0) {
-        initialPlayers = generateBaseStarterSquad(teamName, currentSeason);
+        initialPlayers = generateBaseStarterSquad(teamName, room.season || currentSeason);
         initialPlayers.forEach(p => {
           if (p && p.name) room.soldPlayers.add(normalizeName(p.name));
         });
@@ -943,15 +1099,10 @@ io.on("connection", socket => {
 
       room.teams[teamName] = {
         budget: initialBudget,
-
         players: initialPlayers,
-
         socketId: socket.id,
-
-        season: currentSeason,
-
+        season: room.season || currentSeason,
         transferOffers: [],
-
         customLogo: data?.customLogo || null,
         crestSvg: data?.crestSvg || null,
         crestConfig: data?.crestConfig || null,
@@ -960,53 +1111,102 @@ io.on("connection", socket => {
       };
     }
 
-    saveGameProgressToFile();
+    if (targetRoomCode === GLOBAL_ROOM) {
+      saveGameProgressToFile();
+    }
 
     // -------------------------------------------------
-    // FIRST PLAYER BECOMES HOST
+    // FIRST PLAYER IN ROOM BECOMES HOST
     // -------------------------------------------------
 
-    // Host is tracked by TEAM NAME, not socket.id, so the host
-    // keeps control after a reconnect / page refresh (socket.id
-    // changes on every new connection, but the team name does not).
     if (!room.host) {
       room.host = teamName;
     }
 
-    socket.join(GLOBAL_ROOM);
-
-    socket.roomCode =
-      GLOBAL_ROOM;
-
-    socket.teamName =
-      teamName;
+    // Switch Socket.IO room membership
+    if (socket.roomCode && socket.roomCode !== targetRoomCode) {
+      socket.leave(socket.roomCode);
+    }
+    socket.join(targetRoomCode);
+    socket.roomCode = targetRoomCode;
+    socket.teamName = teamName;
 
     socket.emit(
       "teamJoined",
       {
         teamName,
-
-        host:
-          room.host === teamName
+        roomCode: targetRoomCode,
+        host: room.host === teamName
       }
     );
 
     managerMessage(
-      GLOBAL_ROOM,
-
-      `👋 ${teamName} has joined the auction!`
+      targetRoomCode,
+      `👋 ${teamName} has joined ${targetRoomCode === GLOBAL_ROOM ? "the community auction arena" : "private room " + targetRoomCode}!`
     );
 
-    broadcastState(
-      GLOBAL_ROOM
-    );
+    broadcastState(targetRoomCode);
 
-    league.syncUserClubs(room.teams);
-    broadcastLeagueState(GLOBAL_ROOM);
+    const roomLeague = room.league || league;
+    roomLeague.syncUserClubs(room.teams);
+    broadcastLeagueState(targetRoomCode);
 
     console.log(
-      `${teamName} joined the auction`
+      `${teamName} joined room [${targetRoomCode}]`
     );
+  });
+
+  // ===================================================
+  // CREATE PRIVATE ROOM
+  // ===================================================
+
+  socket.on("createPrivateRoom", (data, callback) => {
+    let code = String(data?.roomCode || "").toUpperCase().replace(/[^A-Z0-9_-]/g, "").trim();
+    if (!code) {
+      const prefixes = ["FC", "TITANS", "ARENA", "UNITED", "CHAMPS", "LIONS", "ROYALS"];
+      const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      code = `${prefix}-${num}`;
+    }
+
+    const hostName = data?.teamName ? String(data.teamName).trim() : null;
+    const room = createOrGetRoom(code, hostName);
+    if (typeof data?.isSoloMode === "boolean") {
+      room.isSoloMode = data.isSoloMode;
+    }
+
+    const res = {
+      success: true,
+      roomCode: code,
+      isHost: true,
+      teamsCount: Object.keys(room.teams || {}).length
+    };
+
+    if (typeof callback === "function") callback(res);
+    socket.emit("roomCreated", res);
+  });
+
+  // ===================================================
+  // ROOM BROWSER & LIST
+  // ===================================================
+
+  socket.on("getRoomList", (data, callback) => {
+    const list = Object.keys(rooms).map(code => {
+      const r = rooms[code];
+      return {
+        code,
+        name: code === GLOBAL_ROOM ? "🌐 Community Arena" : `🔒 Private Room (${code})`,
+        isGlobal: code === GLOBAL_ROOM,
+        teamsCount: Object.keys(r.teams || {}).length,
+        host: r.host || "Open",
+        auctionRunning: Boolean(r.auctionRunning),
+        season: r.season || currentSeason,
+        transferWindowOpen: (typeof r.transferWindowOpen === "boolean") ? r.transferWindowOpen : transferWindowOpen
+      };
+    });
+    const res = { rooms: list, activeRoom: socket.roomCode || GLOBAL_ROOM };
+    if (typeof callback === "function") callback(res);
+    socket.emit("roomList", res);
   });
 
   // ===================================================
@@ -1060,10 +1260,15 @@ io.on("connection", socket => {
         return;
       }
 
-      if (!transferWindowOpen) {
+      const isWindowOpen = (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen;
+      if (!isWindowOpen) {
+        const secsLeft = room.nextWindowChange ? Math.max(0, Math.round((room.nextWindowChange - Date.now()) / 1000)) : 0;
+        const mins = Math.floor(secsLeft / 60);
+        const secs = secsLeft % 60;
+        const timeStr = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
         socket.emit(
           "errorMessage",
-          "🔒 The Transfer Window & Auction are CLOSED during competitive league matchdays! Reinforcements can be signed when the market opens during the Winter Transfer Window (after Round 5) or Summer Transfer Window (Pre-Season)."
+          `🔒 The Transfer Market is currently CLOSED for competitive matchdays. Next official window opens in ${timeStr}.`
         );
 
         return;
@@ -1190,10 +1395,15 @@ io.on("connection", socket => {
         return;
       }
 
-      if (!transferWindowOpen) {
+      const isWindowOpen = (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen;
+      if (!isWindowOpen) {
+        const secsLeft = room.nextWindowChange ? Math.max(0, Math.round((room.nextWindowChange - Date.now()) / 1000)) : 0;
+        const mins = Math.floor(secsLeft / 60);
+        const secs = secsLeft % 60;
+        const timeStr = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
         socket.emit(
           "errorMessage",
-          "🔒 The transfer window is currently closed."
+          `🔒 The Transfer Market is currently closed. Next window opens in ${timeStr}.`
         );
 
         return;
@@ -1860,21 +2070,21 @@ io.on("connection", socket => {
         }
       );
 
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
       managerMessage(
-        GLOBAL_ROOM,
-
+        roomCode,
         `📨 ${buyerTeamName} offered ₹${amount}M for ${player.name} from ${sellerTeamName}.`
       );
 
       io.to(
-        GLOBAL_ROOM
+        roomCode
       ).emit(
         "transferOfferReceived",
         offer
       );
 
       broadcastState(
-        GLOBAL_ROOM
+        roomCode
       );
     }
   );
@@ -2050,14 +2260,14 @@ io.on("connection", socket => {
       offer.status =
         "accepted";
 
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
       managerMessage(
-        GLOBAL_ROOM,
-
+        roomCode,
         `✅ TRANSFER COMPLETE! ${player.name} moves from ${sellerTeamName} to ${offer.from} for ₹${offer.amount}M.`
       );
 
       io.to(
-        GLOBAL_ROOM
+        roomCode
       ).emit(
         "transferCompleted",
         {
@@ -2081,7 +2291,7 @@ io.on("connection", socket => {
       );
 
       broadcastState(
-        GLOBAL_ROOM
+        roomCode
       );
     }
   );
@@ -2148,14 +2358,14 @@ io.on("connection", socket => {
       offer.status =
         "rejected";
 
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
       managerMessage(
-        GLOBAL_ROOM,
-
+        roomCode,
         `❌ ${sellerTeamName} rejected the ₹${offer.amount}M offer for ${offer.playerName}.`
       );
 
       io.to(
-        GLOBAL_ROOM
+        roomCode
       ).emit(
         "transferRejected",
         offer
@@ -2167,7 +2377,7 @@ io.on("connection", socket => {
       );
 
       broadcastState(
-        GLOBAL_ROOM
+        roomCode
       );
     }
   );
@@ -2324,14 +2534,14 @@ io.on("connection", socket => {
         player
       );
 
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
       managerMessage(
-        GLOBAL_ROOM,
-
+        roomCode,
         `💥 RELEASE CLAUSE ACTIVATED! ${player.name} moves from ${owner.teamName} to ${buyerTeamName} for ₹${clause}M.`
       );
 
       io.to(
-        GLOBAL_ROOM
+        roomCode
       ).emit(
         "transferCompleted",
         {
@@ -2353,50 +2563,21 @@ io.on("connection", socket => {
       );
 
       broadcastState(
-        GLOBAL_ROOM
+        roomCode
       );
     }
   );
 
   // ===================================================
-  // SET TRANSFER WINDOW
+  // SET TRANSFER WINDOW (HOST OVERRIDE REMOVED)
   // ===================================================
 
   socket.on(
     "setTransferWindow",
-    data => {
-      const room =
-        getRoom(socket);
-
-      if (!room) return;
-
-      if (
-        room.host !==
-        socket.teamName
-      ) {
-        socket.emit(
-          "errorMessage",
-          "Only the host can change the transfer window."
-        );
-
-        return;
-      }
-
-      transferWindowOpen =
-        Boolean(
-          data?.open
-        );
-
-      managerMessage(
-        GLOBAL_ROOM,
-
-        transferWindowOpen
-          ? "🟢 Transfer window is now OPEN."
-          : "🔴 Transfer window is now CLOSED."
-      );
-
-      broadcastState(
-        GLOBAL_ROOM
+    () => {
+      socket.emit(
+        "errorMessage",
+        "Host authority removed: The transfer market operates strictly on official scheduled periods."
       );
     }
   );
@@ -2436,14 +2617,15 @@ io.on("connection", socket => {
         return;
       }
 
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
+      const roomLeague = getRoomLeague(room);
+
       // ------------------------------------------------
       // MOVE TO NEXT SEASON
       // ------------------------------------------------
 
-      currentSeason++;
-
-      transferWindowOpen =
-        true;
+      room.season = (room.season || currentSeason) + 1;
+      room.transferWindowOpen = true;
 
       // ------------------------------------------------
       // CONTRACT CHECK
@@ -2467,7 +2649,7 @@ io.on("connection", socket => {
         ) {
           if (
             player.contract &&
-            currentSeason >
+            room.season >
             player.contract.endSeason
           ) {
             player.contract.status =
@@ -2496,8 +2678,7 @@ io.on("connection", socket => {
             );
 
           managerMessage(
-            GLOBAL_ROOM,
-
+            roomCode,
             `📄 ${expired.name}'s contract with ${teamName} has expired. The player is now a free agent.`
           );
         }
@@ -2508,33 +2689,33 @@ io.on("connection", socket => {
       }
 
       managerMessage(
-        GLOBAL_ROOM,
-
-        `🌍 SEASON ${currentSeason} has begun! Transfer window is OPEN.`
+        roomCode,
+        `🌍 SEASON ${room.season} has begun! Transfer window is OPEN.`
       );
 
-      league.advanceToNextSeason(currentSeason, room.teams);
+      roomLeague.advanceToNextSeason(room.season, room.teams);
 
       io.to(
-        GLOBAL_ROOM
+        roomCode
       ).emit(
         "seasonChanged",
         {
           season:
-            currentSeason,
+            room.season,
 
           transferWindowOpen:
-            transferWindowOpen
+            room.transferWindowOpen
         }
       );
 
       broadcastState(
-        GLOBAL_ROOM
+        roomCode
       );
 
       broadcastLeagueState(
-        GLOBAL_ROOM
+        roomCode
       );
+      if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
     }
   );
 
@@ -2680,144 +2861,264 @@ io.on("connection", socket => {
 
   socket.on("requestLeagueState", () => {
     const room = getRoom(socket);
+    const roomLeague = getRoomLeague(room);
     if (room) {
-      league.syncUserClubs(room.teams);
+      roomLeague.syncUserClubs(room.teams);
     }
-    socket.emit("leagueState", league.getLeagueState());
+    socket.emit("leagueState", roomLeague.getLeagueState());
   });
 
-  // HOST-ONLY ROUND SIMULATION
+  // -----------------------------------------------------
+  // SIMULATION HANDLERS (SINGLE MATCH, ROUND, FULL SEASON) & POV MATCH RESULT
+  // -----------------------------------------------------
+
+  // SIMULATE SINGLE MATCH
+  socket.on("simulateSingleMatch", (data) => {
+    const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
+    if (!room || !roomLeague) return;
+
+    roomLeague.syncUserClubs(room.teams);
+
+    // If transfer window was open, close it as match competition gets underway
+    if (room.transferWindowOpen) {
+      room.transferWindowOpen = false;
+      room.transferWindowType = "closed";
+      if (roomCode === GLOBAL_ROOM) transferWindowOpen = false;
+      managerMessage(roomCode, "🔒 Transfer market closed for matchday competition. It will reopen after 5 matches are played.");
+    }
+
+    let fixture = null;
+    let divId = (data && data.divisionId) || 1;
+    let round = (data && data.round) || roomLeague.currentRound;
+    let fixIdx = (data && typeof data.fixtureIndex === "number") ? data.fixtureIndex : -1;
+
+    const div = roomLeague.divisions[divId];
+    if (div && Array.isArray(div.fixtures)) {
+      const roundFixtures = div.fixtures.filter(f => f.round === round);
+      if (fixIdx >= 0 && roundFixtures[fixIdx] && !roundFixtures[fixIdx].played) {
+        fixture = roundFixtures[fixIdx];
+      } else {
+        fixture = roundFixtures.find(f => !f.played);
+      }
+    }
+
+    // Fallback: search across all divisions in current round
+    if (!fixture) {
+      for (const d of [1, 2, 3]) {
+        const found = roomLeague.divisions[d]?.fixtures?.find(f => f.round === roomLeague.currentRound && !f.played);
+        if (found) {
+          fixture = found;
+          divId = d;
+          break;
+        }
+      }
+    }
+
+    if (!fixture) {
+      socket.emit("errorMessage", "No unplayed fixtures found in this round. Advance round or season.");
+      return;
+    }
+
+    const simulated = roomLeague.simulateMatch(fixture, room.teams);
+    roomLeague.sortStandings(divId);
+
+    // Check if current round has finished across all divisions
+    let allPlayedInRound = true;
+    for (const d of [1, 2, 3]) {
+      if (roomLeague.divisions[d]?.fixtures?.some(f => f.round === roomLeague.currentRound && !f.played)) {
+        allPlayedInRound = false;
+        break;
+      }
+    }
+    if (allPlayedInRound) {
+      if (roomLeague.currentRound >= roomLeague.totalRounds) {
+        roomLeague.isSeasonComplete = true;
+        roomLeague.lastSeasonSummary = roomLeague.calculateSeasonSummary();
+      } else {
+        roomLeague.currentRound += 1;
+      }
+    }
+
+    // Milestone check: does this match trigger transfer market opening?
+    checkMatchesMilestoneForTransferMarket(room, 1);
+
+    const matchMsg = `⚽ MATCH RESULT: ${simulated.homeTeam} ${simulated.homeScore} - ${simulated.awayScore} ${simulated.awayTeam}`;
+    managerMessage(roomCode, matchMsg);
+    io.to(roomCode).emit("matchSimulated", {
+      match: simulated,
+      divisionId: divId,
+      round: round,
+      leagueState: roomLeague.getLeagueState()
+    });
+
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
+  });
+
+  // SIMULATE LEAGUE ROUND
   socket.on("simulateLeagueRound", () => {
     const room = getRoom(socket);
-    if (!room) {
-      socket.emit("errorMessage", "Join a team first.");
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
+    if (!room || !roomLeague) return;
+
+    if (roomLeague.isSeasonComplete) {
+      socket.emit("errorMessage", "Season is complete. Advance to the next season.");
       return;
     }
 
-    if (room.host !== socket.teamName) {
-      socket.emit("errorMessage", "Only the host can simulate league matches.");
-      return;
+    if (room.transferWindowOpen) {
+      room.transferWindowOpen = false;
+      room.transferWindowType = "closed";
+      if (roomCode === GLOBAL_ROOM) transferWindowOpen = false;
     }
 
-    const res = league.simulateCurrentRound(room.teams);
+    const res = roomLeague.simulateCurrentRound(room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    io.to(GLOBAL_ROOM).emit("leagueRoundSimulated", {
-      round: res.round,
-      matches: res.matches,
-      rivalryMatches: res.rivalryMatches || [],
-      isSeasonComplete: res.isSeasonComplete,
-      seasonSummary: res.seasonSummary
-    });
-
-    // Automatic Transfer Window scheduling across the season:
-    if (res.round === 1) {
-      transferWindowOpen = false;
-      transferWindowType = "closed";
-      managerMessage(
-        GLOBAL_ROOM,
-        "🔒 Round 1 is underway! The Summer Transfer Window has CLOSED for the league season."
-      );
-    } else if (res.round === 5 && !res.isSeasonComplete) {
-      transferWindowOpen = true;
-      transferWindowType = "winter";
-      managerMessage(
-        GLOBAL_ROOM,
-        "❄️ MID-SEASON BREAK! The WINTER TRANSFER WINDOW is now OPEN! Squad reinforcements and auctions unlocked!"
-      );
-    } else if (res.round === 6) {
-      transferWindowOpen = false;
-      transferWindowType = "closed";
-      managerMessage(
-        GLOBAL_ROOM,
-        "🔒 Round 6 kicks off! The Winter Transfer Window has CLOSED for the championship run-in."
-      );
-    }
-
-    if (res.isSeasonComplete) {
-      transferWindowOpen = true;
-      transferWindowType = "summer";
-      managerMessage(
-        GLOBAL_ROOM,
-        "☀️ Campaign complete! The SUMMER TRANSFER WINDOW is OPEN for the upcoming season!"
-      );
-    }
-
-    io.to(GLOBAL_ROOM).emit("transferWindowState", {
-      transferWindowOpen,
-      transferWindowType
-    });
-
-    broadcastLeagueState(GLOBAL_ROOM);
-    broadcastState(GLOBAL_ROOM);
-    saveGameProgressToFile();
-
-    if (res.rivalryMatches && res.rivalryMatches.length > 0) {
-      const topDerby = res.rivalryMatches[0];
-      managerMessage(
-        GLOBAL_ROOM,
-        `🔥 ARCH RIVALS DRAMA: ${topDerby.homeTeam} ${topDerby.homeScore} - ${topDerby.awayScore} ${topDerby.awayTeam} in ${topDerby.derbyName}! Absolute passion on the pitch!`
-      );
-    } else {
-      managerMessage(
-        GLOBAL_ROOM,
-        `⚽ Round ${res.round} simulated across all divisions!`
-      );
-    }
-
-    if (res.isSeasonComplete && res.seasonSummary) {
-      managerMessage(
-        GLOBAL_ROOM,
-        `🏆 Season ${res.seasonSummary.season} Finished! Champion: ${res.seasonSummary.champion}! Review final tables for promotion & relegation.`
-      );
-    }
-  });
-
-  // HOST-ONLY FULL SEASON SIMULATION
-  socket.on("simulateFullSeason", () => {
-    const room = getRoom(socket);
-    if (!room) {
-      socket.emit("errorMessage", "Join a team first.");
-      return;
-    }
-
-    if (room.host !== socket.teamName) {
-      socket.emit("errorMessage", "Only the host can simulate league matches.");
-      return;
-    }
-
-    const res = league.simulateFullSeason(room.teams);
-    transferWindowOpen = true;
-    transferWindowType = "summer";
-
-    io.to(GLOBAL_ROOM).emit("transferWindowState", {
-      transferWindowOpen,
-      transferWindowType
-    });
-
-    broadcastLeagueState(GLOBAL_ROOM);
-    broadcastState(GLOBAL_ROOM);
-    saveGameProgressToFile();
+    const matchesCount = (res.matches && res.matches.length) || 1;
+    checkMatchesMilestoneForTransferMarket(room, matchesCount);
 
     managerMessage(
-      GLOBAL_ROOM,
-      `⚽ Full league season simulated! ${res.totalMatchesSimulated} matches completed. Summer Transfer Window is OPEN!`
+      roomCode,
+      `⏩ ROUND ${res.round} SIMULATED! ${matchesCount} fixtures concluded across all divisions.`
     );
 
-    if (res.seasonSummary) {
-      managerMessage(
-        GLOBAL_ROOM,
-        `🏆 Champion: ${res.seasonSummary.champion}! Final promotion & relegation positions locked.`
-      );
+    io.to(roomCode).emit("roundSimulated", res);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
+  });
+
+  // SIMULATE FULL SEASON
+  socket.on("simulateFullSeason", () => {
+    const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
+    if (!room || !roomLeague) return;
+
+    if (roomLeague.isSeasonComplete) {
+      socket.emit("errorMessage", "Season is already complete. Advance to the next season.");
+      return;
     }
+
+    const res = roomLeague.simulateFullSeason(room.teams);
+    // At season end, summer transfer market opens!
+    room.transferWindowOpen = true;
+    room.transferWindowType = "summer";
+    room.matchesPlayedInCurrentCycle = 0;
+    if (roomCode === GLOBAL_ROOM) transferWindowOpen = true;
+
+    managerMessage(
+      roomCode,
+      `🏆 FULL SEASON SIMULATED! ${res.totalMatchesSimulated} matches completed. Season complete! Summer Transfer Window is OPEN!`
+    );
+
+    io.to(roomCode).emit("marketWindowAlert", {
+      status: "open",
+      type: "summer",
+      windowName: "Summer Transfer Window (Official)",
+      message: "🏆 Season completed! Summer Transfer Window is unlocked for new season preparations!"
+    });
+    io.to(roomCode).emit("transferWindowState", {
+      transferWindowOpen: true,
+      transferWindowType: "summer",
+      windowName: "Summer Transfer Window (Official)",
+      matchesPlayedInCurrentCycle: 0,
+      matchesRequired: MATCHES_PER_TRANSFER_WINDOW,
+      matchesRemainingToOpen: 0
+    });
+
+    io.to(roomCode).emit("seasonSimulated", res);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
+  });
+
+  // REPORT POV MATCH RESULT
+  socket.on("reportPovMatchResult", (data) => {
+    const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
+    if (!room || !roomLeague || !data) return;
+
+    const divId = data.divisionId || 1;
+    const round = data.round || roomLeague.currentRound;
+    const fixIdx = (typeof data.fixtureIndex === "number") ? data.fixtureIndex : 0;
+    const div = roomLeague.divisions[divId];
+    if (!div || !Array.isArray(div.fixtures)) return;
+
+    const roundFixtures = div.fixtures.filter(f => f.round === round);
+    const fixture = roundFixtures[fixIdx] || roundFixtures.find(f => !f.played);
+    if (!fixture || fixture.played) return;
+
+    fixture.played = true;
+    fixture.homeScore = Number(data.homeScore) || 0;
+    fixture.awayScore = Number(data.awayScore) || 0;
+    fixture.povPlayerStats = data.playerStats || null;
+
+    // Update standings
+    const homeStanding = div.standings.find(s => s.name === fixture.homeTeam);
+    const awayStanding = div.standings.find(s => s.name === fixture.awayTeam);
+    if (homeStanding && awayStanding) {
+      homeStanding.played += 1;
+      awayStanding.played += 1;
+      homeStanding.goalsFor += fixture.homeScore;
+      homeStanding.goalsAgainst += fixture.awayScore;
+      homeStanding.goalDifference = homeStanding.goalsFor - homeStanding.goalsAgainst;
+      awayStanding.goalsFor += fixture.awayScore;
+      awayStanding.goalsAgainst += fixture.homeScore;
+      awayStanding.goalDifference = awayStanding.goalsFor - awayStanding.goalsAgainst;
+
+      if (fixture.homeScore > fixture.awayScore) {
+        homeStanding.won += 1;
+        homeStanding.points += 3;
+        homeStanding.form.unshift("W");
+        awayStanding.lost += 1;
+        awayStanding.form.unshift("L");
+      } else if (fixture.homeScore === fixture.awayScore) {
+        homeStanding.drawn += 1;
+        homeStanding.points += 1;
+        homeStanding.form.unshift("D");
+        awayStanding.drawn += 1;
+        awayStanding.points += 1;
+        awayStanding.form.unshift("D");
+      } else {
+        awayStanding.won += 1;
+        awayStanding.points += 3;
+        awayStanding.form.unshift("W");
+        homeStanding.lost += 1;
+        homeStanding.form.unshift("L");
+      }
+      if (homeStanding.form.length > 5) homeStanding.form.pop();
+      if (awayStanding.form.length > 5) awayStanding.form.pop();
+    }
+
+    roomLeague.sortStandings(divId);
+    checkMatchesMilestoneForTransferMarket(room, 1);
+
+    managerMessage(
+      roomCode,
+      `🎮 PLAYER POV MATCHDAY RESULT: ${fixture.homeTeam} ${fixture.homeScore} - ${fixture.awayScore} ${fixture.awayTeam} (Player Rating: ${data.playerStats?.rating ? data.playerStats.rating.toFixed(1) : 7.5} ★)`
+    );
+
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
   });
 
   // HOST-ONLY ADVANCE TO NEXT LEAGUE SEASON (APPLY PROMOTION & RELEGATION)
   socket.on("advanceLeagueSeason", () => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
+
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -2828,30 +3129,30 @@ io.on("connection", socket => {
       return;
     }
 
-    currentSeason++;
-    const res = league.advanceToNextSeason(currentSeason, room.teams);
-    transferWindowOpen = true;
-    transferWindowType = "summer";
+    room.season = (room.season || currentSeason) + 1;
+    const res = roomLeague.advanceToNextSeason(room.season, room.teams);
+    room.transferWindowOpen = true;
+    room.transferWindowType = "summer";
 
     managerMessage(
-      GLOBAL_ROOM,
-      `🌍 Welcome to Season ${currentSeason}! Promotions and relegations applied. Summer Transfer Window is OPEN!`
+      roomCode,
+      `🌍 Welcome to Season ${room.season}! Promotions and relegations applied. Summer Transfer Window is OPEN!`
     );
 
-    io.to(GLOBAL_ROOM).emit("seasonChanged", {
-      season: currentSeason,
-      transferWindowOpen: transferWindowOpen,
-      transferWindowType: transferWindowType
+    io.to(roomCode).emit("seasonChanged", {
+      season: room.season,
+      transferWindowOpen: room.transferWindowOpen,
+      transferWindowType: room.transferWindowType
     });
 
-    io.to(GLOBAL_ROOM).emit("transferWindowState", {
-      transferWindowOpen,
-      transferWindowType
+    io.to(roomCode).emit("transferWindowState", {
+      transferWindowOpen: room.transferWindowOpen,
+      transferWindowType: room.transferWindowType
     });
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
-    saveGameProgressToFile();
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
   });
 
   // ===================================================
@@ -2859,51 +3160,28 @@ io.on("connection", socket => {
   // ===================================================
   socket.on("setGameMode", data => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
     if (!room) return;
     const isSolo = data?.mode === "solo";
     room.isSoloMode = isSolo;
     managerMessage(
-      GLOBAL_ROOM,
+      roomCode,
       isSolo
         ? "🎮 Solo Career Mode Active: AI manager algorithms will contest auctions, submit bids, and compete across Division 1, 2, and 3."
         : "👥 Multiplayer Mode Active: Real connected managers participate in the auction room."
     );
-    broadcastState(GLOBAL_ROOM);
-    saveGameProgressToFile();
+    broadcastState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
   });
 
   // ===================================================
-  // TOGGLE TRANSFER WINDOW (HOST OVERRIDE)
+  // TOGGLE TRANSFER WINDOW (HOST OVERRIDE REMOVED)
   // ===================================================
   socket.on("toggleTransferWindow", () => {
-    const room = getRoom(socket);
-    if (!room) return;
-    if (room.host && room.host !== socket.teamName) {
-      socket.emit("errorMessage", "Only the executive host manager can toggle the transfer window.");
-      return;
-    }
-
-    transferWindowOpen = !transferWindowOpen;
-    if (transferWindowOpen) {
-      transferWindowType = league.currentRound > 5 ? "winter" : "summer";
-      managerMessage(
-        GLOBAL_ROOM,
-        `🟢 Transfer Window & Auction manually OPENED (${transferWindowType === "winter" ? "Winter" : "Summer"} Window).`
-      );
-    } else {
-      transferWindowType = "closed";
-      managerMessage(
-        GLOBAL_ROOM,
-        "🔴 Transfer Window & Auction manually CLOSED for league matchdays."
-      );
-    }
-
-    io.to(GLOBAL_ROOM).emit("transferWindowState", {
-      transferWindowOpen,
-      transferWindowType
-    });
-    broadcastState(GLOBAL_ROOM);
-    saveGameProgressToFile();
+    socket.emit(
+      "errorMessage",
+      "Host authority removed: The transfer market operates strictly on official scheduled periods."
+    );
   });
 
   // ===================================================
@@ -2912,6 +3190,8 @@ io.on("connection", socket => {
 
   socket.on("repairPitch", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -2922,20 +3202,22 @@ io.on("connection", socket => {
       return;
     }
 
-    const res = league.repairPitch(teamName, room.teams);
+    const res = roomLeague.repairPitch(teamName, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("stadiumActionSuccess", res);
-    managerMessage(GLOBAL_ROOM, `🏟️ ${teamName} completed pitch renovation! Stadium pitch restored to 100% pristine condition.`);
+    managerMessage(roomCode, `🏟️ ${teamName} completed pitch renovation! Stadium pitch restored to 100% pristine condition.`);
   });
 
   socket.on("expandStadium", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -2946,20 +3228,22 @@ io.on("connection", socket => {
       return;
     }
 
-    const res = league.expandStadium(teamName, room.teams);
+    const res = roomLeague.expandStadium(teamName, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("stadiumActionSuccess", res);
-    managerMessage(GLOBAL_ROOM, `🏗️ ${teamName} expanded stadium capacity to ${res.stadium.capacity.toLocaleString()} seats!`);
+    managerMessage(roomCode, `🏗️ ${teamName} expanded stadium capacity to ${res.stadium.capacity.toLocaleString()} seats!`);
   });
 
   socket.on("upgradeFacilities", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -2970,16 +3254,16 @@ io.on("connection", socket => {
       return;
     }
 
-    const res = league.upgradeFacilities(teamName, room.teams);
+    const res = roomLeague.upgradeFacilities(teamName, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("stadiumActionSuccess", res);
-    managerMessage(GLOBAL_ROOM, `⭐ ${teamName} upgraded facilities to Level ${res.stadium.facilitiesLevel}! Merchandise sales will increase.`);
+    managerMessage(roomCode, `⭐ ${teamName} upgraded facilities to Level ${res.stadium.facilitiesLevel}! Merchandise sales will increase.`);
   });
 
   // ===================================================
@@ -2988,6 +3272,8 @@ io.on("connection", socket => {
 
   socket.on("hireManager", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -2999,16 +3285,16 @@ io.on("connection", socket => {
       return;
     }
 
-    const res = league.hireManager(teamName, managerId, room.teams);
+    const res = roomLeague.hireManager(teamName, managerId, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("managerHiredSuccess", res);
-    managerMessage(GLOBAL_ROOM, `👔 BREAKING: ${teamName} has appointed ${res.manager.name} as Manager! Perk: ${res.manager.perk.name} activated.`);
+    managerMessage(roomCode, `👔 BREAKING: ${teamName} has appointed ${res.manager.name} as Manager! Perk: ${res.manager.perk.name} activated.`);
   });
 
   // ===================================================
@@ -3017,6 +3303,8 @@ io.on("connection", socket => {
 
   socket.on("updateTeamLogo", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) return;
     const teamName = (data && data.teamName) || socket.teamName;
     if (!teamName || !room.teams[teamName]) return;
@@ -3025,11 +3313,11 @@ io.on("connection", socket => {
     if (data.crestSvg) room.teams[teamName].crestSvg = data.crestSvg;
     if (data.crestConfig) room.teams[teamName].crestConfig = data.crestConfig;
 
-    league.syncUserClubs(room.teams);
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    roomLeague.syncUserClubs(room.teams);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("teamLogoUpdated", { teamName, customLogo: data.customLogo, crestSvg: data.crestSvg });
-    managerMessage(GLOBAL_ROOM, `🎨 ${teamName} unveiled their new official club crest and visual identity!`);
+    managerMessage(roomCode, `🎨 ${teamName} unveiled their new official club crest and visual identity!`);
   });
 
   // ===================================================
@@ -3038,21 +3326,23 @@ io.on("connection", socket => {
 
   socket.on("updateManagerPhoto", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) return;
     const teamName = (data && data.teamName) || socket.teamName;
     if (!teamName || !room.teams[teamName]) return;
 
     if (data.managerPhoto) {
       room.teams[teamName].managerPhoto = data.managerPhoto;
-      if (league.managers[teamName]) {
-        league.managers[teamName].photo = data.managerPhoto;
+      if (roomLeague.managers && roomLeague.managers[teamName]) {
+        roomLeague.managers[teamName].photo = data.managerPhoto;
       }
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("managerPhotoUpdated", { teamName, managerPhoto: data.managerPhoto });
-    managerMessage(GLOBAL_ROOM, `📸 ${teamName} updated their head coach official touchline portrait!`);
+    managerMessage(roomCode, `📸 ${teamName} updated their head coach official touchline portrait!`);
   });
 
   // ===================================================
@@ -3061,32 +3351,36 @@ io.on("connection", socket => {
 
   socket.on("acceleratePlayerRehab", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) return;
     const teamName = (data && data.teamName) || socket.teamName;
     const injuryId = data && data.injuryId;
     if (!teamName || !injuryId) return;
 
-    const res = league.accelerateRehab(teamName, injuryId, room.teams);
+    const res = roomLeague.accelerateRehab(teamName, injuryId, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("rehabAcceleratedSuccess", res);
-    managerMessage(GLOBAL_ROOM, `🏥 ${teamName} invested ₹2.5M in cryogenic rehabilitation for ${res.injury.playerName}!`);
+    managerMessage(roomCode, `🏥 ${teamName} invested ₹2.5M in cryogenic rehabilitation for ${res.injury.playerName}!`);
   });
 
   socket.on("runLateFitnessTest", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) return;
     const teamName = (data && data.teamName) || socket.teamName;
     const injuryId = data && data.injuryId;
     if (!teamName || !injuryId) return;
 
-    const res = league.runLateFitnessTest(teamName, injuryId);
-    broadcastLeagueState(GLOBAL_ROOM);
+    const res = roomLeague.runLateFitnessTest(teamName, injuryId);
+    broadcastLeagueState(roomCode);
     socket.emit("fitnessTestResult", res);
   });
 
@@ -3096,6 +3390,8 @@ io.on("connection", socket => {
 
   socket.on("dispatchScout", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -3103,14 +3399,14 @@ io.on("connection", socket => {
     const teamName = (data && data.teamName) || socket.teamName;
     const missionType = (data && data.missionType) || "wonderkids";
 
-    const res = league.dispatchScout(teamName, missionType, room.teams);
+    const res = roomLeague.dispatchScout(teamName, missionType, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
 
-    broadcastState(GLOBAL_ROOM);
-    broadcastLeagueState(GLOBAL_ROOM);
+    broadcastState(roomCode);
+    broadcastLeagueState(roomCode);
     socket.emit("scoutReportsReceived", res);
     socket.emit("userMessage", `🔍 Chief Scout returned with ${res.dossiers.length} targets on ${missionType.toUpperCase()} mission!`);
   });
@@ -3120,6 +3416,8 @@ io.on("connection", socket => {
   // ===================================================
   socket.on("saveJerseyDesign", (data) => {
     const room = getRoom(socket);
+    const roomCode = socket.roomCode || GLOBAL_ROOM;
+    const roomLeague = getRoomLeague(room);
     if (!room) {
       socket.emit("errorMessage", "Join a team first.");
       return;
@@ -3129,13 +3427,13 @@ io.on("connection", socket => {
       socket.emit("errorMessage", "No club specified.");
       return;
     }
-    const res = league.saveJerseyDesign(teamName, data.jersey || {}, room.teams);
+    const res = roomLeague.saveJerseyDesign(teamName, data.jersey || {}, room.teams);
     if (res.error) {
       socket.emit("errorMessage", res.error);
       return;
     }
-    broadcastLeagueState(GLOBAL_ROOM);
-    saveGameProgressToFile();
+    broadcastLeagueState(roomCode);
+    if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
     socket.emit("jerseySavedSuccess", res);
     socket.emit("userMessage", `🎨 ${teamName} kit updated! Aesthetic Rating: ${res.jersey.aestheticScore}/10 (${res.jersey.tier}) - Sales Multiplier: ${res.jersey.salesMultiplier}x!`);
   });
@@ -3249,8 +3547,9 @@ io.on("connection", socket => {
       }
       team.budget = STARTING_BUDGET;
       team.players = [];
-      saveGameProgressToFile();
-      broadcastState(GLOBAL_ROOM);
+      const roomCode = socket.roomCode || GLOBAL_ROOM;
+      if (roomCode === GLOBAL_ROOM) saveGameProgressToFile();
+      broadcastState(roomCode);
     }
 
     const res = { success: true, teamName };
@@ -3258,6 +3557,18 @@ io.on("connection", socket => {
     if (typeof callback === "function") callback(res);
   });
 });
+
+// =====================================================
+// API - ROOM RESOLUTION HELPER
+// =====================================================
+
+function resolveRoom(req) {
+  const code = (req.query.room || req.headers["x-room-code"] || req.query.roomCode || req.query.lobby || GLOBAL_ROOM).toString().toUpperCase().trim();
+  if (code && code !== GLOBAL_ROOM) {
+    return createOrGetRoom(code);
+  }
+  return rooms[GLOBAL_ROOM];
+}
 
 // =====================================================
 // API - FIREBASE CONFIG
@@ -3283,16 +3594,16 @@ app.get("/api/firebase-config", (req, res) => {
 app.get(
   "/api/status",
   (req, res) => {
-    const room =
-      rooms[GLOBAL_ROOM];
+    const room = resolveRoom(req);
 
     res.json({
       status: "ok",
+      roomCode: room.code || GLOBAL_ROOM,
       season:
-        currentSeason,
+        room.season || currentSeason,
 
       transferWindowOpen:
-        transferWindowOpen,
+        (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen,
 
       auctionRunning:
         room.auctionRunning,
@@ -3302,7 +3613,7 @@ app.get(
 
       teams:
         Object.keys(
-          room.teams
+          room.teams || {}
         ).length,
 
       totalPlayers:
@@ -3336,8 +3647,7 @@ app.get(
 app.get(
   "/api/teams",
   (req, res) => {
-    const room =
-      rooms[GLOBAL_ROOM];
+    const room = resolveRoom(req);
 
     res.json(
       room.teams
@@ -3346,14 +3656,54 @@ app.get(
 );
 
 // =====================================================
+// API - ROOMS & LOBBIES
+// =====================================================
+
+app.get("/api/rooms", (req, res) => {
+  const list = Object.keys(rooms).map(code => {
+    const r = rooms[code];
+    return {
+      code,
+      name: code === GLOBAL_ROOM ? "🌐 Community Arena" : `🔒 Private Room (${code})`,
+      isGlobal: code === GLOBAL_ROOM,
+      teamsCount: Object.keys(r.teams || {}).length,
+      host: r.host || "Open",
+      auctionRunning: Boolean(r.auctionRunning),
+      season: r.season || currentSeason,
+      transferWindowOpen: (typeof r.transferWindowOpen === "boolean") ? r.transferWindowOpen : transferWindowOpen,
+      createdAt: r.createdAt || null
+    };
+  });
+  res.json({ rooms: list });
+});
+
+app.get("/api/rooms/:roomCode", (req, res) => {
+  const code = String(req.params.roomCode || "").toUpperCase().trim();
+  const r = rooms[code];
+  if (!r) {
+    return res.status(404).json({ error: "Room not found", roomCode: code });
+  }
+  res.json({
+    code,
+    name: code === GLOBAL_ROOM ? "🌐 Community Arena" : `🔒 Private Room (${code})`,
+    isGlobal: code === GLOBAL_ROOM,
+    teamsCount: Object.keys(r.teams || {}).length,
+    host: r.host || "Open",
+    auctionRunning: Boolean(r.auctionRunning),
+    season: r.season || currentSeason,
+    transferWindowOpen: (typeof r.transferWindowOpen === "boolean") ? r.transferWindowOpen : transferWindowOpen,
+    teams: Object.keys(r.teams || {})
+  });
+});
+
+// =====================================================
 // API - CONTRACTS
 // =====================================================
 
 app.get(
   "/api/contracts/:team",
   (req, res) => {
-    const room =
-      rooms[GLOBAL_ROOM];
+    const room = resolveRoom(req);
 
     const team =
       room.teams[
@@ -3372,7 +3722,7 @@ app.get(
         req.params.team,
 
       season:
-        currentSeason,
+        room.season || currentSeason,
 
       players:
         team.players
@@ -3387,8 +3737,7 @@ app.get(
 app.get(
   "/api/transfers",
   (req, res) => {
-    const room =
-      rooms[GLOBAL_ROOM];
+    const room = resolveRoom(req);
 
     const offers = [];
 
@@ -3421,11 +3770,13 @@ app.get(
     }
 
     res.json({
+      roomCode: room.code || GLOBAL_ROOM,
+
       season:
-        currentSeason,
+        room.season || currentSeason,
 
       transferWindowOpen:
-        transferWindowOpen,
+        (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen,
 
       offers:
         offers
@@ -3440,8 +3791,7 @@ app.get(
 app.get(
   "/api/free-agents",
   (req, res) => {
-    const room =
-      rooms[GLOBAL_ROOM];
+    const room = resolveRoom(req);
 
     const owned =
       new Set();
@@ -3488,11 +3838,12 @@ app.get(
 // =====================================================
 
 app.get("/api/league", (req, res) => {
-  const room = rooms[GLOBAL_ROOM];
+  const room = resolveRoom(req);
+  const roomLeague = getRoomLeague(room);
   if (room) {
-    league.syncUserClubs(room.teams);
+    roomLeague.syncUserClubs(room.teams);
   }
-  res.json(league.getLeagueState());
+  res.json(roomLeague.getLeagueState());
 });
 
 // =====================================================
@@ -3500,13 +3851,14 @@ app.get("/api/league", (req, res) => {
 // =====================================================
 
 app.get("/api/league/:division", (req, res) => {
-  const room = rooms[GLOBAL_ROOM];
+  const room = resolveRoom(req);
+  const roomLeague = getRoomLeague(room);
   if (room) {
-    league.syncUserClubs(room.teams);
+    roomLeague.syncUserClubs(room.teams);
   }
   const raw = String(req.params.division || "").toLowerCase().replace("div", "").trim();
   const divId = parseInt(raw, 10);
-  const data = league.getDivisionState(divId);
+  const data = roomLeague.getDivisionState(divId);
   if (!data) {
     return res.status(404).json({
       error: `Division '${req.params.division}' not found. Please use 1, 2, or 3.`
@@ -3516,20 +3868,23 @@ app.get("/api/league/:division", (req, res) => {
 });
 
 app.get("/api/league-jerseys", (req, res) => {
-  const room = rooms[GLOBAL_ROOM];
-  if (room) league.syncUserClubs(room.teams);
-  res.json({ jerseys: league.jerseys || {} });
+  const room = resolveRoom(req);
+  const roomLeague = getRoomLeague(room);
+  if (room) roomLeague.syncUserClubs(room.teams);
+  res.json({ jerseys: roomLeague.jerseys || {} });
 });
 
 app.get("/api/league-awards", (req, res) => {
-  const room = rooms[GLOBAL_ROOM];
-  const awards = league.calculateSeasonAwards(room?.teams || {});
+  const room = resolveRoom(req);
+  const roomLeague = getRoomLeague(room);
+  const awards = roomLeague.calculateSeasonAwards(room?.teams || {});
   res.json(awards);
 });
 
 app.get("/api/league-trophy", (req, res) => {
-  const room = rooms[GLOBAL_ROOM];
-  const trophy = league.getTrophyCeremonyData(room?.teams || {});
+  const room = resolveRoom(req);
+  const roomLeague = getRoomLeague(room);
+  const trophy = roomLeague.getTrophyCeremonyData(room?.teams || {});
   res.json(trophy);
 });
 

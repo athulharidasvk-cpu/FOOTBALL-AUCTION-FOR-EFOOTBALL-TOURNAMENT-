@@ -75,6 +75,9 @@ const SALARY_RATE = 0.1388889;
 // ₹180M auction price -> approximately ₹300M clause
 const RELEASE_CLAUSE_MULTIPLIER = 1.6666667;
 
+// League-wide salary cap: ₹50M per season maximum wage bill
+const LEAGUE_SALARY_CAP = 50;
+
 // =====================================================
 // GAME SETTINGS & LEAGUE
 // =====================================================
@@ -656,6 +659,8 @@ function getGameState(room) {
       contractYears: CONTRACT_YEARS,
 
       salaryRate: SALARY_RATE,
+
+      salaryCap: LEAGUE_SALARY_CAP,
 
       releaseClauseMultiplier:
         RELEASE_CLAUSE_MULTIPLIER
@@ -1532,6 +1537,19 @@ io.on("connection", socket => {
             room.timer
         }
       );
+
+      // Check salary cap risk for bidder
+      const currentWageBill = Array.isArray(team.players)
+        ? team.players.reduce((sum, p) => sum + Number(p.contract?.salary || p.salary || 2), 0)
+        : 28;
+      const estimatedPlayerWage = Math.max(1, Math.round(amount * SALARY_RATE));
+      const projectedTotalWages = currentWageBill + estimatedPlayerWage;
+      if (projectedTotalWages > LEAGUE_SALARY_CAP) {
+        socket.emit(
+          "managerMessage",
+          `⚠️ SALARY CAP WARNING: Your bid of ₹${amount}M projects your annual squad wage bill to ₹${projectedTotalWages}M/yr, exceeding the ₹${LEAGUE_SALARY_CAP}M League Salary Cap!`
+        );
+      }
 
       // -------------------------------------------------
       // MANAGER REACTIONS

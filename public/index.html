@@ -5424,6 +5424,11 @@ select {
         <span style="font-size: 9px; opacity: 0.7; margin-left: 3px;">▼</span>
       </button>
 
+      <!-- CAREER MODE (FOOTBALL WORLD) SWITCH LINK -->
+      <a href="/football-world" class="console-mode-link-btn" title="Open Full Career Mode (Football World Leagues, Transfer Market & Tactics)" style="display: inline-flex; align-items: center; gap: 6px; background: rgba(56, 189, 248, 0.15); border: 1px solid rgba(56, 189, 248, 0.45); color: #38bdf8; font-weight: 800; font-size: 11px; padding: 6px 12px; border-radius: 20px; text-decoration: none; transition: all 0.2s; white-space: nowrap;">
+        <span>🌍</span> Career Mode
+      </a>
+
       <!-- SAVE PROGRESS BUTTON -->
       <button type="button" class="console-save-btn" id="consoleSaveBtn" onclick="manualSaveProgress()" title="Save Player Progress (Auto-save is ON)">
         <span id="saveBtnIcon">💾</span>
@@ -9661,6 +9666,12 @@ function updateScoutIntelData(player, metrics) {
 
 function startAuction() {
   playClickSound();
+  if (!myTeam) {
+    const input = document.getElementById("teamName");
+    const name = (input && input.value.trim()) ? input.value.trim() : "Athul FC";
+    if (input) input.value = name;
+    joinTeam();
+  }
   runPlayerScoutingAnimation(() => {
     socket.emit("startAuction");
   });

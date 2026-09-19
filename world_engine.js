@@ -180,6 +180,212 @@ function managerCatalog(){
   }));
 }
 
+const HISTORIC_DERBIES = [
+  ['Real Madrid', 'FC Barcelona', 'El Clásico'],
+  ['Real Madrid', 'Atlético Madrid', 'Madrid Derby'],
+  ['Manchester City', 'Manchester United', 'Manchester Derby'],
+  ['Arsenal', 'Tottenham Hotspur', 'North London Derby'],
+  ['Liverpool', 'Everton', 'Merseyside Derby'],
+  ['Bayern München', 'Borussia Dortmund', 'Der Klassiker'],
+  ['Inter Milan', 'AC Milan', 'Derby della Madonnina'],
+  ['Juventus', 'Inter Milan', "Derby d'Italia"],
+  ['Paris Saint-Germain', 'Olympique de Marseille', 'Le Classique'],
+  ['Mohun Bagan SG', 'East Bengal FC', 'Kolkata Derby'],
+  ['Kerala Blasters FC', 'Bengaluru FC', 'Southern Derby'],
+  ['Mumbai City FC', 'FC Goa', 'West Coast Derby']
+];
+
+function setupClubRivalries(clubs) {
+  if (!Array.isArray(clubs)) return;
+
+  // 1. Establish base fan satisfaction, popularity, and historic same-country derbies
+  clubs.forEach(c => {
+    c.fanSatisfaction = (c.fanSatisfaction !== undefined) ? c.fanSatisfaction : 78;
+    c.popularity = (c.popularity !== undefined) ? c.popularity : Math.max(30, Math.min(99, Math.round((c.reputation || 60) * 0.85 + (5 - (c.division || 3)) * 3)));
+    
+    if (!c.rivalName) {
+      const foundHistoric = HISTORIC_DERBIES.find(d => d[0] === c.name || d[1] === c.name);
+      if (foundHistoric) {
+        const targetRival = foundHistoric[0] === c.name ? foundHistoric[1] : foundHistoric[0];
+        const rClub = clubs.find(x => x.name === targetRival);
+        if (rClub) {
+          c.rivalName = rClub.name;
+          c.derbyName = foundHistoric[2];
+          rClub.rivalName = c.name;
+          rClub.derbyName = foundHistoric[2];
+        }
+      }
+    }
+  });
+
+  // For any remaining clubs without same-tier rivals, pair within same country & division
+  const countries = [...new Set(clubs.map(c => c.country))];
+  countries.forEach(country => {
+    for (let div = 1; div <= 4; div++) {
+      const pool = clubs.filter(c => c.country === country && c.division === div && !c.rivalName);
+      for (let i = 0; i < pool.length; i += 2) {
+        if (i + 1 < pool.length) {
+          const c1 = pool[i];
+          const c2 = pool[i + 1];
+          const dName = `${c1.name.split(' ')[0]} vs ${c2.name.split(' ')[0]} Derby`;
+          c1.rivalName = c2.name;
+          c1.derbyName = dName;
+          c2.rivalName = c1.name;
+          c2.derbyName = dName;
+        } else if (pool.length === 1) {
+          const other = clubs.find(c => c.country === country && c.division === div && c.name !== pool[0].name);
+          if (other) {
+            pool[0].rivalName = other.name;
+            pool[0].derbyName = `${pool[0].name.split(' ')[0]} vs ${other.name.split(' ')[0]} Derby`;
+          }
+        }
+      }
+    }
+  });
+
+  // 2. MULTI-TIER RIVALRIES: Higher Division, Same Division, and Lower Division
+  clubs.forEach(c => {
+    c.rivals = c.rivals || {};
+    const div = c.division || 3;
+
+    // SAME DIVISION RIVAL
+    const sameRivalObj = clubs.find(x => x.name === c.rivalName && x.name !== c.name);
+    const sameDerby = c.derbyName || `${c.name.split(' ')[0]} vs ${(sameRivalObj?.name || 'Rival').split(' ')[0]} Derby`;
+    const existingSameH2H = (c.rivals.same && c.rivals.same.h2h) || { played: 0, wins: 0, draws: 0, losses: 0 };
+    c.rivals.same = {
+      name: sameRivalObj ? sameRivalObj.name : (c.rivalName || 'League Rival'),
+      division: sameRivalObj ? sameRivalObj.division : div,
+      derbyName: sameDerby,
+      badge: `⚔️ DIVISION ${div} NEMESIS`,
+      tier: `Division ${div} League Nemesis`,
+      backstory: `Direct league contenders fighting head-to-head for promotion and the division title.`,
+      h2h: existingSameH2H
+    };
+
+    // HIGHER DIVISION RIVAL (Division 1 or 2 Goliath)
+    let higherCandidates = clubs.filter(x => x.country === c.country && x.division < div && x.name !== c.name);
+    if (!higherCandidates.length && div > 1) {
+      higherCandidates = clubs.filter(x => x.division < div && x.name !== c.name);
+    }
+    if (!higherCandidates.length) {
+      higherCandidates = clubs.filter(x => x.division === 1 && x.name !== c.name && x.name !== c.rivalName);
+    }
+
+    if (higherCandidates.length) {
+      higherCandidates.sort((a, b) => (b.reputation || 70) - (a.reputation || 70));
+      const higherClub = higherCandidates[0];
+      const higherDerby = `${c.name.split(' ')[0]} vs ${higherClub.name.split(' ')[0]} David vs Goliath Clash`;
+      const existingHigherH2H = (c.rivals.higher && c.rivals.higher.h2h) || { played: 0, wins: 0, draws: 0, losses: 0 };
+      c.rivals.higher = {
+        name: higherClub.name,
+        division: higherClub.division,
+        derbyName: higherDerby,
+        badge: '👑 HIGHER DIVISION GOLIATH',
+        tier: `Division ${higherClub.division} Goliath`,
+        backstory: `Top-flight titans your supporters obsessively dream of shocking in domestic cup ties and future promotion showdowns.`,
+        h2h: existingHigherH2H
+      };
+    }
+
+    // LOWER DIVISION RIVAL (Division 4 Grassroots Underdog)
+    let lowerCandidates = clubs.filter(x => x.country === c.country && x.division > div && x.name !== c.name);
+    if (!lowerCandidates.length && div < 4) {
+      lowerCandidates = clubs.filter(x => x.division > div && x.name !== c.name);
+    }
+    if (!lowerCandidates.length) {
+      lowerCandidates = clubs.filter(x => x.division === 4 && x.name !== c.name && x.name !== c.rivalName);
+    }
+
+    if (lowerCandidates.length) {
+      lowerCandidates.sort((a, b) => (a.reputation || 50) - (b.reputation || 50));
+      const lowerClub = lowerCandidates[0];
+      const lowerDerby = `${c.name.split(' ')[0]} vs ${lowerClub.name.split(' ')[0]} Grassroots Derby`;
+      const existingLowerH2H = (c.rivals.lower && c.rivals.lower.h2h) || { played: 0, wins: 0, draws: 0, losses: 0 };
+      c.rivals.lower = {
+        name: lowerClub.name,
+        division: lowerClub.division,
+        derbyName: lowerDerby,
+        badge: '🛡️ LOWER DIVISION GRASSROOTS',
+        tier: `Division ${lowerClub.division} Underdog`,
+        backstory: `Passionate regional underdogs who treat every fixture against your club as their personal cup final.`,
+        h2h: existingLowerH2H
+      };
+    }
+  });
+}
+
+function recordTransaction(c, amount, category, description, s) {
+  if (!c || typeof amount !== 'number' || isNaN(amount)) return;
+  c.transactions = Array.isArray(c.transactions) ? c.transactions : [];
+  const balanceAfter = Math.round((c.cash || 0) * 10) / 10;
+  const tx = {
+    id: 'tx_' + Math.random().toString(36).slice(2, 9),
+    timestamp: Date.now(),
+    date: s ? `Season ${s.season || 1} · Matchday ${s.matchday || 0}` : 'Pre-Season',
+    type: amount >= 0 ? 'income' : 'expense',
+    amount: Math.abs(Math.round(amount * 10) / 10),
+    category: category || 'general',
+    description: description || 'Club financial transaction',
+    balanceAfter
+  };
+  c.transactions.unshift(tx);
+  if (c.transactions.length > 50) c.transactions.pop();
+  return tx;
+}
+
+function calculateClubBudget(s, c) {
+  if (!c) return null;
+  const players = clubPlayers(s, c);
+  const wageBillAnnual = Math.round((players.reduce((sum, p) => sum + (p.contract?.salary || 0.45), 0) + (c.manager?.salary || 0.4)) * 10) / 10;
+  const wageBillPerMatch = Math.round((wageBillAnnual / 24) * 100) / 100;
+  const projectedAttendance = c.lastProjectedAttendance || Math.round((c.stadium?.capacity || 15000) * 0.7);
+  const ticketRevPerMatch = Math.round(((projectedAttendance * (c.ticketPrice || 400)) / 1000000) * 100) / 100;
+  const merchRevPerMatch = Math.round(((projectedAttendance * (c.merchandise || 60) * 0.4) / 100000) * 100) / 100;
+  const sponsorAnnual = c.sponsor ? (c.sponsor.value || 2.5) : 1.5;
+  const sponsorPerMatch = Math.round((sponsorAnnual / 24) * 100) / 100;
+  const projectedRevPerMatch = Math.round((ticketRevPerMatch + merchRevPerMatch + sponsorPerMatch) * 100) / 100;
+  const netCashflowPerMatch = Math.round((projectedRevPerMatch - wageBillPerMatch) * 100) / 100;
+  const projectedTurnoverAnnual = Math.round((projectedRevPerMatch * 24) * 10) / 10;
+  const ffpRatio = projectedTurnoverAnnual > 0 ? Math.round((wageBillAnnual / projectedTurnoverAnnual) * 100) : 65;
+
+  let ffpGrade = 'A';
+  let ffpStatus = 'EXCELLENT';
+  let ffpColor = '#22c55e';
+  if (ffpRatio > 85 || (c.cash || 0) < 1.0) {
+    ffpGrade = 'D';
+    ffpStatus = 'FFP BREACH WARNING';
+    ffpColor = '#ef4444';
+  } else if (ffpRatio > 70) {
+    ffpGrade = 'C';
+    ffpStatus = 'MONITORED';
+    ffpColor = '#f59e0b';
+  } else if (ffpRatio > 55) {
+    ffpGrade = 'B';
+    ffpStatus = 'HEALTHY';
+    ffpColor = '#06b6d4';
+  }
+
+  return {
+    cash: Math.round((c.cash || 0) * 10) / 10,
+    wageBillAnnual,
+    wageBillPerMatch,
+    projectedRevPerMatch,
+    ticketRevPerMatch,
+    merchRevPerMatch,
+    sponsorPerMatch,
+    sponsorAnnual,
+    netCashflowPerMatch,
+    projectedTurnoverAnnual,
+    ffpRatio,
+    ffpGrade,
+    ffpStatus,
+    ffpColor,
+    transferWarChest: Math.max(0, Math.round((c.cash * 0.6) * 10) / 10),
+    wageReserve: Math.max(0, Math.round((c.cash * 0.3) * 10) / 10),
+    emergencyReserve: Math.max(0, Math.round((c.cash * 0.1) * 10) / 10)
+  };
+}
+
 function makeClubs(){
   const clubs=[];
   COUNTRIES.forEach(([country,league])=>{
@@ -193,6 +399,26 @@ function makeClubs(){
           n = `${country} ${suffix} ${i}`;
         }
         const rep=Math.max(35,88-(div-1)*12-i);
+        let cash = 50;
+        let ticketPrice = 450;
+        let stadiumCap = 35000;
+        if (div === 1) {
+          cash = Math.round(45 + (rep * 0.65)); // ₹70M - ₹105M
+          ticketPrice = Math.round(350 + rep * 4);
+          stadiumCap = Math.max(28000, 50000 - i * 1500);
+        } else if (div === 2) {
+          cash = Math.round(15 + (rep * 0.22)); // ₹20M - ₹32M
+          ticketPrice = Math.round(200 + rep * 2);
+          stadiumCap = Math.max(16000, 28000 - i * 1000);
+        } else if (div === 3) {
+          cash = Math.round(4 + (rep * 0.08)); // ₹6M - ₹11M (realistic 3rd division budget!)
+          ticketPrice = Math.round(100 + rep * 1.2);
+          stadiumCap = Math.max(8000, 15000 - i * 600);
+        } else {
+          cash = Math.round(1.5 + (rep * 0.04)); // ₹2M - ₹4M (realistic 4th division budget!)
+          ticketPrice = Math.round(70 + rep * 0.8);
+          stadiumCap = Math.max(4000, 8000 - i * 400);
+        }
         clubs.push({
           name:n,
           country,
@@ -201,13 +427,13 @@ function makeClubs(){
           reputation:rep,
           fans:Math.round(15000+rep*2200/div),
           morale:75,
-          stadium:{capacity:Math.max(12000, 32000-(div-1)*5000-i*400),condition:100,facilities:1},
-          ticketPrice:Math.round(350+rep*8),
+          stadium:{capacity:stadiumCap,condition:100,facilities:1},
+          ticketPrice,
           merchandise:55,
           jersey:{quality:70,home:i%2===0?'#0b2545':'#b21e27',away:'#f4f7fb',third:'#1b3b22',pattern:'stripes',collar:'#ffffff',shorts:'#0b2545',socks:'#0b2545'},
           sponsor:null,
           manager:null,
-          cash:35+rep,
+          cash,
           players:[],
           history:{titles:0,cups:0,promotions:0,relegations:0},
           stats:{wins:0,draws:0,losses:0,points:0},
@@ -216,6 +442,7 @@ function makeClubs(){
       }
     }
   });
+  setupClubRivalries(clubs);
   return clubs;
 }
 
@@ -291,14 +518,36 @@ function makeMarket(){
 
 function seedSquad(clubObj, market, count = 16) {
   if (!clubObj) return;
+  clubObj.players = Array.isArray(clubObj.players) ? clubObj.players : [];
   const needed = ['GK','GK','CB','CB','CB','LB','RB','DMF','CMF','CMF','AMF','AMF','CF','CF','LWF','RWF'];
   needed.forEach(pos => {
+    if (clubObj.players.length >= count) return;
     let p = market.find(x => x.position === pos && !x.ownerClub && !clubObj.players.includes(x.id));
     if (!p) p = market.find(x => !x.ownerClub && !clubObj.players.includes(x.id));
     if (p) {
       p.ownerClub = clubObj.name;
       p.status = 'contracted';
       if (!clubObj.players.includes(p.id)) clubObj.players.push(p.id);
+    } else {
+      const pId = 'p_seed_' + Math.random().toString(36).slice(2, 9);
+      const rep = Number(clubObj.reputation) || 72;
+      const rating = Math.min(84, Math.max(68, Math.round(rep * 0.95 + (Math.random() * 6 - 3))));
+      const randFirst = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+      const randLast = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+      const newP = {
+        id: pId,
+        name: `${randFirst} ${randLast}`,
+        position: pos,
+        rating: rating,
+        age: 20 + Math.floor(Math.random() * 9),
+        nationality: clubObj.country || 'International',
+        ownerClub: clubObj.name,
+        askingPrice: Math.round(rating * 0.35),
+        status: 'contracted',
+        contract: { salary: Math.max(0.4, Math.round(rating * 0.05 * 10) / 10), years: 3 }
+      };
+      market.push(newP);
+      clubObj.players.push(pId);
     }
   });
 }
@@ -330,12 +579,27 @@ function upgradeLegacyWorld(s) {
         if (unused) c.name = unused;
       }
     }
-    if (!Array.isArray(c.players) || c.players.length < 11) {
+    if (!Array.isArray(c.players) || c.players.length < 16) {
       c.players = c.players || [];
       seedSquad(c, s.market, 16);
     }
+    (c.players || []).forEach(pid => {
+      const p = player(s, pid);
+      if (p && !p.ownerClub) {
+        p.ownerClub = c.name;
+        p.status = 'contracted';
+      }
+    });
     if (!c.jersey || typeof c.jersey !== 'object') {
       c.jersey = { quality: 75, home: '#10243b', away: '#f0f4f8', third: '#1b3b22', pattern: 'stripes' };
+    }
+    // Rebalance legacy club budgets to realistic division economics:
+    if (c.division === 3 && c.cash > 10.5) {
+      c.cash = 8.5;
+    } else if (c.division === 4 && c.cash > 5) {
+      c.cash = 3.5;
+    } else if (c.division === 2 && c.cash > 28) {
+      c.cash = Math.max(12, Math.min(22, Math.round(c.cash * 0.35)));
     }
   });
   // 3. Ensure manager statuses
@@ -379,6 +643,37 @@ function upgradeLegacyWorld(s) {
       }
     });
   }
+  // 4. Ensure rivalries, popularity & fan satisfaction
+  setupClubRivalries(s.clubs);
+  s.clubs.forEach(c => {
+    if (!Array.isArray(c.transactions) || !c.transactions.length) {
+      c.transactions = [{
+        id: 'tx_init',
+        timestamp: Date.now() - 3600000,
+        date: 'Season 1 · Matchday 0',
+        type: 'income',
+        amount: Math.round((c.cash || 8.5) * 10) / 10,
+        category: 'starting_capital',
+        description: `Division ${c.division || 3} Boardroom Capital Allocation`,
+        balanceAfter: Math.round((c.cash || 8.5) * 10) / 10
+      }];
+    }
+  });
+  // 5. Ensure player stats and untouchable status for big clubs
+  if (Array.isArray(s.market)) {
+    s.market.forEach(p => {
+      p.merchandiseSales = p.merchandiseSales || 0;
+      p.appearances = p.appearances || 0;
+      p.goalsScored = p.goalsScored || 0;
+      p.signingCost = p.signingCost || p.askingPrice || 5;
+      if (p.ownerClub) {
+        const oc = s.clubs.find(c => c.name === p.ownerClub);
+        if (oc && (oc.division === 1 || (oc.reputation || 60) >= 78) && (p.rating >= 84)) {
+          p.untouchable = true;
+        }
+      }
+    });
+  }
   return s;
 }
 
@@ -410,7 +705,9 @@ function createClub(s,data,managerId){
     s.selectedClub=existing.name;
     existing.online=true;
     if(data.country)existing.country=data.country;
-    if(data.division)existing.division=Number(data.division);
+    existing.division = 3; // Enforced starting tier: Division 3
+    existing.fanSatisfaction = existing.fanSatisfaction || 80;
+    existing.popularity = existing.popularity || Math.round((existing.reputation || 60) * 0.85 + 6);
     if(data.home||data.away||data.pattern){
       existing.jersey={
         quality:Number(data.quality)||existing.jersey?.quality||75,
@@ -425,8 +722,9 @@ function createClub(s,data,managerId){
     }
     if(data.crest)existing.crest=data.crest;
     if(!existing.players||existing.players.length<11)seedSquad(existing,s.market,16);
+    setupClubRivalries(s.clubs);
     if(s.mode==='online'&&managerId&&s.humans?.[managerId])s.humans[managerId].club=existing.name;
-    addNews(s,`${existing.name} has appointed a new sovereign owner.`,'club');
+    addNews(s,`${existing.name} has appointed a new sovereign owner in Division 3.`,'club');
     persist();
     return existing;
   }
@@ -434,9 +732,11 @@ function createClub(s,data,managerId){
     name:String(data.name).slice(0,30),
     country:data.country||'India',
     league:data.league||'ISL',
-    division:Number(data.division)||3,
+    division: 3, // Enforced starting tier: Division 3
     reputation:55,
     fans:12000,
+    fanSatisfaction:80,
+    popularity:52,
     morale:75,
     stadium:{capacity:15000,condition:100,facilities:1},
     ticketPrice:400,
@@ -454,7 +754,7 @@ function createClub(s,data,managerId){
     crest:data.crest||'crest_lion',
     sponsor:null,
     manager:null,
-    cash:60,
+    cash: 8.5, // Realistic 3rd division starting budget
     players:[],
     history:{titles:0,cups:0,promotions:0,relegations:0},
     stats:{wins:0,draws:0,losses:0,points:0},
@@ -462,13 +762,43 @@ function createClub(s,data,managerId){
   };
   s.clubs.push(c);
   s.selectedClub=c.name;
+  setupClubRivalries(s.clubs);
   seedSquad(c, s.market, 16);
+  recordTransaction(c, c.cash, 'starting_capital', 'Division 3 Boardroom Capital Allocation', s);
   if(s.mode==='online'&&managerId&&s.humans?.[managerId])s.humans[managerId].club=c.name;
-  addNews(s,`${c.name} has been created in ${c.country} with a full 16-man squad.`,'club');
+  const higherRival = c.rivals?.higher?.name || 'Higher Division Giants';
+  const lowerRival = c.rivals?.lower?.name || 'Local Grassroots Challengers';
+  addNews(s,`${c.name} has been founded in ${c.country} Division 3 (₹8.5M Treasury, 16-man squad). Designated Rivals: ${higherRival} (Goliath) & ${lowerRival} (Grassroots).`,'club');
   persist();
   return c;
 }
-function chooseClub(s,name,managerId){const c=club(s,name);if(!c)return {error:'Club not found.'};s.selectedClub=c.name;c.online=true;if(!c.players||c.players.length<11)seedSquad(c,s.market,16);if(s.mode==='online'&&managerId&&s.humans?.[managerId])s.humans[managerId].club=c.name;return c;}
+function chooseClub(s,name,managerId){
+  const c=club(s,name);
+  if(!c)return {error:'Club not found.'};
+  s.selectedClub=c.name;
+  c.online=true;
+  c.division = 3; // Enforced starting tier: Division 3
+  if (c.cash > 10.5) {
+    c.cash = 8.5; // Enforced starting budget: 8.5M for Division 3
+  }
+  c.fanSatisfaction = c.fanSatisfaction || 80;
+  c.popularity = c.popularity || Math.round((c.reputation || 60) * 0.85 + 6);
+  setupClubRivalries(s.clubs);
+  if (!c.transactions || !c.transactions.length) {
+    recordTransaction(c, c.cash, 'starting_capital', 'Division 3 Boardroom Capital Allocation', s);
+  }
+  if(!c.players||c.players.length<16)seedSquad(c,s.market,16);
+  (c.players || []).forEach(pid => {
+    const p = player(s, pid);
+    if (p) {
+      p.ownerClub = c.name;
+      p.status = 'contracted';
+    }
+  });
+  if(s.mode==='online'&&managerId&&s.humans?.[managerId])s.humans[managerId].club=c.name;
+  persist();
+  return c;
+}
 function managerRecommendations(s,clubName){const c=club(s,clubName);if(!c)return [];const m=c.manager;if(!m)return [];const style=STYLES.find(x=>x.name===m.style)||STYLES[0];const owned=clubPlayers(s,c);return s.market.filter(p=>p.ownerClub!==c.name&&p.loanClub!==c.name).map(p=>{let score=0;if(style.needs.includes(p.position))score+=28;if(style.traits.includes('pace')&&p.rating>=82)score+=10;if(style.traits.includes('technical')&&p.rating>=82)score+=10;if(style.traits.includes('passing')&&['CMF','AMF','DMF'].includes(p.position))score+=8;score+=Math.max(0,p.form-65)*0.35;score+=Math.max(0,p.rating-75)*0.5;return {p,score};}).sort((a,b)=>b.score-a.score).slice(0,10).map(x=>x.p);
 }
 function hireManager(s,clubName,managerId){
@@ -498,11 +828,820 @@ function startBattle(s,buyerName,playerId,fee,salary,years,type='buy'){const p=p
 function intervene(s,battleId,clubName,fee,salary,years){const b=s.pendingBattles[battleId],c=club(s,clubName),p=b&&player(s,b.playerId);if(!b||b.status!=='open'||!c||!p)return {error:'Negotiation unavailable.'};if(fee>c.cash)return {error:'Insufficient funds.'};b.offers.push({club:clubName,fee,salary,years,interest:interest(c,p,{salary,contractYears:years}),at:Date.now()});addNews(s,`${clubName} has entered the race for ${p.name}.`,'transfer');return b;}
 function completeBattle(s,battleId,chosenClub){const b=s.pendingBattles[battleId];if(!b||b.status!=='open')return {error:'Battle is closed.'};const p=player(s,b.playerId),old=club(s,p.ownerClub),buyer=club(s,chosenClub);if(!buyer)return {error:'Club not found.'};const offer=b.offers.find(o=>o.club===chosenClub);if(!offer)return {error:'Offer not found.'};const score=interest(buyer,p,offer);if(score<45)return {error:'Player rejected this move.'};if(offer.fee>buyer.cash)return {error:'Buyer can no longer afford the offer.'};if(old)old.players=old.players.filter(x=>x!==p.id);buyer.players.push(p.id);buyer.cash-=offer.fee;if(old)old.cash+=offer.fee;p.ownerClub=buyer.name;p.loanClub=null;p.contract={years:offer.years,salary:offer.salary,releaseClause:Math.max(offer.fee*1.6,offer.fee+10)};b.status='complete';addNews(s,`${p.name} joined ${buyer.name} for ₹${offer.fee}M.`,'transfer');return {player:p,battle:b};}
 function loan(s,buyerName,playerId,months,fee,salaryShare){const p=player(s,playerId),buyer=club(s,buyerName),old=club(s,p?.ownerClub);if(!p||!buyer||!old)return {error:'Player or club not found.'};if(!s.transferWindowOpen)return {error:'Transfer window is closed.'};if(fee>buyer.cash)return {error:'Insufficient funds.'};if(old.name===buyer.name)return {error:'Player already belongs to this club.'};buyer.cash-=fee;old.cash+=fee;p.loanClub=buyer.name;p.loan={from:old.name,to:buyer.name,months:Number(months)||12,fee,salaryShare:Number(salaryShare)||50,endsSeason:s.season+1};addNews(s,`${p.name} joined ${buyer.name} on loan.`,'transfer');return p;}
-function releasePlayer(s,clubName,playerId){const c=club(s,clubName),p=player(s,playerId);if(!c||!p||p.ownerClub!==c.name)return {error:'Player not owned by this club.'};c.players=c.players.filter(x=>x!==p.id);p.ownerClub=null;p.loanClub=null;p.askingPrice=Math.max(2,Math.round(p.rating/20));addNews(s,`${p.name} was released by ${c.name} and is now a free agent.`,'transfer');return p;}
+function releasePlayer(s,clubName,playerId){
+  const c=club(s,clubName),p=player(s,playerId);
+  if(!c||!p||p.ownerClub!==c.name)return {error:'Player not owned by this club.'};
+  c.players=c.players.filter(x=>x!==p.id);
+  p.ownerClub=null;
+  p.loanClub=null;
+  p.askingPrice=Math.max(2,Math.round(p.rating/20));
+  
+  const appearances = p.appearances || 0;
+  const goals = p.goalsScored || 0;
+  const cost = p.signingCost || p.askingPrice || 5;
+  const merchSales = p.merchandiseSales || Math.round((Math.max(1, p.rating - 65) * 0.18 + appearances * 0.15) * 10) / 10;
+
+  let verdict = 'SQUAD SERVANT';
+  let verdictBadge = '⚖️ RESPECTED SERVANT';
+  let verdictDesc = 'Fulfilled squad rotation duty professionally.';
+  let fanSatDelta = 0;
+  let fanReaction = 'Neutral Reaction from the Terraces';
+
+  if (appearances < 4 && (cost >= 8 || (p.contract?.salary || 0) >= 1.8)) {
+    verdict = 'EXPENSIVE FLOP';
+    verdictBadge = '💥 EXPENSIVE FLOP';
+    verdictDesc = `Cost ₹${cost}M and heavy wages but only managed ${appearances} appearances. Supporters celebrate clearing unproductive deadwood!`;
+    fanSatDelta = +6;
+    fanReaction = 'Supporters Rejoice (+6% Fan Satisfaction)';
+  } else if (appearances <= 1 && p.rating <= 72) {
+    verdict = 'SQUAD FLOP';
+    verdictBadge = '❌ SQUAD FLOP';
+    verdictDesc = `Failed to leave any mark on matchdays. Departure cleans up wage bill.`;
+    fanSatDelta = +2;
+    fanReaction = 'Supporters Relieved (+2% Fan Satisfaction)';
+  } else if (appearances >= 8 || goals >= 5) {
+    verdict = 'CULT HERO';
+    verdictBadge = '🔥 CULT HERO / FAN FAVORITE';
+    verdictDesc = `Delivered memorable moments, ${goals} goals, and ₹${merchSales}M in shirt sales. Supporters are heartbroken to see an icon depart!`;
+    fanSatDelta = -8;
+    fanReaction = 'Supporters Mourn (-8% Fan Satisfaction)';
+  } else if (merchSales >= 3.0) {
+    verdict = 'COMMERCIAL SUCCESS';
+    verdictBadge = '💰 MERCHANDISE SENSATION';
+    verdictDesc = `Massive retail success! Generated ₹${merchSales}M in official shirt and merchandise sales.`;
+    fanSatDelta = +1;
+    fanReaction = 'Supporters Pleased (+1% Fan Satisfaction)';
+  }
+
+  c.fanSatisfaction = Math.max(10, Math.min(100, (c.fanSatisfaction || 78) + fanSatDelta));
+
+  addNews(s, `${p.name} released by ${c.name}. Legacy Verdict: ${verdictBadge}. ${fanReaction}.`, 'transfer');
+  persist();
+  return {
+    player: p,
+    verdict,
+    verdictBadge,
+    verdictDesc,
+    fanReaction,
+    fanSatisfaction: c.fanSatisfaction,
+    merchSales,
+    appearances,
+    goals
+  };
+}
 function sellPlayer(s,clubName,playerId,asking){const c=club(s,clubName),p=player(s,playerId);if(!c||!p||p.ownerClub!==c.name)return {error:'Player not owned by this club.'};p.askingPrice=Math.max(1,money(asking)||p.askingPrice);return startBattle(s,'FREE_MARKET_BUYER',p.id,p.askingPrice,p.contract.salary,p.contract.years,'sell');}
-function match(s,homeName,awayName){const h=club(s,homeName),a=club(s,awayName);if(!h||!a)return {error:'Clubs not found.'};const mid=id('match');if(s.matchIds[mid])return s.matchIds[mid];const hr=45+(h.reputation/15)+(h.morale/25)+(h.players.length/3);const ar=45+(a.reputation/15)+(a.morale/25)+(a.players.length/3);const hg=Math.max(0,Math.min(6,Math.floor(Math.random()*3+(hr>ar?1:0))));const ag=Math.max(0,Math.min(6,Math.floor(Math.random()*3+(ar>hr?1:0))));h.stats.wins+=hg>ag?1:0;h.stats.draws+=hg===ag?1:0;h.stats.losses+=hg<ag?1:0;a.stats.wins+=ag>hg?1:0;a.stats.draws+=hg===ag?1:0;a.stats.losses+=ag<hg?1:0;h.stats.points+=hg>ag?3:hg===ag?1:0;a.stats.points+=ag>hg?3:ag===hg?1:0;const attendance=Math.min(h.stadium.capacity,Math.round(h.stadium.capacity*(0.45+h.reputation/220+h.fans/300000)));const revenue=Math.round(attendance*h.ticketPrice/1000000*10)/10;h.cash+=revenue;h.lastAttendance=attendance;h.lastRevenue=revenue;h.morale=Math.max(30,Math.min(100,h.morale+(hg>ag?4:hg===ag?1:-4)));s.matchIds[mid]={id:mid,home:h.name,away:a.name,homeGoals:hg,awayGoals:ag,attendance,revenue,season:s.season};addNews(s,`${h.name} ${hg}-${ag} ${a.name}. Matchday revenue ₹${revenue}M.`,'match');return s.matchIds[mid];}
-function simulate(s){const user=club(s,s.selectedClub);if(!user)return {error:'Choose a club first.'};const opponents=s.clubs.filter(c=>c.name!==user.name&&c.division===user.division);const opp=opponents[Math.floor(Math.random()*opponents.length)];if(!opp)return {error:'No opponent available.'};return match(s,user.name,opp.name);}
-function advanceSeason(s){s.season++;s.transferWindowOpen=true;s.transferWindow='summer';s.clubs.forEach(c=>{c.stats={wins:0,draws:0,losses:0,points:0};c.fans=Math.max(1000,Math.round(c.fans*(0.97+(c.reputation/500))));c.morale=Math.max(55,Math.min(90,c.morale));c.players.forEach(pid=>{const p=player(s,pid);if(!p)return;p.form=Math.max(45,Math.min(98,p.form+(Math.random()*12-5)));if(p.contract)p.contract.years=Math.max(0,p.contract.years-1);});if(c.sponsor)c.cash+=c.sponsor.value;});s.clubs.forEach(c=>{if(c.manager&&c.manager.contractEnd<s.season)c.manager=null;});if(s.season%2===0){s.competitions.lastTournament=s.season;addNews(s,`World Champions Tournament qualification is now active for the top clubs from participating leagues.`,'competition');}addNews(s,`Season ${s.season} begins. Summer Transfer Window is OPEN.`,'season');persist();return s;}
+function match(s,homeName,awayName,opts={}){
+  const h=club(s,homeName),a=club(s,awayName);
+  if(!h||!a)return {error:'Clubs not found.'};
+  const mid=id('match');
+  const isCup = !!opts.isCup;
+
+  // Multi-tier derby detection: same-division, higher-division giant, or lower-division underdog
+  let isDerby = (h.rivalName === a.name || a.rivalName === h.name);
+  let derbyTier = 'same';
+  let derbyTitle = h.derbyName || a.derbyName || `${h.name} vs ${a.name} Derby`;
+
+  if (h.rivals) {
+    if (h.rivals.higher?.name === a.name) {
+      isDerby = true;
+      derbyTier = 'higher';
+      derbyTitle = h.rivals.higher.derbyName || `${h.name} vs ${a.name} Goliath Clash`;
+    } else if (h.rivals.lower?.name === a.name) {
+      isDerby = true;
+      derbyTier = 'lower';
+      derbyTitle = h.rivals.lower.derbyName || `${h.name} vs ${a.name} Grassroots Derby`;
+    } else if (h.rivals.same?.name === a.name) {
+      isDerby = true;
+      derbyTier = 'same';
+      derbyTitle = h.rivals.same.derbyName || derbyTitle;
+    }
+  } else if (a.rivals) {
+    if (a.rivals.higher?.name === h.name) {
+      isDerby = true;
+      derbyTier = 'higher';
+      derbyTitle = a.rivals.higher.derbyName || `${a.name} vs ${h.name} Goliath Clash`;
+    } else if (a.rivals.lower?.name === h.name) {
+      isDerby = true;
+      derbyTier = 'lower';
+      derbyTitle = a.rivals.lower.derbyName || `${a.name} vs ${h.name} Grassroots Derby`;
+    }
+  }
+
+  const compName = opts.competitionName || (isCup ? `${h.country || 'National'} FA Cup · Knockout Tie` : (isDerby ? `🔥 ${derbyTitle}` : `Division ${h.division} League`));
+  
+  const getRating = c => {
+    const players = clubPlayers(s, c);
+    const squadOvr = players.length ? Math.round(players.reduce((sum, p) => sum + (p.rating || 70), 0) / players.length) : (c.reputation || 65);
+    return 40 + (squadOvr * 0.4) + ((c.reputation || 65) * 0.2) + ((c.morale || 70) * 0.1);
+  };
+
+  const hr = getRating(h);
+  const ar = getRating(a);
+  let hg = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (hr > ar ? 0.8 : 0))));
+  let ag = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (ar > hr ? 0.8 : 0))));
+
+  let penalties = null;
+  let cupWinner = null;
+  if (isCup && hg === ag) {
+    const hp = 3 + Math.floor(Math.random() * 3);
+    let ap = 3 + Math.floor(Math.random() * 3);
+    if (hp === ap) ap = (Math.random() > 0.5) ? hp - 1 : hp + 1;
+    penalties = { home: hp, away: ap };
+    cupWinner = hp > ap ? h.name : a.name;
+  } else if (isCup) {
+    cupWinner = hg > ag ? h.name : a.name;
+  }
+
+  // Update stats if it is a LEAGUE match:
+  if (!isCup) {
+    h.stats.wins += hg > ag ? 1 : 0;
+    h.stats.draws += hg === ag ? 1 : 0;
+    h.stats.losses += hg < ag ? 1 : 0;
+    h.stats.points += hg > ag ? 3 : hg === ag ? 1 : 0;
+
+    a.stats.wins += ag > hg ? 1 : 0;
+    a.stats.draws += hg === ag ? 1 : 0;
+    a.stats.losses += ag < hg ? 1 : 0;
+    a.stats.points += ag > hg ? 3 : ag === hg ? 1 : 0;
+  } else {
+    // Domestic Cup prize money & trophy tracking
+    if (opts.cupStage === 'FA Cup Final') {
+      const winnerClub = (cupWinner === h.name) ? h : a;
+      winnerClub.history.cups = (winnerClub.history.cups || 0) + 1;
+      winnerClub.cash = Math.round((winnerClub.cash + 8) * 10) / 10;
+      recordTransaction(winnerClub, 8, 'cup_prize', 'FA Cup Champions Prize Money!', s);
+      addNews(s, `🏆 ${winnerClub.name} are crowned FA Cup Champions! Awarded ₹8M in prize money!`, 'competition');
+    } else {
+      const winnerClub = (cupWinner === h.name) ? h : a;
+      winnerClub.cash = Math.round((winnerClub.cash + 1.5) * 10) / 10;
+      recordTransaction(winnerClub, 1.5, 'cup_prize', `FA Cup Knockout Prize (${opts.cupStage || 'Progress'})`, s);
+    }
+  }
+
+  let attendance = Math.min(h.stadium.capacity, Math.round(h.stadium.capacity * (0.45 + (h.reputation||60) / 220 + (h.fans||15000) / 300000)));
+  if (isDerby) attendance = h.stadium.capacity; // Packed to rafters!
+  const revPerTicket = Math.max(90, h.ticketPrice || 200);
+  let revenue = Math.round((attendance * revPerTicket / 1000000) * 10) / 10;
+  if (isDerby) revenue = Math.round(revenue * 1.25 * 10) / 10; // 25% derby surge
+  h.cash = Math.round((h.cash + revenue) * 10) / 10;
+  recordTransaction(h, revenue, 'ticket_sales', `Matchday Gate Revenue vs ${a.name} (${attendance.toLocaleString()} attendance)`, s);
+  h.lastAttendance = attendance;
+  h.lastRevenue = revenue;
+  h.morale = Math.max(30, Math.min(100, h.morale + (hg > ag ? 4 : hg === ag ? 1 : -4)));
+
+  // Fan satisfaction and rivalry dynamics
+  if (isDerby) {
+    // Update Head-to-Head across all rival tiers
+    [h, a].forEach(clubItem => {
+      if (!clubItem.rivals) return;
+      const oppName = (clubItem.name === h.name) ? a.name : h.name;
+      const isWinner = (clubItem.name === h.name) ? (hg > ag || cupWinner === h.name) : (ag > hg || cupWinner === a.name);
+      const isDraw = hg === ag && !cupWinner;
+      ['same', 'higher', 'lower'].forEach(tierKey => {
+        const r = clubItem.rivals[tierKey];
+        if (r && r.name === oppName) {
+          r.h2h = r.h2h || { played: 0, wins: 0, draws: 0, losses: 0 };
+          r.h2h.played += 1;
+          if (isWinner) r.h2h.wins += 1;
+          else if (isDraw) r.h2h.draws += 1;
+          else r.h2h.losses += 1;
+        }
+      });
+    });
+
+    if (hg > ag || cupWinner === h.name) {
+      h.fanSatisfaction = Math.min(100, (h.fanSatisfaction || 75) + 18);
+      a.fanSatisfaction = Math.max(10, (a.fanSatisfaction || 75) - 18);
+      h.morale = Math.min(100, h.morale + 12);
+      a.morale = Math.max(25, a.morale - 12);
+      h.cash = Math.round((h.cash + 1.5) * 10) / 10;
+      recordTransaction(h, 1.5, 'derby_bonus', `Derby Victory Prize: ${derbyTitle}`, s);
+      if (derbyTier === 'higher' && h.division > a.division) {
+        h.cash = Math.round((h.cash + 1.5) * 10) / 10;
+        h.fanSatisfaction = Math.min(100, (h.fanSatisfaction || 75) + 10);
+        recordTransaction(h, 1.5, 'derby_bonus', `Giant-Killing Goliath Sensation vs ${a.name}!`, s);
+      }
+      if (!opts.isAiOnly) addNews(s, `💥 DERBY GLORY: ${h.name} triumph over rivals ${a.name} in ${derbyTitle}! (+18% Fan Satisfaction, +₹1.5M Bonus)`, 'match');
+    } else if (ag > hg || cupWinner === a.name) {
+      a.fanSatisfaction = Math.min(100, (a.fanSatisfaction || 75) + 18);
+      h.fanSatisfaction = Math.max(10, (h.fanSatisfaction || 75) - 18);
+      a.morale = Math.min(100, a.morale + 12);
+      h.morale = Math.max(25, h.morale - 12);
+      a.cash = Math.round((a.cash + 1.5) * 10) / 10;
+      recordTransaction(a, 1.5, 'derby_bonus', `Derby Glory Away Victory vs ${h.name}`, s);
+      if (derbyTier === 'higher' && a.division > h.division) {
+        a.cash = Math.round((a.cash + 1.5) * 10) / 10;
+        a.fanSatisfaction = Math.min(100, (a.fanSatisfaction || 75) + 10);
+        recordTransaction(a, 1.5, 'derby_bonus', `Giant-Killing Goliath Sensation vs ${h.name}!`, s);
+      }
+      if (!opts.isAiOnly) addNews(s, `💥 DERBY GLORY: ${a.name} conquer rivals ${h.name} on away soil in ${derbyTitle}! (+18% Fan Satisfaction, +₹1.5M Bonus)`, 'match');
+    } else {
+      if (!opts.isAiOnly) addNews(s, `⚖️ DERBY DEADLOCK: ${h.name} and ${a.name} battle to a fierce ${hg}-${ag} stalemate in ${derbyTitle}.`, 'match');
+    }
+  } else if (!isCup) {
+    if (hg > ag) {
+      h.fanSatisfaction = Math.min(100, (h.fanSatisfaction || 75) + 3);
+      a.fanSatisfaction = Math.max(10, (a.fanSatisfaction || 75) - 3);
+    } else if (ag > hg) {
+      a.fanSatisfaction = Math.min(100, (a.fanSatisfaction || 75) + 3);
+      h.fanSatisfaction = Math.max(10, (h.fanSatisfaction || 75) - 3);
+    }
+  }
+
+  // Update player appearances, goals and merchandise sales
+  const hPlayers = clubPlayers(s, h).slice(0, 11);
+  const aPlayers = clubPlayers(s, a).slice(0, 11);
+  [...hPlayers, ...aPlayers].forEach(p => {
+    p.appearances = (p.appearances || 0) + 1;
+    const addMerch = Math.round((Math.max(0, (p.rating || 65) - 60) * 0.005 + ((p.form || 70) / 100) * 0.004) * 100) / 100;
+    p.merchandiseSales = Math.round(((p.merchandiseSales || 0) + addMerch) * 10) / 10;
+  });
+  if (hg > 0 && hPlayers.length > 0) {
+    hPlayers[hPlayers.length - 1].goalsScored = (hPlayers[hPlayers.length - 1].goalsScored || 0) + hg;
+  }
+  if (ag > 0 && aPlayers.length > 0) {
+    aPlayers[aPlayers.length - 1].goalsScored = (aPlayers[aPlayers.length - 1].goalsScored || 0) + ag;
+  }
+
+  const matchRecord = {
+    id: mid,
+    home: h.name,
+    away: a.name,
+    homeGoals: hg,
+    awayGoals: ag,
+    isCup,
+    isDerby,
+    derbyName: isDerby ? derbyTitle : null,
+    competitionName: compName,
+    cupStage: opts.cupStage || null,
+    penalties,
+    cupWinner,
+    attendance,
+    revenue,
+    season: s.season
+  };
+
+  s.matchIds[mid] = matchRecord;
+  if (!opts.isAiOnly && !isDerby) {
+    addNews(s, `[${isCup ? 'FA CUP' : 'LEAGUE'}] ${h.name} ${hg}-${ag} ${a.name}${penalties ? ` (${penalties.home}-${penalties.away} pens)` : ''}. Gate: ₹${revenue}M.`, 'match');
+  }
+  return matchRecord;
+}
+
+function simulate(s){
+  const user = club(s, s.selectedClub);
+  if (!user) return { error: 'Choose a club first.' };
+
+  s.matchday = (s.matchday || 0) + 1;
+  const isCup = (s.matchday % 4 === 0);
+  
+  let cupStage = 'FA Cup Round of 16';
+  if (s.matchday === 4) cupStage = 'FA Cup Round of 16';
+  else if (s.matchday === 8) cupStage = 'FA Cup Quarter-Final';
+  else if (s.matchday === 12) cupStage = 'FA Cup Semi-Final';
+  else if (s.matchday >= 16) cupStage = 'FA Cup Final';
+
+  let matchResult = null;
+  const otherResults = [];
+
+  if (isCup) {
+    // Domestic Knockout Cup Fixture!
+    const cupPool = s.clubs.filter(c => c.name !== user.name && c.country === user.country);
+    const opp = cupPool.length ? cupPool[Math.floor(Math.random() * cupPool.length)] : s.clubs.find(c => c.name !== user.name);
+    if (!opp) return { error: 'No cup opponent available.' };
+
+    matchResult = match(s, user.name, opp.name, {
+      isCup: true,
+      cupStage,
+      competitionName: `${user.country} FA Cup · ${cupStage}`
+    });
+
+    // Simulate concurrent cup ties
+    const remainingPool = cupPool.filter(c => c.name !== opp.name);
+    for (let i = 0; i < Math.min(4, remainingPool.length - 1); i += 2) {
+      const c1 = remainingPool[i];
+      const c2 = remainingPool[i + 1];
+      if (c1 && c2) {
+        const res = match(s, c1.name, c2.name, {
+          isCup: true,
+          cupStage,
+          competitionName: `${user.country} FA Cup · ${cupStage}`,
+          isAiOnly: true
+        });
+        otherResults.push({ home: c1.name, away: c2.name, homeGoals: res.homeGoals, awayGoals: res.awayGoals, penalties: res.penalties });
+      }
+    }
+  } else {
+    // Regular League Fixture!
+    const leagueClubs = s.clubs.filter(c => c.country === user.country && c.division === user.division);
+    const availableOpponents = leagueClubs.filter(c => c.name !== user.name);
+    if (!availableOpponents.length) return { error: 'No opponents found in division.' };
+
+    let opp = null;
+    const rivalInLeague = availableOpponents.find(c => c.name === user.rivalName);
+    if (rivalInLeague && (s.matchday === 3 || s.matchday === 7 || Math.random() < 0.28)) {
+      opp = rivalInLeague;
+    } else {
+      opp = availableOpponents[Math.floor(Math.random() * availableOpponents.length)];
+    }
+    const roundNumber = Math.ceil(s.matchday * 0.75);
+    const compName = `${user.country} Division ${user.division} League · Matchday ${roundNumber}`;
+
+    matchResult = match(s, user.name, opp.name, {
+      isCup: false,
+      competitionName: compName,
+      roundNumber
+    });
+
+    // KEY FIX: Pair up ALL other clubs in the division and simulate their fixtures so AI league points update!
+    const otherDivClubs = availableOpponents.filter(c => c.name !== opp.name);
+    for (let i = otherDivClubs.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [otherDivClubs[i], otherDivClubs[j]] = [otherDivClubs[j], otherDivClubs[i]];
+    }
+
+    for (let i = 0; i < otherDivClubs.length; i += 2) {
+      if (i + 1 < otherDivClubs.length) {
+        const c1 = otherDivClubs[i];
+        const c2 = otherDivClubs[i + 1];
+        const res = match(s, c1.name, c2.name, {
+          isCup: false,
+          competitionName: compName,
+          roundNumber,
+          isAiOnly: true
+        });
+        otherResults.push({ home: c1.name, away: c2.name, homeGoals: res.homeGoals, awayGoals: res.awayGoals });
+      }
+    }
+  }
+
+  matchResult.otherResults = otherResults;
+  persist();
+  return matchResult;
+}
+
+function createCustomPlayer(s, clubName, data) {
+  const c = club(s, clubName);
+  if (!c) return { error: 'Club not found.' };
+
+  const name = String(data?.name || '').trim();
+  if (!name || name.length < 2) return { error: 'Valid player name required (at least 2 characters).' };
+
+  const pos = normalizePosition(data?.position || 'CF');
+  const age = Math.max(16, Math.min(25, Number(data?.age) || 19));
+  const nationality = String(data?.nationality || c.country || 'International').slice(0, 25);
+  const style = String(data?.style || 'Poacher');
+
+  // Division-scaled rating & academy development fee
+  let maxRating = 72;
+  let devCost = 0.5;
+  if (c.division === 1) { maxRating = 83; devCost = 2.0; }
+  else if (c.division === 2) { maxRating = 77; devCost = 1.0; }
+  else if (c.division === 3) { maxRating = 72; devCost = 0.5; }
+  else { maxRating = 68; devCost = 0.2; }
+
+  const requestedRating = Math.max(62, Math.min(maxRating, Number(data?.rating) || (maxRating - 1)));
+  if (c.cash < devCost) {
+    return { error: `Need ₹${devCost}M in club treasury for youth academy graduation. Club has ₹${money(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - devCost) * 10) / 10);
+
+  const pid = `p_custom_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const salary = Math.max(0.3, Math.round(requestedRating * 0.04 * 10) / 10);
+  const askingPrice = Math.max(1.5, Math.round((requestedRating - 58) * 0.7));
+
+  const newPlayer = {
+    id: pid,
+    name,
+    position: pos,
+    rating: requestedRating,
+    form: 82,
+    age,
+    nationality,
+    askingPrice,
+    ownerClub: c.name,
+    loanClub: null,
+    contract: {
+      years: 4,
+      salary,
+      releaseClause: Math.round(askingPrice * 2.6)
+    },
+    mentality: data?.mentality || 'High Workrate',
+    mentalityStrength: 85,
+    playingTime: 80,
+    personality: style,
+    isCustomAcademy: true
+  };
+
+  s.market.unshift(newPlayer);
+  c.players = c.players || [];
+  c.players.push(pid);
+
+  addNews(s, `🌟 ${c.name} promotes Academy Prodigy ${name} (${pos}, ${requestedRating} OVR, Age ${age}) to the first team!`, 'club');
+  persist();
+  return { player: newPlayer, club: c };
+}
+
+function dispatchScout(s, clubName, mission = {}) {
+  const c = club(s, clubName);
+  if (!c) return { error: 'Club not found.' };
+
+  const cost = c.division === 1 ? 1.2 : c.division === 2 ? 0.6 : 0.25;
+  if (c.cash < cost) {
+    return { error: `Scouting mission costs ₹${cost}M. Club funds: ₹${money(c.cash)}M.` };
+  }
+  c.cash = Math.max(0, Math.round((c.cash - cost) * 10) / 10);
+  recordTransaction(c, -cost, 'scouting_fee', `Chief Scout Dossier Fee (${focus.toUpperCase()})`, s);
+
+  const focus = mission.focus || 'all';
+  let candidates = s.market.filter(p => p.ownerClub !== c.name);
+  if (focus === 'wonderkids') {
+    candidates = candidates.filter(p => p.age <= 21);
+  } else if (focus === 'bargains') {
+    candidates = candidates.filter(p => p.askingPrice <= (c.division <= 2 ? 14 : 5));
+  } else if (focus === 'attackers') {
+    candidates = candidates.filter(p => ['CF', 'LWF', 'RWF'].includes(p.position));
+  } else if (focus === 'midfielders') {
+    candidates = candidates.filter(p => ['CMF', 'DMF', 'AMF'].includes(p.position));
+  } else if (focus === 'defenders') {
+    candidates = candidates.filter(p => ['CB', 'LB', 'RB', 'GK'].includes(p.position));
+  }
+
+  if (candidates.length < 5) {
+    candidates = s.market.filter(p => p.ownerClub !== c.name);
+  }
+
+  const shuffled = [...candidates].sort(() => 0.5 - Math.random()).slice(0, 5);
+  const reports = shuffled.map(p => {
+    const potBonus = p.age <= 21 ? 8 + Math.floor(Math.random() * 7) : p.age <= 24 ? 4 + Math.floor(Math.random() * 4) : 1;
+    const potential = Math.min(95, p.rating + potBonus);
+    const recGrade = potential >= 88 ? 'A+ MUST SIGN' : potential >= 82 ? 'A TARGET' : p.askingPrice <= 4 ? 'A- BARGAIN' : 'B SQUAD DEPTH';
+    
+    return {
+      player: p,
+      potential: `${potential - 2}-${potential + 2}`,
+      recommendationGrade: recGrade,
+      estimatedWage: Math.max(0.4, Math.round((p.askingPrice || 5) * 0.16 * 10) / 10),
+      scoutComment: potential >= 88 ? 'World-class ceiling. Exceptional acceleration and ball control. Priority target.' :
+                    p.age <= 20 ? 'High-upside youth prospect with explosive ceiling. Will develop rapidly.' :
+                    'Consistent performer ideally suited for tactical chemistry.'
+    };
+  });
+
+  addNews(s, `🔭 ${c.name} Chief Scout completed dossier for ${focus.toUpperCase()}. 5 scouted targets submitted.`, 'scout');
+  persist();
+  return { cost, reports, treasury: c.cash };
+}
+
+function negotiateTransfer(s, buyerName, playerId, offer = {}) {
+  const buyer = club(s, buyerName);
+  const p = player(s, playerId);
+  if (!buyer || !p) return { error: 'Club or player not found.' };
+
+  const fee = Number(offer.fee) || 0;
+  const salary = Number(offer.salary) || 0;
+  const years = Number(offer.years) || 3;
+  const seller = p.ownerClub ? club(s, p.ownerClub) : null;
+
+  if (buyer.cash < fee) {
+    return { error: `Insufficient treasury! Club has ₹${money(buyer.cash)}M, offer is ₹${money(fee)}M.` };
+  }
+
+  const askingFee = p.askingPrice || 10;
+  const expectedSal = Math.max(1, Math.round(askingFee * 0.18));
+
+  // RULE 1: Big Club Star Protection & Franchise Untouchables
+  const isBigSeller = seller && (seller.division === 1 || (seller.reputation || 60) >= 78);
+  const isUntouchable = p.untouchable || (p.rating >= 84) || (isBigSeller && p.rating >= 82);
+
+  if (isBigSeller && isUntouchable) {
+    p.untouchable = true;
+
+    // Condition A: World-class stars will never drop to Division 2, 3, or 4
+    if (buyer.division >= 2) {
+      return {
+        status: 'refused_prestige',
+        message: `🚫 Untouchable Superstar: ${seller.name} and ${p.name} rejected your approach! "${p.name} (OVR ${p.rating}) is the untouchable franchise icon of our European campaign. World-class players will NEVER drop to Division ${buyer.division} football."`,
+        player: p
+      };
+    }
+
+    // Condition B: Squad lockdown quota (big clubs will not dismantle their squad by selling multiple marquee stars)
+    seller.soldBigPlayersCount = seller.soldBigPlayersCount || 0;
+    if (seller.soldBigPlayersCount >= 1) {
+      return {
+        status: 'refused_quota',
+        message: `🚫 Squad Lockdown: ${seller.name} board issued a firm statement: "We have already sanctioned one marquee superstar sale this window and refuse to dismantle our core squad. ${p.name} is strictly NOT FOR SALE."`,
+        player: p
+      };
+    }
+
+    // Condition C: Astronomical buyout required for an untouchable
+    const buyout = Math.round(askingFee * 2.5);
+    if (fee < buyout) {
+      return {
+        status: 'refused_untouchable',
+        message: `🔒 Franchise Superstar: ${seller.name} declared ${p.name} an Untouchable Icon. Only triggering their world-record buyout clause of ₹${buyout}M and record wages would open discussions.`,
+        player: p,
+        buyout
+      };
+    }
+  }
+
+  // Realistic third/fourth division ambition rejection for other players:
+  if (p.rating >= 82 && buyer.division >= 3 && fee < p.askingPrice * 1.5) {
+    return {
+      status: 'rejected_division',
+      message: `🚫 Player Rejected Terms: "${p.name} commands top-flight European prestige. My agent refuses to consider Division ${buyer.division} football unless you provide a record marquee package of at least ₹${Math.round(p.askingPrice * 1.6)}M fee and ₹${Math.round(p.askingPrice * 0.35)}M/yr salary!"`,
+      player: p
+    };
+  }
+
+  // RULE 2: Transfer Hijacking Alert!
+  // When agreement conditions are met and it's not already a counter-hijack, 35% chance a rival clubs tries to hijack the transfer!
+  if (fee >= askingFee && salary >= expectedSal && !offer.isCounterHijack && Math.random() < 0.35) {
+    const pool = s.clubs.filter(c => c.name !== buyer.name && (!seller || c.name !== seller.name) && c.division <= buyer.division);
+    const hijacker = (buyer.rivalName && Math.random() < 0.6 && s.clubs.find(c => c.name === buyer.rivalName))
+      ? s.clubs.find(c => c.name === buyer.rivalName)
+      : (pool[Math.floor(Math.random() * pool.length)] || s.clubs[0]);
+
+    const hijackFee = Math.round(fee * 1.25);
+    const hijackSalary = Math.round(salary * 1.3);
+
+    return {
+      status: 'hijacked',
+      player: p,
+      hijacker: hijacker.name,
+      hijackFee,
+      hijackSalary,
+      yourBid: { fee, salary, years },
+      message: `🚨 TRANSFER HIJACK ALERT! ${hijacker.name} have launched a shock 11th-hour hijack! They have tabled an offer of ₹${hijackFee}M with ₹${hijackSalary}M/yr salary at the player's medical! Match and outbid them to save the deal, or concede!`
+    };
+  }
+
+  // CASE 1: Full acceptance!
+  if (fee >= askingFee && salary >= expectedSal) {
+    if (seller) {
+      seller.players = seller.players.filter(x => x !== p.id);
+      seller.cash = Math.round((seller.cash + fee) * 10) / 10;
+      recordTransaction(seller, fee, 'player_sale', `Transfer Sale: ${p.name} sold to ${buyer.name}`, s);
+      if (isUntouchable) seller.soldBigPlayersCount = (seller.soldBigPlayersCount || 0) + 1;
+    }
+    buyer.players.push(p.id);
+    buyer.cash = Math.max(0, Math.round((buyer.cash - fee) * 10) / 10);
+    recordTransaction(buyer, -fee, 'player_purchase', `Transfer Signing Fee: ${p.name} (from ${seller ? seller.name : 'Free Agent'})`, s);
+    buyer.fanSatisfaction = Math.min(100, (buyer.fanSatisfaction || 78) + (offer.isCounterHijack ? 12 : p.rating >= 78 ? 6 : 3));
+
+    p.ownerClub = buyer.name;
+    p.loanClub = null;
+    p.contract = { years, salary, releaseClause: Math.round(fee * 1.8) };
+    p.signingCost = fee;
+    p.appearances = 0;
+    p.goalsScored = 0;
+    p.merchandiseSales = 0;
+
+    if (offer.isCounterHijack) {
+      addNews(s, `🚨 HIJACK THWARTED! ${buyer.name} outbid rivals to dramatically sign ${p.name} for ₹${fee}M! Supporters celebrate the triumph! (+12% Fan Satisfaction)`, 'transfer');
+    } else {
+      addNews(s, `✍️ OFFICIAL: ${p.name} has completed a transfer to ${buyer.name} for ₹${fee}M on a ${years}-year contract!`, 'transfer');
+    }
+    persist();
+    return {
+      status: 'accepted',
+      player: p,
+      fee,
+      salary,
+      years,
+      fanSatisfaction: buyer.fanSatisfaction,
+      message: offer.isCounterHijack ?
+        `💥 HIJACK THWARTED! You matched and outbid rivals to secure ${p.name}! (+12% Fan Satisfaction)` :
+        `Agreement reached! ${p.name} and ${seller ? seller.name : 'representatives'} accepted the ₹${fee}M transfer.`
+    };
+  }
+
+  // CASE 2: Counter-offer!
+  if (fee >= Math.round(askingFee * 0.65)) {
+    const counterFee = Math.max(fee + 1, Math.round(askingFee * (0.95 + (Math.random() * 0.1 - 0.05))));
+    const counterSal = Math.max(salary, Math.round(expectedSal * (1.05 + (Math.random() * 0.1))));
+    const rivalClubs = ['Arsenal', 'Borussia Dortmund', 'Al Hilal', 'Napoli', 'Aston Villa', 'Sporting CP'];
+    const hasRival = Math.random() > 0.4;
+    const rival = hasRival ? rivalClubs[Math.floor(Math.random() * rivalClubs.length)] : null;
+
+    return {
+      status: 'countered',
+      player: p,
+      yourBid: { fee, salary, years },
+      counterFee,
+      counterSalary: counterSal,
+      counterYears: years,
+      rivalOffer: rival ? { club: rival, fee: counterFee + 1 } : null,
+      message: `${seller ? seller.name : 'Selling Club'} countered your ₹${fee}M offer: Demanding ₹${counterFee}M transfer fee and ₹${counterSal}M/yr wage.${rival ? ` Warning: ${rival} are preparing a competing bid!` : ''}`
+    };
+  }
+
+  // CASE 3: Lowball rejection
+  return {
+    status: 'lowball_rejected',
+    message: `❌ Insulting Bid: ${seller ? seller.name : 'Player representatives'} rejected your ₹${fee}M bid. "Our player is valued at ₹${askingFee}M. Submit a serious offer or negotiations are terminated."`,
+    player: p
+  };
+}
+
+function advanceSeason(s){
+  s.season++;
+  s.transferWindowOpen = true;
+  s.transferWindow = 'summer';
+
+  const promotions = [];
+  const relegations = [];
+  let userVerdict = null;
+  const user = club(s, s.selectedClub);
+
+  // Group clubs by country:
+  const countries = [...new Set(s.clubs.map(c => c.country))];
+  countries.forEach(country => {
+    const countryClubs = s.clubs.filter(c => c.country === country);
+    
+    // Sort clubs in each division:
+    const divTables = {};
+    for (let d = 1; d <= 4; d++) {
+      divTables[d] = countryClubs.filter(c => c.division === d).sort((a, b) => {
+        if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
+        if (b.stats.wins !== a.stats.wins) return b.stats.wins - a.stats.wins;
+        return (b.reputation || 60) - (a.reputation || 60);
+      });
+    }
+
+    // 1. Division 1: Champion & Relegations
+    const d1 = divTables[1] || [];
+    if (d1.length > 0) {
+      const champ = d1[0];
+      champ.history.titles = (champ.history.titles || 0) + 1;
+      champ.cash = Math.round((champ.cash + 25.0) * 10) / 10; // ₹25M Champion Prize
+      champ.fanSatisfaction = Math.min(100, (champ.fanSatisfaction || 78) + 30);
+      addNews(s, `🏆 ${champ.name} are crowned Division 1 Champions of ${country}! Awarded ₹25M prize money!`, 'season');
+
+      // Bottom 2 relegated to Division 2
+      const d1Relegated = d1.slice(-2);
+      d1Relegated.forEach(c => {
+        c.division = 2;
+        c.history.relegations = (c.history.relegations || 0) + 1;
+        c.reputation = Math.max(45, c.reputation - 6);
+        c.fanSatisfaction = Math.max(15, (c.fanSatisfaction || 78) - 30);
+        relegations.push({ club: c.name, from: 1, to: 2, country });
+        addNews(s, `⚠️ RELEGATION: ${c.name} have been relegated from Division 1 to Division 2.`, 'season');
+      });
+    }
+
+    // 2. Division 2: Promotions & Relegations
+    const d2 = divTables[2] || [];
+    if (d2.length > 0) {
+      // Top 2 promoted to Division 1
+      const d2Promoted = d2.slice(0, 2);
+      d2Promoted.forEach(c => {
+        c.division = 1;
+        c.history.promotions = (c.history.promotions || 0) + 1;
+        c.reputation += 8;
+        c.cash = Math.round((c.cash + 15.0) * 10) / 10; // ₹15M Promotion Prize
+        c.fanSatisfaction = Math.min(100, (c.fanSatisfaction || 78) + 30);
+        promotions.push({ club: c.name, from: 2, to: 1, prize: 15.0, country });
+        addNews(s, `🎉 PROMOTION: ${c.name} promoted to Division 1! Awarded ₹15M windfall!`, 'season');
+      });
+
+      // Bottom 2 relegated to Division 3
+      const d2Relegated = d2.slice(-2);
+      d2Relegated.forEach(c => {
+        c.division = 3;
+        c.history.relegations = (c.history.relegations || 0) + 1;
+        c.reputation = Math.max(35, c.reputation - 5);
+        c.fanSatisfaction = Math.max(15, (c.fanSatisfaction || 78) - 25);
+        relegations.push({ club: c.name, from: 2, to: 3, country });
+        addNews(s, `⚠️ RELEGATION: ${c.name} have been relegated from Division 2 to Division 3.`, 'season');
+      });
+    }
+
+    // 3. Division 3: Promotions & Relegations
+    const d3 = divTables[3] || [];
+    if (d3.length > 0) {
+      // Top 2 promoted to Division 2
+      const d3Promoted = d3.slice(0, 2);
+      d3Promoted.forEach(c => {
+        c.division = 2;
+        c.history.promotions = (c.history.promotions || 0) + 1;
+        c.reputation += 6;
+        c.cash = Math.round((c.cash + 6.0) * 10) / 10; // ₹6M Promotion Prize
+        c.fanSatisfaction = Math.min(100, (c.fanSatisfaction || 78) + 25);
+        promotions.push({ club: c.name, from: 3, to: 2, prize: 6.0, country });
+        addNews(s, `🎉 PROMOTION: ${c.name} promoted to Division 2! Awarded ₹6M prize!`, 'season');
+      });
+
+      // Bottom 2 relegated to Division 4
+      const d3Relegated = d3.slice(-2);
+      d3Relegated.forEach(c => {
+        c.division = 4;
+        c.history.relegations = (c.history.relegations || 0) + 1;
+        c.reputation = Math.max(28, c.reputation - 5);
+        c.fanSatisfaction = Math.max(15, (c.fanSatisfaction || 78) - 25);
+        relegations.push({ club: c.name, from: 3, to: 4, country });
+        addNews(s, `⚠️ RELEGATION: ${c.name} have been relegated from Division 3 to Division 4.`, 'season');
+      });
+    }
+
+    // 4. Division 4: Top 2 promoted to Division 3
+    const d4 = divTables[4] || [];
+    if (d4.length > 0) {
+      const d4Promoted = d4.slice(0, 2);
+      d4Promoted.forEach(c => {
+        c.division = 3;
+        c.history.promotions = (c.history.promotions || 0) + 1;
+        c.reputation += 4;
+        c.cash = Math.round((c.cash + 2.5) * 10) / 10; // ₹2.5M Promotion Prize
+        c.fanSatisfaction = Math.min(100, (c.fanSatisfaction || 78) + 20);
+        promotions.push({ club: c.name, from: 4, to: 3, prize: 2.5, country });
+        addNews(s, `🎉 PROMOTION: ${c.name} promoted to Division 3! Awarded ₹2.5M prize!`, 'season');
+      });
+    }
+  });
+
+  // Calculate User Club's outcome
+  if (user) {
+    const userProm = promotions.find(p => p.club === user.name);
+    const userRel = relegations.find(r => r.club === user.name);
+    if (userProm) {
+      userVerdict = {
+        type: 'promoted',
+        title: `🎉 PROMOTION CONFIRMED! WE ARE GOING UP!`,
+        from: userProm.from,
+        to: userProm.to,
+        prize: userProm.prize,
+        summary: `Immense triumph! Finishing in the promotion spots earned ${user.name} promotion to Division ${userProm.to} and a ₹${userProm.prize}M prize payout!`
+      };
+    } else if (userRel) {
+      userVerdict = {
+        type: 'relegated',
+        title: `⚠️ RELEGATION CONFIRMED: DROPPED DOWN`,
+        from: userRel.from,
+        to: userRel.to,
+        prize: 0,
+        summary: `Heartbreak! Finishing in the drop zone condemned ${user.name} to Division ${userRel.to}. The board demands an immediate promotion push next season.`
+      };
+    } else if (user.division === 1 && user.stats?.points > 0) {
+      userVerdict = {
+        type: 'champion',
+        title: `🏆 LIFTING THE DIVISION 1 TITLE!`,
+        from: 1,
+        to: 1,
+        prize: 25.0,
+        summary: `${user.name} conquered the country to lift the prestigious Division 1 Championship Trophy and claim ₹25M in prize money!`
+      };
+    } else {
+      userVerdict = {
+        type: 'retained',
+        title: `🛡️ SURVIVAL & CONSOLIDATION IN DIVISION ${user.division}`,
+        from: user.division,
+        to: user.division,
+        prize: 1.0,
+        summary: `${user.name} consolidated their status in Division ${user.division} for the upcoming campaign.`
+      };
+    }
+  }
+
+  // Accumulate player shirt & merchandise sales for the season
+  s.clubs.forEach(c => {
+    (c.players || []).forEach(pid => {
+      const p = player(s, pid);
+      if (!p) return;
+      const sales = Math.round((Math.max(0, (p.rating || 65) - 60) * 0.05 + ((p.form || 70) / 100) * 0.04) * 10) / 10;
+      p.merchandiseSales = Math.round(((p.merchandiseSales || 0) + sales) * 10) / 10;
+      p.form = Math.max(45, Math.min(98, p.form + (Math.random() * 12 - 5)));
+      if (p.contract) p.contract.years = Math.max(0, p.contract.years - 1);
+    });
+    c.stats = { wins: 0, draws: 0, losses: 0, points: 0 };
+    c.fans = Math.max(1000, Math.round(c.fans * (0.97 + ((c.reputation || 60) / 500))));
+    c.morale = Math.max(55, Math.min(92, c.morale));
+    c.soldBigPlayersCount = 0; // Reset transfer window sale quotas!
+    if (c.sponsor) c.cash += c.sponsor.value;
+    if (c.manager && c.manager.contractEnd < s.season) c.manager = null;
+  });
+
+  s.matchday = 0;
+  s.lastSeasonVerdict = {
+    season: s.season - 1,
+    userVerdict,
+    promotions,
+    relegations
+  };
+
+  if (s.season % 2 === 0) {
+    s.competitions.lastTournament = s.season;
+    addNews(s, `World Champions Tournament qualification is now active for the top clubs from participating leagues.`, 'competition');
+  }
+
+  addNews(s, `Season ${s.season} begins. Summer Transfer Window is OPEN.`, 'season');
+  persist();
+  return { season: s.season, verdict: s.lastSeasonVerdict };
+}
 function updateEconomy(s,clubName,data){
   const c=club(s,clubName);
   if(!c)return {error:'Club not found.'};
@@ -533,12 +1672,92 @@ function updateJersey(s,clubName,jerseyData){
   const c=club(s,clubName);
   if(!c)return {error:'Club not found.'};
   c.jersey={...c.jersey,...jerseyData};
-  addNews(s,`${c.name} updated their official club kit colors and design.`,'club');
+  // Updating design marks kit as customized; ready to launch
+  addNews(s,`${c.name} customized their official kit design. Ready for season launch.`,'club');
   persist();
   return c.jersey;
 }
+
+function launchJersey(s, clubName) {
+  const c = club(s, clubName);
+  if (!c) return { error: 'Club not found.' };
+  if (!c.jersey) {
+    c.jersey = { home: '#0b2545', away: '#e8edf4', third: '#163820', pattern: 'stripes', collar: '#ffffff', shorts: '#0b2545', quality: 75 };
+  }
+  const quality = Number(c.jersey.quality) || 75;
+  const fanSatisfaction = Number(c.fanSatisfaction) || 75;
+  const rep = Number(c.reputation) || 55;
+  const division = c.division || 3;
+
+  // Determination: HIT or FLOP
+  // A kit is a certified HIT if quality is high and fans are satisfied
+  const isHit = (quality >= 70 && fanSatisfaction >= 60) || (quality >= 82);
+  const verdict = isHit ? 'hit' : 'flop';
+
+  let unitsSold = 0;
+  let revenue = 0;
+  let review = '';
+
+  if (isHit) {
+    // HIT JERSEY
+    const baseUnits = division === 1 ? 125000 : division === 2 ? 65000 : division === 3 ? 36000 : 16000;
+    unitsSold = Math.round(baseUnits * (0.85 + (quality / 180) + (rep / 300) + (Math.random() * 0.2)));
+    revenue = Math.round((unitsSold * 90) / 100000) / 10; // in Millions, e.g. ₹3.2M - ₹11M
+    review = `🔥 SENSATIONAL HIT JERSEY! Supporters flooded the club megastore and queued around the stadium concourse! Social media praised the stunning aesthetic design, and global distributors reported instant sell-outs across all sizes.`;
+    c.fanSatisfaction = Math.min(100, fanSatisfaction + 6);
+    c.popularity = Math.min(100, (c.popularity || 60) + 4);
+    c.merchandise = Math.min(100, Math.round(quality * 0.7 + 25));
+    c.cash = Math.round((c.cash + revenue) * 10) / 10;
+    addNews(s, `👕 RETAIL SENSATION: ${c.name} launched their official season kit! Rated a certified HIT JERSEY, selling ${unitsSold.toLocaleString()} shirts and generating ₹${revenue}M in commercial revenue!`, 'club');
+  } else {
+    // FLOP JERSEY
+    const baseUnits = division === 1 ? 28000 : division === 2 ? 14000 : division === 3 ? 6200 : 2800;
+    unitsSold = Math.round(baseUnits * (0.6 + (quality / 300) + (Math.random() * 0.2)));
+    revenue = Math.round((unitsSold * 45) / 100000) / 10; // in Millions, e.g. ₹0.3M - ₹0.8M
+    review = `⚠️ DISAPPOINTING FLOP JERSEY. Supporters protested the lack of craftsmanship and questionable styling. Unsold replica inventory is languishing in outlet clearance bins with heavy discounts.`;
+    c.fanSatisfaction = Math.max(15, fanSatisfaction - 5);
+    c.popularity = Math.max(15, (c.popularity || 60) - 2);
+    c.merchandise = Math.max(15, Math.round(quality * 0.4 + 10));
+    c.cash = Math.round((c.cash + revenue) * 10) / 10;
+    recordTransaction(c, revenue, 'kit_sales', `Kit Launch: ${verdict.toUpperCase()} (${unitsSold.toLocaleString()} jerseys sold)`, s);
+    addNews(s, `👕 RETAIL SLUMP: ${c.name} official kit launch designated a FLOP JERSEY. Weak retail reception generated only ${unitsSold.toLocaleString()} shirt sales.`, 'club');
+  } else {
+    c.cash = Math.round((c.cash + revenue) * 10) / 10;
+    recordTransaction(c, revenue, 'kit_sales', `Kit Launch: ${verdict.toUpperCase()} (${unitsSold.toLocaleString()} jerseys sold)`, s);
+  }
+
+  c.jersey.launched = true;
+  c.jersey.launchedSeason = s.season;
+  c.jersey.verdict = verdict;
+  c.jersey.unitsSold = unitsSold;
+  c.jersey.revenue = revenue;
+  c.jersey.review = review;
+  c.jersey.launchedAt = Date.now();
+
+  persist();
+  return {
+    verdict,
+    unitsSold,
+    revenue,
+    review,
+    fanSatisfaction: c.fanSatisfaction,
+    popularity: c.popularity,
+    treasury: c.cash,
+    jersey: c.jersey
+  };
+}
 function sponsorshipOffers(s,clubName){const c=club(s,clubName);if(!c)return [];const base=Math.round(2+c.reputation/10+c.fans/100000);return ['Local Sports Brand','National Telecom','Global Sportswear','Energy Partner'].map((name,i)=>({id:`sp_${i}`,name,value:base*(i+1),years:i===3?3:1,objective:i===0?'Finish above current position':i===1?'Reach top 6':i===2?'Qualify for continental competition':'Win a trophy',bonus:base*(i+1)*2}));}
-function signSponsor(s,clubName,offerId){const c=club(s,clubName),offers=sponsorshipOffers(s,clubName);const o=offers.find(x=>x.id===offerId);if(!c||!o)return {error:'Sponsor offer not found.'};c.sponsor=o;c.cash+=o.value;addNews(s,`${c.name} signed a ${o.years}-season sponsorship with ${o.name}.`,'finance');persist();return c;}
+function signSponsor(s,clubName,offerId){
+  const c=club(s,clubName),offers=sponsorshipOffers(s,clubName);
+  const o=offers.find(x=>x.id===offerId);
+  if(!c||!o)return {error:'Sponsor offer not found.'};
+  c.sponsor=o;
+  c.cash=Math.round((c.cash+o.value)*10)/10;
+  recordTransaction(c, o.value, 'sponsor_income', `Sponsorship Deal: ${o.name} (${o.years}-Year Contract)`, s);
+  addNews(s,`${c.name} signed a ${o.years}-season sponsorship with ${o.name}.`,'finance');
+  persist();
+  return c;
+}
 
 function managerMeeting(s, clubName){
   const c = club(s, clubName);
@@ -621,7 +1840,15 @@ function setExpectation(s, clubName, expectation, ownerStance){
 
 function globalState(s){
   if(s) upgradeLegacyWorld(s);
-  return {...s,clubs:s.clubs.map(c=>({...c,players:clubPlayers(s,c)})),recommendations:s.selectedClub?managerRecommendations(s,s.selectedClub):[]};
+  return {
+    ...s,
+    clubs: s.clubs.map(c => ({
+      ...c,
+      players: clubPlayers(s, c),
+      budget: calculateClubBudget(s, c)
+    })),
+    recommendations: s.selectedClub ? managerRecommendations(s, s.selectedClub) : []
+  };
 }
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,simulate,advanceSeason,updateEconomy,updateJersey,sponsorshipOffers,signSponsor,globalState,roomsList,persist,upgradeLegacyWorld};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,simulate,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld};

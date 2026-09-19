@@ -293,6 +293,16 @@ function getRoom(socket) {
   return rooms[code] || rooms[GLOBAL_ROOM] || null;
 }
 
+function isHostOrSolo(room, socket) {
+  if (!room || !socket) return false;
+  const activeTeams = Object.keys(room.teams || {});
+  if (room.isSoloMode || !room.host || activeTeams.length <= 1 || !room.teams[room.host]) {
+    room.host = socket.teamName || room.host || "Manager";
+    return true;
+  }
+  return room.host === socket.teamName;
+}
+
 function getRoomLeague(roomOrSocket) {
   let room = null;
   if (typeof roomOrSocket === "string") {
@@ -1252,14 +1262,11 @@ io.on("connection", socket => {
         return;
       }
 
-      // HOST ONLY
-      if (
-        room.host !==
-        socket.teamName
-      ) {
+      // HOST OR SOLO
+      if (!isHostOrSolo(room, socket)) {
         socket.emit(
           "errorMessage",
-          "Only the host can start the auction."
+          `Only the room host (${room.host}) can start the auction.`
         );
 
         return;
@@ -1267,16 +1274,22 @@ io.on("connection", socket => {
 
       const isWindowOpen = (typeof room.transferWindowOpen === "boolean") ? room.transferWindowOpen : transferWindowOpen;
       if (!isWindowOpen) {
-        const secsLeft = room.nextWindowChange ? Math.max(0, Math.round((room.nextWindowChange - Date.now()) / 1000)) : 0;
-        const mins = Math.floor(secsLeft / 60);
-        const secs = secsLeft % 60;
-        const timeStr = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
-        socket.emit(
-          "errorMessage",
-          `🔒 The Transfer Market is currently CLOSED for competitive matchdays. Next official window opens in ${timeStr}.`
-        );
+        if (room.isSoloMode) {
+          room.transferWindowOpen = true;
+          room.nextWindowChange = Date.now() + TRANSFER_WINDOW_OPEN_MS;
+          broadcastState(socket.roomCode);
+        } else {
+          const secsLeft = room.nextWindowChange ? Math.max(0, Math.round((room.nextWindowChange - Date.now()) / 1000)) : 0;
+          const mins = Math.floor(secsLeft / 60);
+          const secs = secsLeft % 60;
+          const timeStr = `${mins}:${secs < 10 ? "0" : ""}${secs}`;
+          socket.emit(
+            "errorMessage",
+            `🔒 The Transfer Market is currently CLOSED for competitive matchdays. Next official window opens in ${timeStr}.`
+          );
 
-        return;
+          return;
+        }
       }
 
       if (
@@ -1604,15 +1617,12 @@ io.on("connection", socket => {
 
       if (!room) return;
 
-      // HOST ONLY
-      if (
-        room.host !==
-        socket.teamName
-      ) {
+      // HOST OR SOLO
+      if (!isHostOrSolo(room, socket)) {
         socket.emit(
           "errorMessage",
 
-          "Only the host can skip a player."
+          `Only the room host (${room.host}) can skip a player.`
         );
 
         return;
@@ -1672,15 +1682,12 @@ io.on("connection", socket => {
 
       if (!room) return;
 
-      // HOST ONLY
-      if (
-        room.host !==
-        socket.teamName
-      ) {
+      // HOST OR SOLO
+      if (!isHostOrSolo(room, socket)) {
         socket.emit(
           "errorMessage",
 
-          "Only the host can reset the game."
+          `Only the room host (${room.host}) can reset the game.`
         );
 
         return;
@@ -3142,8 +3149,8 @@ io.on("connection", socket => {
       return;
     }
 
-    if (room.host !== socket.teamName) {
-      socket.emit("errorMessage", "Only the host can advance to the next season.");
+    if (!isHostOrSolo(room, socket)) {
+      socket.emit("errorMessage", `Only the room host (${room.host}) can advance to the next season.`);
       return;
     }
 

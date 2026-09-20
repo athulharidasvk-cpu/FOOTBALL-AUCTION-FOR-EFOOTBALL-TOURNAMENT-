@@ -135,6 +135,108 @@
     .hud-stat .value { font-family: var(--font-display); font-size: 17px; font-weight: 800; color: #fff; }
     .hud-stat .value.cash { color: var(--accent-neon); }
 
+    /* Persistent Live Header Budget Tracker Component */
+    .hud-budget-tracker {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 6px 14px;
+      background: linear-gradient(135deg, rgba(14, 30, 56, 0.95), rgba(7, 18, 36, 0.98));
+      border: 1px solid rgba(0, 240, 255, 0.35);
+      border-radius: 12px;
+      cursor: pointer;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45), inset 0 0 14px rgba(0, 240, 255, 0.05);
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .hud-budget-tracker:hover {
+      border-color: var(--accent-neon);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(0, 240, 255, 0.22);
+    }
+    .hud-budget-pulse-tag {
+      position: absolute;
+      top: -12px;
+      right: 10px;
+      background: #0284c7;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      padding: 2px 10px;
+      border-radius: 999px;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+      animation: budgetTagBounce 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 20;
+    }
+    @keyframes budgetTagBounce {
+      0% { transform: translateY(6px) scale(0.85); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+    .hud-budget-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .hud-budget-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+    .hud-budget-top {
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .hud-budget-lbl {
+      font-size: 9.5px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .hud-budget-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 900;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .hud-budget-val.cash {
+      color: var(--accent-neon);
+    }
+    .hud-budget-sub {
+      font-size: 10.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      white-space: nowrap;
+    }
+    .hud-budget-btn {
+      background: rgba(0, 240, 255, 0.1);
+      border: 1px solid rgba(0, 240, 255, 0.3);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--accent-neon);
+      margin-left: 2px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .hud-budget-tracker:hover .hud-budget-btn {
+      background: var(--accent-neon);
+      color: #030b17;
+      border-color: var(--accent-neon);
+    }
+
     .nav-tabs {
       background: #091322;
       border-bottom: 1px solid var(--border-subtle);
@@ -1770,6 +1872,19 @@ function submitNewClubFromStudio() {
 // -------------------------------------------------------------
 // MAIN GAME RENDERER & HUD
 // -------------------------------------------------------------
+let activeRivalryTab = 'same';
+let activeLedgerFilter = 'all';
+
+function switchRivalryTier(tier) {
+  activeRivalryTab = tier;
+  renderGame();
+}
+
+function filterLedger(cat) {
+  activeLedgerFilter = cat;
+  renderGame();
+}
+
 function renderGame() {
   if (!S) return;
   const c = S.clubs.find(x => x.name === S.selectedClub);
@@ -1777,6 +1892,7 @@ function renderGame() {
 
   const userPlayers = S.market.filter(p => p.ownerClub === c.name);
   const isUnderperforming = c.morale < 70 || (c.stats && (c.stats.losses || 0) > (c.stats.wins || 0));
+  const b = calculateClientBudget(c);
 
   app.innerHTML = `
     <!-- Top Global HUD -->
@@ -1796,16 +1912,17 @@ function renderGame() {
             <span class="pill pill-div">Div ${c.division}</span>
             <span class="pill pill-season">Season ${S.season}</span>
             <span class="pill pill-manager">${esc(c.manager ? c.manager.name : 'No Manager')}</span>
-            ${c.rivalName ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);" title="${esc(c.derbyName || 'Rivalry')}">⚔️ Rival: ${esc(c.rivalName)}</span>` : ''}
+            ${c.rivals?.same ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal('same')" title="${esc(c.rivals.same.derbyName || 'Rivalry')}">⚔️ Div ${c.division} Rival: ${esc(c.rivals.same.name)}</span>` : (c.rivalName ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal()">⚔️ Rival: ${esc(c.rivalName)}</span>` : '')}
+            ${c.rivals?.higher ? `<span class="pill" style="background:rgba(234,179,8,0.18);color:#fef08a;border:1px solid rgba(234,179,8,0.4);cursor:pointer;" onclick="openRivalryDossierModal('higher')" title="Top-flight Goliath to shock in FA Cup!">👑 Div ${c.rivals.higher.division} Goliath: ${esc(c.rivals.higher.name)}</span>` : ''}
+            ${c.rivals?.lower ? `<span class="pill" style="background:rgba(56,189,248,0.18);color:#bae6fd;border:1px solid rgba(56,189,248,0.4);cursor:pointer;" onclick="openRivalryDossierModal('lower')" title="Grassroots Challenger in regional cups">🛡️ Div ${c.rivals.lower.division} Rival: ${esc(c.rivals.lower.name)}</span>` : ''}
           </div>
         </div>
       </div>
 
       <div class="hud-metrics">
-        <div class="hud-stat">
-          <span class="label">Club Treasury</span>
-          <span class="value cash">₹${money(c.cash)}M</span>
-        </div>
+        <!-- Persistent Live Budget Tracker Component with Real-Time Financial Health -->
+        ${renderHeaderBudgetTrackerHtml(c, b)}
+
         <div class="hud-stat">
           <span class="label">Stadium</span>
           <span class="value">${money(c.stadium?.capacity || 20000)}</span>
@@ -1829,6 +1946,9 @@ function renderGame() {
       </div>
 
       <div style="display:flex;align-items:center;gap:8px;">
+        <button id="hudIncomingBidsBtn" class="btn btn-sm" onclick="openIncomingOffersModal()" style="display:inline-flex;align-items:center;gap:6px;${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? 'background:rgba(239,68,68,0.25);border:1px solid #ef4444;color:#fca5a5;font-weight:800;animation:pulseBorder 2s infinite;' : 'background:rgba(255,255,255,0.06);border:1px solid var(--border-subtle);color:var(--text-muted);'}" title="Review incoming transfer inquiries from AI clubs">
+          🔔 <span>BIDS ${S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0 ? `(${S.incomingOffers.filter(o => o.status === 'pending').length})` : ''}</span>
+        </button>
         <button id="hudSaveBtn" class="btn btn-sm" onclick="saveGame(true)" style="display:inline-flex;align-items:center;gap:6px;background:rgba(212,175,55,0.18);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:800;" title="Save entire club career to persistent storage">
           💾 <span>SAVE GAME</span>
         </button>
@@ -1851,7 +1971,7 @@ function renderGame() {
         ${svgIcon('squad', 14)} <span>SQUAD ROSTER</span>
       </button>
       <button class="tab-btn ${currentTab==='transfers'?'active':''}" onclick="switchTab('transfers')">
-        ${svgIcon('transfers', 14)} <span>TRANSFERS</span>
+        ${svgIcon('transfers', 14)} <span>TRANSFERS ${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? `<span style=\"background:#ef4444;color:#fff;font-size:9.5px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:3px;\">${S.incomingOffers.filter(o => o.status === 'pending').length}</span>` : ''}</span>
       </button>
       <button class="tab-btn ${currentTab==='scouting'?'active':''}" onclick="switchTab('scouting')">
         ${svgIcon('search', 14)} <span>SCOUTING & ACADEMY</span>
@@ -1867,6 +1987,12 @@ function renderGame() {
       </button>
       <button class="tab-btn ${currentTab==='league'?'active':''}" onclick="switchTab('league')">
         ${svgIcon('trophy', 14)} <span>STANDINGS</span>
+      </button>
+      <button class="tab-btn ${currentTab==='awards'?'active':''}" onclick="switchTab('awards')">
+        <span>🏆</span> <span>AWARDS GALA</span>
+      </button>
+      <button class="tab-btn ${currentTab==='tournament'?'active':''}" onclick="switchTab('tournament')" style="${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? 'border-color:var(--accent-gold);color:var(--accent-gold);' : ''}">
+        <span>🌍</span> <span>GLOBAL CUP ${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? '<span style=\"background:var(--accent-gold);color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;\">LIVE</span>' : ''}</span>
       </button>
       <button class="tab-btn ${currentTab==='news'?'active':''}" onclick="switchTab('news')">
         ${svgIcon('news', 14)} <span>NEWS</span>
@@ -1907,6 +2033,8 @@ function renderTabContent() {
     case 'kit': return renderKitStudio(container);
     case 'league': return renderLeagueStandings(container);
     case 'news': return renderNewsFeed(container);
+    case 'awards': return renderAwardsGala(container);
+    case 'tournament': return renderGlobalTournament(container);
   }
 }
 
@@ -1918,6 +2046,13 @@ function renderDashboard(container) {
   const myPlayers = S.market.filter(p => p.ownerClub === c.name);
   const starPlayer = myPlayers.reduce((best, p) => (p.rating > (best?.rating || 0) ? p : best), null);
   const isUnderperforming = c.morale < 70 || (c.stats && (c.stats.losses || 0) > (c.stats.wins || 0));
+  const b = c.budget || {
+    cash: c.cash || 0,
+    netCashflowPerMatch: 0.8,
+    transferWarChest: Math.round((c.cash || 0) * 0.6 * 10) / 10,
+    ffpGrade: 'A',
+    ffpStatus: 'HEALTHY'
+  };
 
   container.innerHTML = `
     <!-- Crisis Alert Banner if Underperforming -->
@@ -1938,6 +2073,28 @@ function renderDashboard(container) {
         </div>
         <button class="btn btn-danger btn-sm" onclick="event.stopPropagation(); openBoardroomMeeting();">
           CONVENE SUMMIT &rarr;
+        </button>
+      </div>
+    ` : ''}
+
+    <!-- Incoming Transfer Inquiries Banner -->
+    ${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? `
+      <div class="crisis-alert-banner" style="background:linear-gradient(90deg, rgba(239,68,68,0.22), rgba(245,158,11,0.18));border-color:rgba(239,68,68,0.5);margin-bottom:18px;" onclick="openIncomingOffersModal()">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:40px;height:40px;border-radius:10px;background:rgba(239,68,68,0.3);display:flex;align-items:center;justify-content:center;font-size:20px;">
+            🔔
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:15px;color:#fca5a5;letter-spacing:0.02em;">
+              TRANSFER APPROACHES DETECTED: ${S.incomingOffers.filter(o => o.status === 'pending').length} Rival Inquiries Submitted!
+            </div>
+            <div style="font-size:12.5px;color:var(--text-muted);margin-top:3px;">
+              Prominent clubs have lodged official cash bids for your key squad assets. Review suitors, analyze valuation premiums, and accept or counter.
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" style="font-weight:800;background:linear-gradient(90deg, #ef4444, #f59e0b);" onclick="event.stopPropagation(); openIncomingOffersModal();">
+          REVIEW BIDS (${S.incomingOffers.filter(o => o.status === 'pending').length}) &rarr;
         </button>
       </div>
     ` : ''}
@@ -1980,7 +2137,35 @@ function renderDashboard(container) {
           </div>
         </div>
 
-        <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
+        <!-- Live Financial Health & Budget Quick-Bar -->
+        <div style="background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.22);border-radius:12px;padding:12px 16px;margin-top:16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="width:38px;height:38px;border-radius:10px;background:rgba(0,240,255,0.15);display:flex;align-items:center;justify-content:center;font-size:20px;">
+              📊
+            </div>
+            <div>
+              <div style="font-size:10px;color:var(--text-dim);font-weight:800;letter-spacing:0.05em;text-transform:uppercase;">LIVE CLUB BUDGET &amp; FINANCIAL FAIR PLAY</div>
+              <div style="display:flex;align-items:center;gap:10px;margin-top:3px;flex-wrap:wrap;">
+                <span style="font-size:13px;color:#fff;font-weight:700;">
+                  Cashflow: <b style="color:${(b.netCashflowPerMatch||0)>=0?'var(--accent-neon)':'#ff4757'};">${(b.netCashflowPerMatch||0)>=0?'+':''}₹${money(b.netCashflowPerMatch||0)}M/match</b>
+                </span>
+                <span style="font-size:12px;color:var(--text-dim);">•</span>
+                <span style="font-size:13px;color:#fff;font-weight:700;">
+                  War Chest: <b style="color:var(--accent-gold);">₹${money(b.transferWarChest||c.cash*0.6)}M</b>
+                </span>
+                <span style="font-size:12px;color:var(--text-dim);">•</span>
+                <span class="pill" style="font-size:10px;font-weight:900;background:${b.ffpGrade==='D'?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)'};color:${b.ffpGrade==='D'?'#fca5a5':'#86efac'};border:1px solid ${b.ffpGrade==='D'?'#ef4444':'#22c55e'};">
+                  FFP Grade: ${b.ffpGrade || 'A'} (${b.ffpStatus || 'HEALTHY'})
+                </span>
+              </div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-xs" onclick="switchTab('stadium')" style="padding:6px 14px;font-size:11px;border-color:var(--accent-neon);color:var(--accent-neon);font-weight:800;">
+            OPEN BUDGET TRACKER &rarr;
+          </button>
+        </div>
+
+        <div style="display:flex;gap:12px;margin-top:20px;flex-wrap:wrap;">
           <button class="btn btn-primary" onclick="switchTab('pitch')" style="display:inline-flex;align-items:center;gap:6px;">
             ${svgIcon('pitch', 15)} <span>VIEW TACTICAL PITCH</span>
           </button>
@@ -2058,44 +2243,82 @@ function renderDashboard(container) {
         ` : `<p style="color:var(--text-muted);font-size:13px;">No squad players signed.</p>`}
       </div>
 
-      <!-- Supporters & Bitter Rivalry Pulse Card -->
-      <div class="game-card col-4">
-        <div class="card-kicker" style="color:#ff4757;">PASSION &amp; TERRACE CULTURE</div>
-        <div class="card-header">
-          <h2>Supporters &amp; Rivalry</h2>
-        </div>
-        <div style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:10px;padding:12px;margin-bottom:12px;">
+      <!-- Supporters & Bitter Rivalry Pulse Card (Multi-Tier Rivals) -->
+      ${(() => {
+        const sameR = c.rivals?.same || { name: c.rivalName || 'League Rival', division: c.division, derbyName: c.derbyName || 'League Derby', h2h: { played: 0, wins: 0, draws: 0, losses: 0 }, badge: `⚔️ DIVISION ${c.division} NEMESIS` };
+        const highR = c.rivals?.higher;
+        const lowR = c.rivals?.lower;
+        const curR = (activeRivalryTab === 'higher' && highR) ? highR : (activeRivalryTab === 'lower' && lowR) ? lowR : sameR;
+        const h2h = curR.h2h || { played: 0, wins: 0, draws: 0, losses: 0 };
+        return `
+        <div class="game-card col-4">
           <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span style="font-size:11px;color:#fca5a5;font-weight:700;">BITTER DERBY RIVAL</span>
-            <span class="pill" style="background:#ff4757;color:#fff;font-size:9px;font-weight:900;">HIGH VOLTAGE</span>
+            <div class="card-kicker" style="color:#ff4757;margin:0;">TERRACE CULTURE &amp; RIVALS</div>
+            <button class="btn btn-secondary btn-xs" onclick="openRivalryDossierModal('${activeRivalryTab}')" style="font-size:10px;padding:2px 8px;border-color:rgba(255,71,87,0.4);color:#fca5a5;">
+              DOSSIER &rarr;
+            </button>
           </div>
-          <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:#fff;margin-top:4px;">
-            ⚔️ ${esc(c.rivalName || 'Local Derby Rival')}
+          <div class="card-header" style="margin-top:4px;">
+            <h2>Supporters &amp; Rivals</h2>
           </div>
-          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
-            ${esc(c.derbyName || 'National Derby Showdown')}
+
+          <!-- 3-Tier Rivalry Selector Tabs -->
+          <div style="display:flex;gap:4px;margin-bottom:10px;background:rgba(0,0,0,0.25);padding:3px;border-radius:8px;">
+            <button type="button" class="btn btn-xs ${activeRivalryTab==='same'?'btn-primary':'btn-secondary'}" style="flex:1;font-size:10px;padding:4px 2px;" onclick="switchRivalryTier('same')" title="Same Division League Nemesis">
+              ⚔️ Div ${c.division}
+            </button>
+            ${highR ? `
+              <button type="button" class="btn btn-xs ${activeRivalryTab==='higher'?'btn-primary':'btn-secondary'}" style="flex:1;font-size:10px;padding:4px 2px;" onclick="switchRivalryTier('higher')" title="Higher Division Goliath (Div ${highR.division})">
+                👑 Div ${highR.division}
+              </button>
+            ` : ''}
+            ${lowR ? `
+              <button type="button" class="btn btn-xs ${activeRivalryTab==='lower'?'btn-primary':'btn-secondary'}" style="flex:1;font-size:10px;padding:4px 2px;" onclick="switchRivalryTier('lower')" title="Lower Division Challenger (Div ${lowR.division})">
+                🛡️ Div ${lowR.division}
+              </button>
+            ` : ''}
           </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
-          <div style="background:var(--bg-card-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-subtle);">
-            <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">FAN SATISFACTION</div>
-            <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:${(c.fanSatisfaction||75)>=70?'var(--accent-neon)':'#ff4757'};margin-top:2px;">
-              ❤️ ${c.fanSatisfaction || 75}%
+
+          <!-- Active Rival Card -->
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:10px;padding:12px;margin-bottom:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:10px;color:${activeRivalryTab==='higher'?'#fef08a':activeRivalryTab==='lower'?'#bae6fd':'#fca5a5'};font-weight:800;letter-spacing:0.04em;">
+                ${esc(curR.badge || (activeRivalryTab==='higher'?'👑 TOP-FLIGHT GOLIATH':activeRivalryTab==='lower'?'🛡️ GRASSROOTS CHALLENGER':'⚔️ LEAGUE NEMESIS'))}
+              </span>
+              <span class="pill" style="background:#ff4757;color:#fff;font-size:8.5px;font-weight:900;">
+                ${h2h.played > 0 ? `${h2h.wins}W - ${h2h.draws}D - ${h2h.losses}L` : '0 PLAYED'}
+              </span>
             </div>
-            <div style="font-size:10px;color:var(--text-muted);">${(c.fanSatisfaction||75)>=80?'Ecstatic':(c.fanSatisfaction||75)>=60?'Content':'Volatile'}</div>
-          </div>
-          <div style="background:var(--bg-card-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-subtle);">
-            <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">CLUB POPULARITY</div>
-            <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--accent-gold);margin-top:2px;">
-              ⭐ ${c.popularity || 60}%
+            <div style="font-family:var(--font-display);font-size:16px;font-weight:800;color:#fff;margin-top:4px;">
+              ${esc(curR.name)}
             </div>
-            <div style="font-size:10px;color:var(--text-muted);">Brand Power</div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+              ${esc(curR.derbyName || 'National Derby Showdown')}
+            </div>
           </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;">
+            <div style="background:var(--bg-card-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">FAN SATISFACTION</div>
+              <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:${(c.fanSatisfaction||75)>=70?'var(--accent-neon)':'#ff4757'};margin-top:2px;">
+                ❤️ ${c.fanSatisfaction || 75}%
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">${(c.fanSatisfaction||75)>=80?'Ecstatic':(c.fanSatisfaction||75)>=60?'Content':'Volatile'}</div>
+            </div>
+            <div style="background:var(--bg-card-subtle);padding:10px;border-radius:8px;border:1px solid var(--border-subtle);">
+              <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">CLUB POPULARITY</div>
+              <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--accent-gold);margin-top:2px;">
+                ⭐ ${c.popularity || 60}%
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">Brand Power</div>
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-xs" style="width:100%;font-weight:700;font-size:10.5px;border-color:rgba(239,68,68,0.4);color:#fca5a5;" onclick="openRivalryDossierModal('${activeRivalryTab}')">
+            ⚔️ VIEW HEAD-TO-HEAD &amp; DERBY STAKES
+          </button>
         </div>
-        <div style="background:rgba(255,255,255,0.03);padding:8px 12px;border-radius:8px;font-size:11.5px;color:var(--text-muted);">
-          Next Fixture: <b style="color:#fff;">${((S.matchday||0)+1)%4===0?'🏆 Domestic FA Cup Knockout':'⚽ League Matchday'}</b>
-        </div>
-      </div>
+        `;
+      })()}
 
       <!-- Commercial & Stadium Mini -->
       <div class="game-card col-4">
@@ -2324,9 +2547,10 @@ function renderSquadRoster(container) {
                 </td>
                 <td>₹${money(p.contract?.salary || 2)}M/y</td>
                 <td><b style="color:var(--accent-gold);">₹${money(p.askingPrice)}M</b></td>
-                <td style="text-align:right;">
-                  <button class="btn btn-secondary btn-sm" onclick="listForSale('${p.id}', ${p.askingPrice})">SELL</button>
-                  <button class="btn btn-danger btn-sm" onclick="releasePlayerPrompt('${p.id}')">RELEASE</button>
+                <td style="text-align:right;white-space:nowrap;">
+                  <button class="btn btn-secondary btn-sm" onclick="openContractRenewalModal('${p.id}')" title="Renegotiate wages, extend contract & review real-time FFP impact" style="border-color:rgba(0,240,255,0.4);color:var(--accent-neon);padding:4px 8px;font-size:11px;font-weight:700;">✍️ WAGE / EXTEND</button>
+                  <button class="btn btn-secondary btn-sm" onclick="listForSale('${p.id}', ${p.askingPrice})" style="padding:4px 8px;font-size:11px;">SELL</button>
+                  <button class="btn btn-danger btn-sm" onclick="releasePlayerPrompt('${p.id}')" style="padding:4px 8px;font-size:11px;">RELEASE</button>
                 </td>
               </tr>
             `).join('')}
@@ -2367,6 +2591,32 @@ function renderTransferMarket(container) {
           </button>
           <div class="pill ${S.transferWindowOpen ? 'pill-season' : 'pill-div'}">
             ${S.transferWindowOpen ? '⚡ TRANSFER WINDOW ACTIVE' : '🔒 WINDOW CLOSED'}
+          </div>
+        </div>
+      </div>
+
+      <!-- Incoming Transfer Bids & Approaches Banner -->
+      <div style="background:linear-gradient(135deg, rgba(239,68,68,0.14), rgba(245,158,11,0.08));border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#fca5a5;letter-spacing:1px;text-transform:uppercase;">
+              🔔 INCOMING RIVAL APPROACHES FOR YOUR PLAYERS
+            </div>
+            <div style="font-size:14px;font-weight:700;color:#fff;margin-top:2px;">
+              ${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0)
+                ? `${S.incomingOffers.filter(o => o.status === 'pending').length} rival clubs have submitted official cash bids for your key players!`
+                : 'No pending bids at this moment. Rival scouts continuously monitor your in-form stars and expiring contracts.'}
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-primary btn-sm" onclick="openIncomingOffersModal()" style="font-weight:800;background:linear-gradient(90deg, #ef4444, #f59e0b);">
+              ${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0)
+                ? `⚡ REVIEW ${S.incomingOffers.filter(o => o.status === 'pending').length} BIDS`
+                : '📂 INCOMING INBOX'}
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="solicitMarketInterest()" style="font-weight:700;" title="Advertise your squad to attract bids from elite domestic & foreign clubs">
+              📢 INVITE RIVAL BIDS
+            </button>
           </div>
         </div>
       </div>
@@ -2527,7 +2777,7 @@ function openPlayerTransferTalks(pid) {
       </div>
 
       <!-- Contract Duration -->
-      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-card-subtle);padding:10px 16px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:20px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--bg-card-subtle);padding:10px 16px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:14px;">
         <span style="font-size:12.5px;font-weight:700;color:#fff;">Contract Term:</span>
         <div style="display:flex;gap:6px;">
           ${[1, 2, 3, 4, 5].map(y => `
@@ -2535,6 +2785,32 @@ function openPlayerTransferTalks(pid) {
               ${y} Yr${y>1?'s':''}
             </button>
           `).join('')}
+        </div>
+      </div>
+
+      <!-- Live Financial Health & FFP Impact Forecast -->
+      <div id="talksFinancialImpactBox" style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.2);border-radius:12px;padding:12px 16px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:10.5px;font-weight:800;color:var(--accent-neon);letter-spacing:0.04em;">LIVE BUDGET &amp; FFP HEALTH FORECAST</span>
+          <span id="talksFfpHealthTag" style="font-size:10.5px;font-weight:800;color:var(--accent-neon);">● HEALTHY</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;text-align:center;">
+          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;">
+            <div style="font-size:9.5px;color:var(--text-dim);font-weight:700;">REMAINING CASH</div>
+            <div id="talksProjCash" style="font-size:13.5px;font-weight:900;color:var(--accent-neon);margin-top:2px;">₹0M</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;">
+            <div style="font-size:9.5px;color:var(--text-dim);font-weight:700;">WAR CHEST LEFT</div>
+            <div id="talksProjWarChest" style="font-size:13.5px;font-weight:900;color:var(--accent-gold);margin-top:2px;">₹0M</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;">
+            <div style="font-size:9.5px;color:var(--text-dim);font-weight:700;">NET CASHFLOW</div>
+            <div id="talksProjCashflow" style="font-size:13.5px;font-weight:900;color:#fff;margin-top:2px;">+₹0M/m</div>
+          </div>
+          <div style="background:rgba(0,0,0,0.3);padding:6px;border-radius:8px;">
+            <div style="font-size:9.5px;color:var(--text-dim);font-weight:700;">FFP WAGE RATIO</div>
+            <div id="talksProjFfpRatio" style="font-size:13.5px;font-weight:900;color:#fff;margin-top:2px;">0%</div>
+          </div>
         </div>
       </div>
 
@@ -2624,6 +2900,53 @@ function refreshTalksUI(pid) {
       if (bubble) bubble.innerHTML = `Agent: "Are you serious, sir? This bid is below our client's market valuation. Increase your bid or we walk away."`;
     }
   }
+
+  // Live Budget & FFP Health Forecast calculation
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (c) {
+    const b = calculateClientBudget(c);
+    const remCash = Math.max(0, Math.round((c.cash - activeTalksState.fee) * 10) / 10);
+    const remWarChest = Math.max(0, Math.round(((c.cash * 0.6) - activeTalksState.fee) * 10) / 10);
+    const newAnnualWage = Math.round((b.wageBillAnnual + activeTalksState.salary) * 10) / 10;
+    const newPerMatchWage = Math.round((newAnnualWage / 24) * 100) / 100;
+    const newCashflow = Math.round((b.projectedRevPerMatch - newPerMatchWage) * 100) / 100;
+    const newRatio = b.projectedTurnoverAnnual > 0 ? Math.round((newAnnualWage / b.projectedTurnoverAnnual) * 100) : 55;
+
+    const elCash = document.getElementById('talksProjCash');
+    const elChest = document.getElementById('talksProjWarChest');
+    const elFlow = document.getElementById('talksProjCashflow');
+    const elRatio = document.getElementById('talksProjFfpRatio');
+    const elFfpTag = document.getElementById('talksFfpHealthTag');
+
+    if (elCash) {
+      elCash.textContent = `₹${money(remCash)}M`;
+      elCash.style.color = remCash <= 1.0 ? '#ff4757' : 'var(--accent-neon)';
+    }
+    if (elChest) {
+      elChest.textContent = `₹${money(remWarChest)}M`;
+      elChest.style.color = remWarChest === 0 ? '#ff4757' : 'var(--accent-gold)';
+    }
+    if (elFlow) {
+      elFlow.textContent = `${newCashflow>=0?'+':''}₹${money(newCashflow)}M/m`;
+      elFlow.style.color = newCashflow < 0 ? '#ff4757' : 'var(--accent-neon)';
+    }
+    if (elRatio) {
+      elRatio.textContent = `${newRatio}%`;
+      elRatio.style.color = newRatio > 70 ? '#ff4757' : 'var(--accent-gold)';
+    }
+    if (elFfpTag) {
+      if (newRatio > 85 || remCash < 1.0) {
+        elFfpTag.textContent = '● FFP RISK';
+        elFfpTag.style.color = '#ef4444';
+      } else if (newRatio > 70) {
+        elFfpTag.textContent = '● MONITORED';
+        elFfpTag.style.color = '#eab308';
+      } else {
+        elFfpTag.textContent = '● HEALTHY';
+        elFfpTag.style.color = '#00e599';
+      }
+    }
+  }
 }
 
 function finalizeTransferNegotiation(pid) {
@@ -2675,6 +2998,7 @@ function finalizeTransferNegotiation(pid) {
       if (sSal) sSal.textContent = `₹${money(data.salary)}M/yr`;
       if (det) det.textContent = data.message || `${p.name} has officially signed for ${c.name} on a ${data.years}-year contract!`;
       if (cele) cele.style.display = 'flex';
+      triggerLiveBudgetUpdate(`✍️ Signed: ${p.name} (-₹${money(data.fee)}M | ₹${money(data.salary)}M/yr)`, 'transfer');
       return;
     }
 
@@ -2786,6 +3110,7 @@ function counterHijackOffer(pid, hijackFee, hijackSalary, hijacker) {
       playSfx('flash');
       playSfx('deal');
       playSfx('applause');
+      triggerLiveBudgetUpdate(`🛡️ Hijack Thwarted: Deal Signed!`, 'transfer');
       alert(`Transfer Hijack Thwarted! ${data.message}`);
       document.getElementById('transferTalksModal')?.remove();
       refresh();
@@ -2815,27 +3140,33 @@ function makeTransferBid(pid, defaultFee) {
 }
 
 function loanPlayer(pid) {
+  const p = S.market.find(x => x.id === pid);
   post('/api/world4/transfer/loan', ref({
     club: S.selectedClub,
     playerId: pid,
     months: 12,
     fee: 2,
     salaryShare: 50
-  })).then(() => {
+  })).then(res => {
+    if (res.state) S = res.state;
     playSfx('deal');
+    triggerLiveBudgetUpdate(`🤝 Loan Deal Active: ${p?.name || 'Player'} (-₹2M fee)`, 'transfer');
     alert('Player successfully signed on a 1-year loan deal!');
     refresh();
   }).catch(err => alert(err.message));
 }
 
 function listForSale(pid, currentVal) {
+  const p = S.market.find(x => x.id === pid);
   const asking = prompt('Enter your asking price in ₹M:', currentVal);
   if (asking === null) return;
   post('/api/world4/transfer/sell', ref({
     club: S.selectedClub,
     playerId: pid,
     asking: +asking
-  })).then(() => {
+  })).then(res => {
+    if (res.state) S = res.state;
+    triggerLiveBudgetUpdate(`🏷️ Listed for Sale: ${p?.name || 'Player'} (₹${asking}M)`, 'transfer');
     alert('Player successfully listed on the global transfer list.');
     refresh();
   }).catch(err => alert(err.message));
@@ -2849,6 +3180,7 @@ function releasePlayerPrompt(pid) {
     playerId: pid
   })).then(res => {
     if (res.state) S = res.state;
+    triggerLiveBudgetUpdate(`📋 Player Released: ${p?.name || 'Player'} (Wage bill reduced)`, 'salary');
     openPlayerReleaseReport(res.result || res);
     refresh();
   }).catch(err => alert(err.message));
@@ -3106,6 +3438,7 @@ function executeScoutMission() {
     playSfx('deal');
     if (res.state) S = res.state;
     currentScoutReports = res.result?.reports || [];
+    triggerLiveBudgetUpdate('🔍 Scout Mission Dispatched (-₹1.5M)', 'transfer');
     renderScoutingAndAcademy(document.getElementById('gameContent'));
   }).catch(err => {
     alert(`Scout mission failed: ${err.message}`);
@@ -3135,6 +3468,7 @@ function submitCustomPlayer() {
     playSfx('deal');
     alert(`🎉 Academy Success! ${res.result?.player?.name} has graduated and signed a first-team contract with ${c.name}!`);
     if (res.state) S = res.state;
+    triggerLiveBudgetUpdate(`🎓 Academy Graduate Signed: ${res.result?.player?.name || 'Youth Player'}`, 'salary');
     renderScoutingAndAcademy(document.getElementById('gameContent'));
   }).catch(err => {
     alert(`Academy graduation error: ${err.message}`);
@@ -3577,6 +3911,7 @@ function confirmHireManager(id, name, salary) {
     alert(`Press Announcement: ${name} is officially appointed Head Coach of ${S.selectedClub}!`);
     document.getElementById('managerInterviewModal')?.remove();
     S = data;
+    triggerLiveBudgetUpdate(`👔 Manager Appointed: ${name} (₹${salary}M/yr)`, 'salary');
     renderGame();
   }).catch(err => {
     alert(err.message);
@@ -3736,14 +4071,150 @@ function submitBoardroomExpectations() {
 }
 
 // -------------------------------------------------------------
-// TAB 6: STADIUM & CLUB FINANCES (WITH CHARGED EXPANSIONS)
+// TAB 6: STADIUM & CLUB FINANCES (WITH LIVE BUDGET TRACKER & FFP)
 // -------------------------------------------------------------
 function renderStadiumEconomy(container) {
   const c = S.clubs.find(x => x.name === S.selectedClub);
   const currentCap = c.stadium?.capacity || 20000;
+  const b = c.budget || {
+    cash: c.cash || 0,
+    wageBillAnnual: 12.5,
+    wageBillPerMatch: 0.52,
+    projectedRevPerMatch: 1.25,
+    ticketRevPerMatch: 0.85,
+    merchRevPerMatch: 0.25,
+    sponsorPerMatch: 0.15,
+    sponsorAnnual: 3.6,
+    netCashflowPerMatch: 0.73,
+    projectedTurnoverAnnual: 30.0,
+    ffpRatio: 42,
+    ffpGrade: 'A',
+    ffpStatus: 'HEALTHY',
+    ffpColor: '#22c55e',
+    transferWarChest: Math.max(0, Math.round((c.cash * 0.6) * 10) / 10),
+    wageReserve: Math.max(0, Math.round((c.cash * 0.3) * 10) / 10),
+    emergencyReserve: Math.max(0, Math.round((c.cash * 0.1) * 10) / 10)
+  };
+
+  const allTx = Array.isArray(c.transactions) && c.transactions.length ? c.transactions : [
+    {
+      id: 'tx_init',
+      date: `Season ${S.season} · Matchday ${S.matchday || 0}`,
+      type: 'income',
+      amount: c.cash || 10,
+      category: 'starting_capital',
+      description: 'Owner Equity & Club Treasury Initial Allocation',
+      balanceAfter: c.cash || 10
+    }
+  ];
+
+  const filteredTx = allTx.filter(tx => {
+    if (activeLedgerFilter === 'income') return tx.type === 'income';
+    if (activeLedgerFilter === 'expense') return tx.type === 'expense';
+    if (activeLedgerFilter === 'matchday') return tx.category?.includes('ticket') || tx.category?.includes('gate');
+    if (activeLedgerFilter === 'transfers') return tx.category?.includes('player') || tx.category?.includes('transfer');
+    if (activeLedgerFilter === 'prizes') return tx.category?.includes('prize') || tx.category?.includes('derby') || tx.category?.includes('cup');
+    if (activeLedgerFilter === 'commercial') return tx.category?.includes('sponsor') || tx.category?.includes('merch') || tx.category?.includes('kit');
+    return true;
+  });
 
   container.innerHTML = `
     <div class="dashboard-grid">
+      <!-- LIVE BUDGET TRACKER & FFP HUB -->
+      <div class="game-card col-12">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-neon);">TREASURY &amp; FINANCIAL FAIR PLAY (FFP)</div>
+            <div class="card-header" style="margin:0;">
+              <h2>Live Club Budget &amp; Cashflow Tracker</h2>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="pill" style="font-size:12px;font-weight:800;padding:6px 12px;background:rgba(0,240,255,0.1);color:var(--accent-neon);border:1px solid rgba(0,240,255,0.3);">
+              💰 Club Treasury: ₹${money(c.cash)}M
+            </span>
+            <span class="pill" style="font-size:12px;font-weight:900;padding:6px 12px;background:${b.ffpGrade==='D'?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)'};color:${b.ffpGrade==='D'?'#fca5a5':'#86efac'};border:1px solid ${b.ffpGrade==='D'?'#ef4444':'#22c55e'};">
+              FFP Grade ${b.ffpGrade} · ${b.ffpStatus}
+            </span>
+          </div>
+        </div>
+
+        <!-- 3 Treasury Allocations -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(220px, 1fr));gap:12px;margin:18px 0;">
+          <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+            <div style="font-size:10.5px;color:var(--text-dim);font-weight:800;letter-spacing:0.04em;">TRANSFER WAR CHEST (60%)</div>
+            <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--accent-gold);margin-top:4px;">
+              ₹${money(b.transferWarChest)}M
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">
+              Unencumbered capital available for player fees and scouting
+            </div>
+          </div>
+
+          <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+            <div style="font-size:10.5px;color:var(--text-dim);font-weight:800;letter-spacing:0.04em;">WAGE RESERVE (30%)</div>
+            <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:var(--accent-neon);margin-top:4px;">
+              ₹${money(b.wageReserve)}M
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">
+              Reserved cash covering squad &amp; coach contracts
+            </div>
+          </div>
+
+          <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+            <div style="font-size:10.5px;color:var(--text-dim);font-weight:800;letter-spacing:0.04em;">EMERGENCY SAFETY CUSHION (10%)</div>
+            <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#38bdf8;margin-top:4px;">
+              ₹${money(b.emergencyReserve)}M
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px;">
+              Liquidity barrier protecting club against insolvency sanctions
+            </div>
+          </div>
+        </div>
+
+        <!-- Unit Economics & Matchday Cashflow -->
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-subtle);border-radius:14px;padding:18px;margin-bottom:12px;">
+          <div style="font-size:12px;color:var(--text-muted);font-weight:800;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:12px;">
+            MATCHDAY UNIT ECONOMICS &amp; RUN-RATE
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:12px;">
+            <div style="background:var(--bg-card-subtle);padding:10px 14px;border-radius:10px;">
+              <span style="font-size:11px;color:var(--text-dim);display:block;">Ticket Gate Rev:</span>
+              <b style="font-size:15px;color:#fff;">+₹${money(b.ticketRevPerMatch)}M</b>
+            </div>
+            <div style="background:var(--bg-card-subtle);padding:10px 14px;border-radius:10px;">
+              <span style="font-size:11px;color:var(--text-dim);display:block;">Merchandise Demand:</span>
+              <b style="font-size:15px;color:#fff;">+₹${money(b.merchRevPerMatch)}M</b>
+            </div>
+            <div style="background:var(--bg-card-subtle);padding:10px 14px;border-radius:10px;">
+              <span style="font-size:11px;color:var(--text-dim);display:block;">Sponsor Allocation:</span>
+              <b style="font-size:15px;color:#fff;">+₹${money(b.sponsorPerMatch)}M</b>
+            </div>
+            <div style="background:var(--bg-card-subtle);padding:10px 14px;border-radius:10px;">
+              <span style="font-size:11px;color:var(--text-dim);display:block;">Wage Bill / Match:</span>
+              <b style="font-size:15px;color:#ff7b92;">-₹${money(b.wageBillPerMatch)}M</b>
+            </div>
+            <div style="background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.25);padding:10px 14px;border-radius:10px;">
+              <span style="font-size:11px;color:var(--accent-neon);display:block;font-weight:700;">Net Cashflow / Match:</span>
+              <b style="font-size:17px;color:${b.netCashflowPerMatch >= 0 ? 'var(--accent-neon)' : '#ff4757'};">
+                ${b.netCashflowPerMatch >= 0 ? '+' : ''}₹${money(b.netCashflowPerMatch)}M
+              </b>
+            </div>
+          </div>
+
+          <!-- FFP Progress Bar -->
+          <div style="margin-top:16px;">
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-bottom:6px;">
+              <span style="color:var(--text-muted);">Wage-to-Turnover Ratio: <b style="color:#fff;">${b.ffpRatio}%</b> (UEFA/League Cap: 70%)</span>
+              <span style="color:var(--text-muted);">Turnover: <b style="color:var(--accent-gold);">₹${money(b.projectedTurnoverAnnual)}M/yr</b> · Wages: <b style="color:#ff7b92;">₹${money(b.wageBillAnnual)}M/yr</b></span>
+            </div>
+            <div style="height:8px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+              <div style="height:100%;width:${Math.min(100, b.ffpRatio)}%;background:${b.ffpRatio>85?'#ef4444':b.ffpRatio>70?'#f59e0b':'#22c55e'};border-radius:6px;transition:width 0.4s ease;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Stadium Expansion Center -->
       <div class="game-card col-7">
         <div class="card-kicker">VENUE INFRASTRUCTURE</div>
@@ -3823,6 +4294,65 @@ function renderStadiumEconomy(container) {
           </div>
         </div>
       </div>
+
+      <!-- REAL-TIME CLUB TRANSACTION LEDGER -->
+      <div class="game-card col-12">
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">FINANCIAL AUDIT TRAIL</div>
+            <div class="card-header" style="margin:0;">
+              <h2>Live Transaction Ledger (${filteredTx.length})</h2>
+            </div>
+          </div>
+          <!-- Filter Chips -->
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button class="btn btn-xs ${activeLedgerFilter==='all'?'btn-primary':'btn-secondary'}" onclick="filterLedger('all')">ALL</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='income'?'btn-primary':'btn-secondary'}" onclick="filterLedger('income')">🟢 INCOME</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='expense'?'btn-primary':'btn-secondary'}" onclick="filterLedger('expense')">🔴 EXPENSE</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='matchday'?'btn-primary':'btn-secondary'}" onclick="filterLedger('matchday')">⚽ MATCHDAY</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='transfers'?'btn-primary':'btn-secondary'}" onclick="filterLedger('transfers')">🤝 TRANSFERS</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='prizes'?'btn-primary':'btn-secondary'}" onclick="filterLedger('prizes')">🏆 PRIZES &amp; DERBY</button>
+            <button class="btn btn-xs ${activeLedgerFilter==='commercial'?'btn-primary':'btn-secondary'}" onclick="filterLedger('commercial')">👕 COMMERCIAL</button>
+          </div>
+        </div>
+
+        <div style="max-height:360px;overflow-y:auto;background:var(--bg-card-subtle);border-radius:12px;border:1px solid var(--border-subtle);">
+          <table style="width:100%;border-collapse:collapse;font-size:12.5px;">
+            <thead>
+              <tr style="border-bottom:1px solid var(--border-subtle);color:var(--text-dim);font-size:11px;font-weight:700;text-align:left;">
+                <th style="padding:10px 14px;">DATE / MATCHDAY</th>
+                <th style="padding:10px 14px;">CATEGORY</th>
+                <th style="padding:10px 14px;">DESCRIPTION</th>
+                <th style="padding:10px 14px;text-align:right;">AMOUNT</th>
+                <th style="padding:10px 14px;text-align:right;">BALANCE AFTER</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${filteredTx.map(tx => `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+                  <td style="padding:10px 14px;color:var(--text-muted);white-space:nowrap;">
+                    ${esc(tx.date || 'Season 1')}
+                  </td>
+                  <td style="padding:10px 14px;">
+                    <span class="pill" style="font-size:9.5px;font-weight:800;text-transform:uppercase;background:${tx.type==='income'?'rgba(34,197,94,0.15)':'rgba(239,68,68,0.15)'};color:${tx.type==='income'?'#86efac':'#fca5a5'};border:1px solid ${tx.type==='income'?'rgba(34,197,94,0.3)':'rgba(239,68,68,0.3)'};">
+                      ${esc(tx.category || tx.type)}
+                    </span>
+                  </td>
+                  <td style="padding:10px 14px;color:#fff;">
+                    ${esc(tx.description)}
+                  </td>
+                  <td style="padding:10px 14px;text-align:right;font-weight:800;color:${tx.type==='income'?'var(--accent-neon)':'#ff4757'};">
+                    ${tx.type==='income'?'+':'-'}₹${money(tx.amount)}M
+                  </td>
+                  <td style="padding:10px 14px;text-align:right;font-weight:700;color:var(--text-muted);">
+                    ₹${money(tx.balanceAfter)}M
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -3858,6 +4388,7 @@ function expandStadiumTier(addedSeats, cost) {
   })).then(data => {
     alert(`Success! Stadium capacity expanded to ${(currentCap + addedSeats).toLocaleString()} seats!`);
     S = data;
+    triggerLiveBudgetUpdate(`🏟️ Stadium Expanded: +${addedSeats.toLocaleString()} seats (-₹${cost}M)`, 'revenue');
     renderGame();
   }).catch(err => alert(err.message));
 }
@@ -3881,6 +4412,7 @@ function submitCustomExpansion() {
   })).then(data => {
     alert(`Stadium expansion complete! Capacity is now ${target.toLocaleString()} seats!`);
     S = data;
+    triggerLiveBudgetUpdate(`🏟️ Stadium Expanded: ${target.toLocaleString()} seats (-₹${cost}M)`, 'revenue');
     renderGame();
   }).catch(err => alert(err.message));
 }
@@ -3893,6 +4425,7 @@ function saveTicketPrice() {
   })).then(data => {
     alert('Ticket pricing updated successfully.');
     S = data;
+    triggerLiveBudgetUpdate(`🎟️ Matchday Pricing: ₹${ticket}/ticket updated`, 'revenue');
     renderGame();
   }).catch(err => alert(err.message));
 }
@@ -3937,6 +4470,7 @@ function signSponsorDeal(offerId, name) {
   })).then(data => {
     alert(`Congratulations! ${name} is now your official club sponsor!`);
     S = data;
+    triggerLiveBudgetUpdate(`🤝 Sponsor Signed: ${name} (+₹${data.clubs?.find(x=>x.name===S.selectedClub)?.sponsor?.value || 2.5}M/season)`, 'revenue');
     renderGame();
   }).catch(err => alert(err.message));
 }
@@ -4540,6 +5074,7 @@ function renderNewsFeed(container) {
 // -------------------------------------------------------------
 function simulateMatch() {
   post('/api/world4/match/simulate', ref({})).then(m => {
+    triggerLiveBudgetUpdate(`⚽ Matchday Revenue: +₹${money(m.revenue)}M Gate Receipts`, 'revenue');
     openMatchModal(m);
     refresh();
   }).catch(err => alert(err.message));
@@ -4651,6 +5186,7 @@ function viewPlayerCard(pid) {
 
       <div style="display:flex;gap:10px;">
         ${isMine ? `
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('playerInspectionModal').remove(); openContractRenewalModal('${p.id}')" style="border-color:rgba(0,240,255,0.4);color:var(--accent-neon);">✍️ WAGE / EXTEND</button>
           <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="document.getElementById('playerInspectionModal').remove(); listForSale('${p.id}', ${p.askingPrice})">LIST FOR SALE</button>
           <button class="btn btn-danger btn-sm" onclick="document.getElementById('playerInspectionModal').remove(); releasePlayerPrompt('${p.id}')">RELEASE</button>
         ` : `
@@ -4669,6 +5205,7 @@ function advanceSeason() {
   post('/api/world4/season/advance', ref({})).then(data => {
     if (data.state) S = data.state;
     else S = data;
+    triggerLiveBudgetUpdate(`🏆 Season ${data.season || S.season} Advanced: Prize pool & salary ledger rolled over`, 'revenue');
     renderGame();
     openSeasonGalaModal(data.verdict, data.season || S.season);
   }).catch(err => alert(err.message));
@@ -4743,11 +5280,1397 @@ function openSeasonGalaModal(verdict, nextSeason) {
         </div>
       </div>
 
-      <button class="btn btn-primary" style="width:100%;padding:14px;font-size:15px;font-weight:900;" onclick="document.getElementById('seasonGalaModal').remove()">
-        🚀 COMMENCE SEASON ${nextSeason} &amp; ENTER SUMMER TRANSFER WINDOW
+      <!-- Awards Gala Summary Snapshot -->
+      ${verdict?.awards ? `
+        <div style="background:linear-gradient(135deg, rgba(245,158,11,0.15), rgba(0,240,255,0.08));border:1px solid var(--accent-gold);border-radius:14px;padding:16px;margin-bottom:20px;text-align:left;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:800;color:var(--accent-gold);letter-spacing:1px;text-transform:uppercase;">
+              🏆 ANNUAL BALLON D'OR &amp; BEST PLAYERS OF THE SEASON
+            </div>
+            <button class="btn btn-secondary btn-xs" onclick="document.getElementById('seasonGalaModal').remove(); switchTab('awards');" style="color:var(--accent-gold);border-color:var(--accent-gold);font-weight:800;">
+              FULL AWARDS GALA &rarr;
+            </button>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;">
+              <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">WORLD FOOTBALLER OF THE YEAR (BALLON D'OR)</div>
+              <div style="font-size:16px;font-weight:900;color:#fff;margin:3px 0;">
+                🥇 ${esc(verdict.awards?.global?.ballonDor?.winner?.name || 'World Star')}
+              </div>
+              <div style="font-size:12px;color:var(--accent-neon);">
+                ${esc(verdict.awards?.global?.ballonDor?.winner?.club || '')} · Rating ${verdict.awards?.global?.ballonDor?.winner?.rating || 88} (${verdict.awards?.global?.ballonDor?.winner?.votes || 450} votes)
+              </div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;">
+              <div style="font-size:10.5px;color:var(--text-dim);font-weight:700;">WORLD GOLDEN BOOT &amp; GLOVE</div>
+              <div style="font-size:13px;font-weight:800;color:#fff;margin:3px 0;">
+                👟 ${esc(verdict.awards?.global?.goldenBoot?.name || 'Scorer')}: <b style="color:var(--accent-gold);">${verdict.awards?.global?.goldenBoot?.goals || 0} Goals</b>
+              </div>
+              <div style="font-size:13px;font-weight:800;color:#fff;">
+                🧤 ${esc(verdict.awards?.global?.goldenGlove?.name || 'Keeper')}: <b style="color:var(--accent-neon);">${verdict.awards?.global?.goldenGlove?.cleanSheets || 0} Clean Sheets</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <!-- Bi-Annual Global Cup Announcement if Season % 2 === 0 -->
+      ${(nextSeason % 2 === 0) ? `
+        <div style="background:linear-gradient(135deg, rgba(16,185,129,0.18), rgba(6,182,212,0.15));border:1px solid #10b981;border-radius:14px;padding:16px;margin-bottom:20px;text-align:left;">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div style="font-size:32px;">🌍</div>
+            <div>
+              <div style="font-size:11px;font-weight:800;color:#10b981;letter-spacing:1px;text-transform:uppercase;">
+                BI-ANNUAL TOURNAMENT ACTIVATED · SEASON ${nextSeason}
+              </div>
+              <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:#fff;">
+                Global Club World Championship Inauguration
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                The biennial tournament for champions of every league is officially open! 16 elite clubs compete across 4 groups for the ₹50M world crown.
+              </div>
+            </div>
+          </div>
+        </div>
+      ` : ''}
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-secondary" style="flex:1;padding:14px;font-size:14px;font-weight:800;" onclick="document.getElementById('seasonGalaModal').remove(); switchTab('awards');">
+          🏆 VIEW FULL AWARDS GALA
+        </button>
+        <button class="btn btn-primary" style="flex:2;padding:14px;font-size:14px;font-weight:900;" onclick="document.getElementById('seasonGalaModal').remove()">
+          🚀 COMMENCE SEASON ${nextSeason} &amp; ENTER SUMMER WINDOW
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// -------------------------------------------------------------
+// AWARDS GALA & BEST PLAYERS FROM EVERY LEAGUE
+// -------------------------------------------------------------
+let activeAwardsCountry = null;
+let activeAwardsDivision = 1;
+let activeAwardsSeasonIndex = 0;
+
+function renderAwardsGala(container) {
+  const myClub = S.clubs.find(x => x.name === S.selectedClub) || {};
+  const country = activeAwardsCountry || myClub.country || 'England';
+  const division = activeAwardsDivision || 1;
+
+  // Retrieve awards record from S.awardsHistory
+  let awardsRecord = S.awardsHistory && S.awardsHistory[activeAwardsSeasonIndex];
+
+  // If no awards exist yet, synthesize a real-time preview of projected awards based on current stats!
+  if (!awardsRecord) {
+    const contractedPlayers = [];
+    S.clubs.forEach(c => {
+      (c.players || []).forEach(pid => {
+        const p = S.market.find(m => m.id === pid);
+        if (p) contractedPlayers.push({ p, club: c });
+      });
+    });
+
+    const getScore = (item) => {
+      const { p, club: c } = item;
+      return (p.rating || 70) * 1.5 + ((p.form || 75) - 60) * 0.4 + (p.goalsScored || 0) * 3.5 + (p.assists || 0) * 2.5 + (c.division === 1 ? 14 : c.division === 2 ? 8 : 4);
+    };
+
+    const ranked = [...contractedPlayers].sort((a, b) => getScore(b) - getScore(a));
+    const top5 = ranked.slice(0, 5).map((x, idx) => ({
+      rank: idx + 1,
+      id: x.p.id,
+      name: x.p.name,
+      rating: x.p.rating,
+      position: x.p.position,
+      nationality: x.p.nationality || 'International',
+      club: x.club.name,
+      country: x.club.country,
+      division: x.club.division,
+      goals: x.p.goalsScored || 0,
+      assists: x.p.assists || 0,
+      votes: 520 - (idx * 65),
+      points: Math.round(getScore(x))
+    }));
+
+    const w = top5[0] || { name: 'Superstar Striker', club: 'City FC', rating: 91, votes: 520, points: 198, position: 'CF' };
+    const scorers = [...contractedPlayers].filter(x => (x.p.goalsScored || 0) > 0).sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0));
+    const gb = scorers[0] ? { name: scorers[0].p.name, club: scorers[0].club.name, goals: scorers[0].p.goalsScored || 14, rating: scorers[0].p.rating } : { name: w.name, club: w.club, goals: 12, rating: w.rating };
+    const gks = contractedPlayers.filter(x => x.p.position === 'GK').sort((a, b) => getScore(b) - getScore(a));
+    const gg = gks[0] ? { name: gks[0].p.name, club: gks[0].club.name, cleanSheets: gks[0].p.cleanSheets || 5, rating: gks[0].p.rating } : { name: 'Thibaut Courtois', club: 'Real Madrid', cleanSheets: 7, rating: 90 };
+
+    awardsRecord = {
+      season: S.season,
+      isLivePreview: true,
+      global: {
+        ballonDor: { winner: w, podium: top5 },
+        goldenBoot: gb,
+        goldenGlove: gg,
+        playmaker: { name: ranked.find(x => ['AMF','CMF'].includes(x.p.position))?.p.name || 'Kevin De Bruyne', club: 'Manchester City', position: 'AMF', rating: 91 },
+        goldenBoy: { name: ranked.find(x => (x.p.age || 25) <= 21)?.p.name || 'Lamine Yamal', club: 'Barcelona', age: 19, rating: 88 }
+      },
+      leagues: []
+    };
+  }
+
+  const ballon = awardsRecord.global?.ballonDor;
+  const winner = ballon?.winner;
+  const podium = ballon?.podium || [];
+
+  // Filter or generate league awards for selected country & division
+  const countries = [...new Set(S.clubs.map(c => c.country))];
+  const targetLeagueAwards = awardsRecord.leagues?.find(l => l.country === country && l.division === division);
+
+  // Fallback league calculation if not in archive or live preview
+  const divClubs = S.clubs.filter(c => c.country === country && c.division === division);
+  const divPlayers = [];
+  divClubs.forEach(c => {
+    (c.players || []).forEach(pid => {
+      const p = S.market.find(m => m.id === pid);
+      if (p) divPlayers.push({ p, club: c });
+    });
+  });
+  divPlayers.sort((a, b) => ((b.p.rating || 70) * 1.5 + (b.p.goalsScored || 0) * 3) - ((a.p.rating || 70) * 1.5 + (a.p.goalsScored || 0) * 3));
+
+  const leagueMVP = targetLeagueAwards?.mvp || (divPlayers[0] ? {
+    name: divPlayers[0].p.name,
+    club: divPlayers[0].club.name,
+    rating: divPlayers[0].p.rating,
+    position: divPlayers[0].p.position
+  } : null);
+
+  const leagueGB = targetLeagueAwards?.goldenBoot || (divPlayers[0] ? {
+    name: [...divPlayers].sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0))[0]?.p.name || divPlayers[0].p.name,
+    club: [...divPlayers].sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0))[0]?.club.name || divPlayers[0].club.name,
+    goals: [...divPlayers].sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0))[0]?.p.goalsScored || 0
+  } : null);
+
+  const totsList = targetLeagueAwards?.tots || divPlayers.slice(0, 11).map(x => ({
+    name: x.p.name,
+    position: x.p.position,
+    rating: x.p.rating,
+    club: x.club.name,
+    goals: x.p.goalsScored || 0
+  }));
+
+  container.innerHTML = `
+    <div class="game-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="card-kicker">ANNUAL HONOURS &amp; INDIVIDUAL ACCOLADES</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;display:flex;align-items:center;gap:10px;">
+            🏆 World Football Awards Gala · Season ${awardsRecord.season}
+            ${awardsRecord.isLivePreview ? '<span class="pill" style="background:rgba(245,158,11,0.2);color:var(--accent-gold);font-size:11px;border:1px solid var(--accent-gold);">LIVE PROJECTIONS</span>' : '<span class="pill pill-season">OFFICIAL ARCHIVE</span>'}
+          </h2>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${S.awardsHistory && S.awardsHistory.length > 1 ? `
+            <select class="form-control" style="width:160px;" onchange="activeAwardsSeasonIndex = Number(this.value); renderAwardsGala(document.getElementById('gameContent'))">
+              ${S.awardsHistory.map((h, i) => `
+                <option value="${i}" ${activeAwardsSeasonIndex === i ? 'selected' : ''}>Season ${h.season} Awards</option>
+              `).join('')}
+            </select>
+          ` : ''}
+          <button class="btn btn-secondary btn-sm" onclick="switchTab('tournament')" style="color:var(--accent-gold);border-color:var(--accent-gold);">
+            🌍 VIEW GLOBAL CUP &rarr;
+          </button>
+        </div>
+      </div>
+
+      <!-- BALLON D'OR / WORLD FOOTBALLER OF THE YEAR SECTION -->
+      <div style="background:radial-gradient(ellipse at top, rgba(245,158,11,0.22) 0%, rgba(10,15,24,0.95) 75%);border:1px solid var(--accent-gold);border-radius:18px;padding:24px;margin-bottom:24px;box-shadow:0 12px 40px rgba(0,0,0,0.6);">
+        <div style="text-align:center;margin-bottom:20px;">
+          <span class="pill" style="background:var(--accent-gold);color:#0a0f18;font-weight:900;font-size:11px;padding:4px 14px;letter-spacing:1px;">
+            THE PRESTIGIOUS BALLON D'OR 2026
+          </span>
+          <h3 style="font-family:var(--font-display);font-size:28px;font-weight:900;color:#fff;margin:10px 0 4px;">
+            World Footballer of the Year
+          </h3>
+          <p style="font-size:13px;color:var(--text-muted);max-width:600px;margin:0 auto;">
+            Awarded to the single most dominant player on the planet based on goals, assists, clean sheets, division strength, and matchday ratings.
+          </p>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:center;">
+          <!-- Winner Golden Card -->
+          <div style="background:rgba(0,0,0,0.5);border:2px solid var(--accent-gold);border-radius:16px;padding:20px;display:flex;align-items:center;gap:20px;box-shadow:0 0 30px rgba(245,158,11,0.2);">
+            <div style="width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg, #f59e0b, #d97706);display:flex;align-items:center;justify-content:center;font-size:46px;box-shadow:0 0 25px rgba(245,158,11,0.5);border:3px solid #fff;flex-shrink:0;">
+              🏆
+            </div>
+            <div style="flex:1;">
+              <div style="font-size:11px;font-weight:900;color:var(--accent-gold);letter-spacing:1.5px;text-transform:uppercase;">
+                BALLON D'OR WINNER 2026
+              </div>
+              <div style="font-family:var(--font-display);font-size:26px;font-weight:900;color:#fff;margin:4px 0;">
+                ${esc(winner?.name || 'World Star')}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--accent-neon);font-weight:700;">
+                <span>${esc(winner?.club || 'Elite Club')}</span>
+                <span>•</span>
+                <span>${esc(winner?.position || 'CF')}</span>
+                <span>•</span>
+                <span>Overall: ${winner?.rating || 90}</span>
+              </div>
+              <div style="margin-top:10px;display:flex;gap:10px;font-size:12px;">
+                <span class="pill" style="background:rgba(245,158,11,0.25);color:var(--accent-gold);">
+                  🗳️ ${winner?.votes || 520} Global Votes
+                </span>
+                <span class="pill" style="background:rgba(0,240,255,0.2);color:var(--accent-neon);">
+                  ⚽ ${winner?.goals || 0} Goals
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Podium Rankings (2nd to 5th) -->
+          <div style="background:rgba(0,0,0,0.35);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+            <div style="font-size:11px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">
+              OFFICIAL BALLON D'OR VOTING PODIUM
+            </div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${podium.slice(1, 5).map(p => `
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:var(--bg-card-subtle);border-radius:8px;font-size:13px;">
+                  <div style="display:flex;align-items:center;gap:10px;">
+                    <b style="color:${p.rank === 2 ? '#e2e8f0' : p.rank === 3 ? '#b45309' : 'var(--text-dim)'};font-size:14px;">
+                      #${p.rank}
+                    </b>
+                    <div>
+                      <b style="color:#fff;">${esc(p.name)}</b>
+                      <span style="color:var(--text-muted);font-size:11.5px;margin-left:6px;">${esc(p.club)} (${p.position})</span>
+                    </div>
+                  </div>
+                  <div style="text-align:right;">
+                    <b style="color:var(--accent-gold);">${p.votes} pts</b>
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- WORLD MAJOR HONOURS CARDS (Boot, Glove, Playmaker, Wonderkid) -->
+      <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:14px;margin-bottom:26px;">
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+          <div style="font-size:26px;margin-bottom:8px;">👟</div>
+          <div style="font-size:10.5px;font-weight:800;color:var(--accent-gold);text-transform:uppercase;">WORLD GOLDEN BOOT</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:900;color:#fff;margin:4px 0 2px;">
+            ${esc(awardsRecord.global?.goldenBoot?.name || 'Top Scorer')}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            ${esc(awardsRecord.global?.goldenBoot?.club || '')}
+          </div>
+          <div class="pill" style="background:rgba(245,158,11,0.2);color:var(--accent-gold);font-weight:800;font-size:11.5px;">
+            ${awardsRecord.global?.goldenBoot?.goals || 0} Goals Scored
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+          <div style="font-size:26px;margin-bottom:8px;">🧤</div>
+          <div style="font-size:10.5px;font-weight:800;color:var(--accent-neon);text-transform:uppercase;">WORLD GOLDEN GLOVE</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:900;color:#fff;margin:4px 0 2px;">
+            ${esc(awardsRecord.global?.goldenGlove?.name || 'Top Keeper')}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            ${esc(awardsRecord.global?.goldenGlove?.club || '')}
+          </div>
+          <div class="pill" style="background:rgba(0,240,255,0.2);color:var(--accent-neon);font-weight:800;font-size:11.5px;">
+            ${awardsRecord.global?.goldenGlove?.cleanSheets || 0} Clean Sheets
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+          <div style="font-size:26px;margin-bottom:8px;">🎯</div>
+          <div style="font-size:10.5px;font-weight:800;color:#38bdf8;text-transform:uppercase;">WORLD PLAYMAKER</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:900;color:#fff;margin:4px 0 2px;">
+            ${esc(awardsRecord.global?.playmaker?.name || 'Midfield Maestro')}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            ${esc(awardsRecord.global?.playmaker?.club || '')} (${awardsRecord.global?.playmaker?.position || 'AMF'})
+          </div>
+          <div class="pill" style="background:rgba(56,189,248,0.2);color:#38bdf8;font-weight:800;font-size:11.5px;">
+            Overall: ${awardsRecord.global?.playmaker?.rating || 88}
+          </div>
+        </div>
+
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+          <div style="font-size:26px;margin-bottom:8px;">💎</div>
+          <div style="font-size:10.5px;font-weight:800;color:#ec4899;text-transform:uppercase;">WORLD GOLDEN BOY (U21)</div>
+          <div style="font-family:var(--font-display);font-size:17px;font-weight:900;color:#fff;margin:4px 0 2px;">
+            ${esc(awardsRecord.global?.goldenBoy?.name || 'Wonderkid')}
+          </div>
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px;">
+            ${esc(awardsRecord.global?.goldenBoy?.club || '')} (Age ${awardsRecord.global?.goldenBoy?.age || 20})
+          </div>
+          <div class="pill" style="background:rgba(236,72,153,0.2);color:#ec4899;font-weight:800;font-size:11.5px;">
+            Prodigy: +2 Rating Upgrade
+          </div>
+        </div>
+      </div>
+
+      <!-- PERSISTENT BEST PLAYERS FROM EVERY LEAGUE & TEAM OF THE SEASON -->
+      <div style="border-top:1px solid var(--border-subtle);padding-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+          <div>
+            <div class="card-kicker">DOMESTIC LEAGUE HONOURS</div>
+            <h3 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:#fff;">
+              Persistent Best Players &amp; Team of the Season (TOTS)
+            </h3>
+          </div>
+
+          <!-- Country & Division Filter Controls -->
+          <div style="display:flex;gap:10px;align-items:center;">
+            <select class="form-control" style="width:170px;" onchange="activeAwardsCountry = this.value; renderAwardsGala(document.getElementById('gameContent'))">
+              ${countries.map(cty => `
+                <option value="${cty}" ${country === cty ? 'selected' : ''}>${cty}</option>
+              `).join('')}
+            </select>
+            <select class="form-control" style="width:160px;" onchange="activeAwardsDivision = Number(this.value); renderAwardsGala(document.getElementById('gameContent'))">
+              <option value="1" ${division === 1 ? 'selected' : ''}>Division 1 (Top Flight)</option>
+              <option value="2" ${division === 2 ? 'selected' : ''}>Division 2</option>
+              <option value="3" ${division === 3 ? 'selected' : ''}>Division 3</option>
+              <option value="4" ${division === 4 ? 'selected' : ''}>Division 4</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- League MVP & Golden Boot Bar -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+          <div style="background:rgba(0,240,255,0.06);border:1px solid rgba(0,240,255,0.25);border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:32px;">🥇</div>
+            <div>
+              <div style="font-size:11px;font-weight:800;color:var(--accent-neon);text-transform:uppercase;">
+                ${country} D${division} PLAYER OF THE SEASON (MVP)
+              </div>
+              <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;">
+                ${esc(leagueMVP?.name || 'No Data')}
+              </div>
+              <div style="font-size:12.5px;color:var(--text-muted);">
+                ${esc(leagueMVP?.club || '')} · Position: ${leagueMVP?.position || 'FWD'} · Rating: ${leagueMVP?.rating || 80}
+              </div>
+            </div>
+          </div>
+
+          <div style="background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:14px;display:flex;align-items:center;gap:14px;">
+            <div style="font-size:32px;">👟</div>
+            <div>
+              <div style="font-size:11px;font-weight:800;color:var(--accent-gold);text-transform:uppercase;">
+                ${country} D${division} TOP GOALSCORER
+              </div>
+              <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;">
+                ${esc(leagueGB?.name || 'No Data')}
+              </div>
+              <div style="font-size:12.5px;color:var(--text-muted);">
+                ${esc(leagueGB?.club || '')} · <b style="color:var(--accent-gold);">${leagueGB?.goals || 0} Goals</b>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Official Team of the Season (TOTS XI) Pitch Lineup & Grid -->
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+            <div style="font-size:12px;font-weight:800;color:#fff;letter-spacing:1px;text-transform:uppercase;">
+              ⭐ OFFICIAL TEAM OF THE SEASON (BEST XI) · ${country.toUpperCase()} DIVISION ${division}
+            </div>
+            <div style="font-size:11.5px;color:var(--accent-neon);font-weight:700;">
+              TACTICAL FORMATION: 4-3-3 ATTACKING
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(180px, 1fr));gap:12px;">
+            ${totsList.map((tp, idx) => `
+              <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.3);">
+                <span class="pill" style="background:var(--accent-gold);color:#0a0f18;font-size:9.5px;font-weight:900;padding:2px 8px;margin-bottom:6px;display:inline-block;">
+                  TOTS XI · ${tp.position}
+                </span>
+                <div style="font-family:var(--font-display);font-size:14.5px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  ${esc(tp.name)}
+                </div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin:2px 0 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  ${esc(tp.club)}
+                </div>
+                <div style="display:flex;justify-content:center;gap:6px;font-size:11px;">
+                  <span class="pill" style="background:rgba(0,240,255,0.15);color:var(--accent-neon);font-weight:800;">
+                    OVR ${tp.rating}
+                  </span>
+                  ${tp.goals ? `<span class="pill" style="background:rgba(245,158,11,0.15);color:var(--accent-gold);font-weight:800;">${tp.goals}G</span>` : ''}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// -------------------------------------------------------------
+// BI-ANNUAL GLOBAL TOURNAMENT (EVERY 2 YEARS)
+// -------------------------------------------------------------
+function renderGlobalTournament(container) {
+  const t = S.globalTournament;
+  const isEvenSeason = (S.season % 2 === 0);
+
+  if (!t) {
+    container.innerHTML = `
+      <div class="game-card" style="text-align:center;padding:40px 20px;">
+        <div style="width:72px;height:72px;border-radius:20px;background:linear-gradient(135deg, rgba(245,158,11,0.25), rgba(0,240,255,0.15));border:2px solid var(--accent-gold);display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:38px;box-shadow:0 0 35px rgba(245,158,11,0.3);">
+          🌍
+        </div>
+        <span class="pill" style="background:var(--accent-gold);color:#0a0f18;font-weight:900;font-size:11.5px;padding:4px 14px;">
+          BI-ANNUAL GLOBAL CHAMPIONSHIP (EVERY 2 YEARS)
+        </span>
+        <h2 style="font-family:var(--font-display);font-size:28px;font-weight:900;color:#fff;margin:14px 0 6px;">
+          Global Club World Championship
+        </h2>
+        <p style="color:var(--text-muted);font-size:14px;max-width:620px;margin:0 auto 24px;line-height:1.6;">
+          Every 2 years (Season 2, Season 4, Season 6...), the top elite clubs from every league and division across England, Spain, Germany, Italy, France, India and the world qualify for the ultimate 16-club World Championship.
+        </p>
+
+        <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;max-width:540px;margin:0 auto 26px;padding:18px;text-align:left;">
+          <div style="font-size:11.5px;font-weight:800;color:var(--accent-neon);text-transform:uppercase;margin-bottom:8px;">
+            QUALIFICATION &amp; PRIZE MONEY RULES:
+          </div>
+          <ul style="font-size:13px;color:var(--text-muted);padding-left:18px;line-height:1.7;">
+            <li>16 elite clubs compete across 4 global groups (A, B, C, D).</li>
+            <li>Top 2 from each group advance to Quarter-Finals, Semi-Finals, and Grand Final.</li>
+            <li>Champion receives <b style="color:var(--accent-gold);">₹50.0M Grand Prize</b> + 12 Reputation Silverware!</li>
+            <li>Runner-up receives <b style="color:var(--accent-neon);">₹25.0M Runners-Up Prize</b>.</li>
+          </ul>
+        </div>
+
+        <button class="btn btn-primary" style="padding:14px 28px;font-size:15px;font-weight:900;background:linear-gradient(90deg, #f59e0b, #00f0ff);" onclick="launchGlobalTournamentNow()">
+          🚀 INAUGURATE GLOBAL CLUB WORLD CHAMPIONSHIP NOW
+        </button>
+      </div>
+    `;
+    return;
+  }
+
+  // Active Tournament view
+  const myClub = S.clubs.find(x => x.name === S.selectedClub);
+  const statusLabel = t.status === 'groups' ? `Group Stage · Matchday ${t.currentRound} of 3`
+    : t.status === 'quarter_finals' ? 'Quarter-Finals (Round of 8)'
+    : t.status === 'semi_finals' ? 'Semi-Finals (Final 4)'
+    : t.status === 'final' ? '🏆 GRAND FINAL SHOWDOWN'
+    : '👑 TOURNAMENT COMPLETED';
+
+  container.innerHTML = `
+    <div class="game-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+        <div>
+          <div class="card-kicker">BI-ANNUAL WORLD CUP COMPETITION · EDITION ${t.edition || 1}</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;display:flex;align-items:center;gap:10px;">
+            🌍 Global Club World Championship · Season ${t.season}
+            <span class="pill" style="background:${t.status==='completed'?'#22c55e':'var(--accent-gold)'};color:#0a0f18;font-weight:900;font-size:11px;">
+              ${statusLabel}
+            </span>
+          </h2>
+        </div>
+        <div style="display:flex;gap:8px;">
+          ${t.status !== 'completed' ? `
+            <button class="btn btn-primary btn-sm" style="background:linear-gradient(90deg, #f59e0b, #10b981);font-weight:900;padding:8px 18px;" onclick="simulateTournamentRoundUI()">
+              ⚡ SIMULATE ${t.status === 'groups' ? `GROUP MATCHDAY ${t.currentRound}` : 'KNOCKOUT ROUND'}
+            </button>
+          ` : `
+            <button class="btn btn-secondary btn-sm" onclick="launchGlobalTournamentNow()">
+              🔄 START NEW TOURNAMENT EDITION
+            </button>
+          `}
+        </div>
+      </div>
+
+      <!-- Champion Announcement if completed -->
+      ${t.champion ? `
+        <div style="background:radial-gradient(ellipse at center, rgba(245,158,11,0.25) 0%, rgba(10,15,24,0.9) 75%);border:2px solid var(--accent-gold);border-radius:16px;padding:24px;margin-bottom:24px;text-align:center;box-shadow:0 0 35px rgba(245,158,11,0.25);">
+          <div style="font-size:48px;margin-bottom:6px;">🏆</div>
+          <div style="font-size:11.5px;font-weight:900;color:var(--accent-gold);letter-spacing:2px;text-transform:uppercase;">
+            GLOBAL CLUB WORLD CHAMPIONS
+          </div>
+          <h3 style="font-family:var(--font-display);font-size:30px;font-weight:900;color:#fff;margin:6px 0;">
+            ${esc(t.champion)}
+          </h3>
+          <p style="font-size:14px;color:var(--accent-neon);font-weight:700;margin-bottom:12px;">
+            Defeated ${esc(t.runnerUp)} in the Grand Final to lift the World Crown &amp; ₹50M Grand Prize!
+          </p>
+        </div>
+      ` : ''}
+
+      <!-- 4 GROUPS DISPLAY (A, B, C, D) -->
+      <div style="margin-bottom:26px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          GROUP STAGE STANDINGS (TOP 2 ADVANCE TO QUARTER-FINALS)
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:16px;">
+          ${['A', 'B', 'C', 'D'].map(gKey => {
+            const grp = t.groups?.[gKey];
+            if (!grp) return '';
+            return `
+              <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <b style="color:var(--accent-gold);font-size:13px;font-family:var(--font-display);">GROUP ${gKey}</b>
+                  <span style="font-size:11px;color:var(--text-muted);">Top 2 Qualify</span>
+                </div>
+                <table class="roster-table" style="font-size:12px;">
+                  <thead>
+                    <tr>
+                      <th>Club</th>
+                      <th style="width:30px;">P</th>
+                      <th style="width:30px;">W</th>
+                      <th style="width:30px;">D</th>
+                      <th style="width:30px;">L</th>
+                      <th style="width:35px;">GD</th>
+                      <th style="width:35px;color:var(--accent-neon);">Pts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${(grp.standings || []).map((row, idx) => `
+                      <tr style="${row.clubName === myClub?.name ? 'background:rgba(0,240,255,0.08);' : ''}">
+                        <td>
+                          <div style="display:flex;align-items:center;gap:6px;">
+                            <span style="color:${idx < 2 ? '#22c55e' : 'var(--text-dim)'};font-weight:800;font-size:11px;">${idx + 1}</span>
+                            <b style="color:${row.clubName === myClub?.name ? 'var(--accent-neon)' : '#fff'};">${esc(row.clubName)}</b>
+                          </div>
+                        </td>
+                        <td>${row.played}</td>
+                        <td>${row.won}</td>
+                        <td>${row.drawn}</td>
+                        <td>${row.lost}</td>
+                        <td style="color:${row.gd > 0 ? '#22c55e' : row.gd < 0 ? '#ef4444' : 'inherit'};">${row.gd > 0 ? '+' : ''}${row.gd}</td>
+                        <td><b style="color:var(--accent-gold);">${row.points}</b></td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- KNOCKOUT BRACKET SECTION -->
+      <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:16px;padding:20px;">
+        <div style="font-size:12px;font-weight:800;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;margin-bottom:14px;">
+          GLOBAL KNOCKOUT BRACKET &amp; RESULTS
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;">
+          <!-- Quarter Finals -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--accent-neon);margin-bottom:8px;">QUARTER-FINALS</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${(t.knockout?.quarterFinals || []).map((qf, i) => `
+                <div style="background:rgba(0,0,0,0.35);border:1px solid ${qf.played ? 'var(--border-subtle)' : 'rgba(255,255,255,0.06)'};border-radius:8px;padding:8px 10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;color:${qf.winner === qf.home ? 'var(--accent-neon)' : '#fff'};font-weight:${qf.winner === qf.home ? '800' : '500'};">
+                    <span>${esc(qf.home)}</span>
+                    <b>${qf.played ? qf.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${qf.winner === qf.away ? 'var(--accent-neon)' : '#fff'};font-weight:${qf.winner === qf.away ? '800' : '500'};margin-top:4px;">
+                    <span>${esc(qf.away)}</span>
+                    <b>${qf.played ? qf.awayGoals : '-'}</b>
+                  </div>
+                  ${qf.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:2px;">(${qf.penalties.home}-${qf.penalties.away} pens)</div>` : ''}
+                </div>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- Semi Finals -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#38bdf8;margin-bottom:8px;">SEMI-FINALS</div>
+            <div style="display:flex;flex-direction:column;gap:14px;justify-content:center;height:85%;">
+              ${(t.knockout?.semiFinals || []).length ? t.knockout.semiFinals.map(sf => `
+                <div style="background:rgba(0,0,0,0.35);border:1px solid ${sf.played ? 'var(--border-subtle)' : 'rgba(255,255,255,0.06)'};border-radius:8px;padding:10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;color:${sf.winner === sf.home ? 'var(--accent-neon)' : '#fff'};font-weight:${sf.winner === sf.home ? '800' : '500'};">
+                    <span>${esc(sf.home)}</span>
+                    <b>${sf.played ? sf.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${sf.winner === sf.away ? 'var(--accent-neon)' : '#fff'};font-weight:${sf.winner === sf.away ? '800' : '500'};margin-top:6px;">
+                    <span>${esc(sf.away)}</span>
+                    <b>${sf.played ? sf.awayGoals : '-'}</b>
+                  </div>
+                  ${sf.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:2px;">(${sf.penalties.home}-${sf.penalties.away} pens)</div>` : ''}
+                </div>
+              `).join('') : '<div style="color:var(--text-dim);font-size:12px;">Awaiting QF winners...</div>'}
+            </div>
+          </div>
+
+          <!-- Grand Final -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--accent-gold);margin-bottom:8px;">🏆 GRAND FINAL</div>
+            <div style="display:flex;align-items:center;height:85%;">
+              ${t.knockout?.final ? `
+                <div style="background:radial-gradient(ellipse at top, rgba(245,158,11,0.2), rgba(0,0,0,0.6));border:2px solid var(--accent-gold);border-radius:10px;padding:14px;font-size:12.5px;width:100%;box-shadow:0 0 20px rgba(245,158,11,0.2);">
+                  <div style="display:flex;justify-content:space-between;color:${t.knockout.final.winner === t.knockout.final.home ? 'var(--accent-gold)' : '#fff'};font-weight:${t.knockout.final.winner === t.knockout.final.home ? '900' : '600'};">
+                    <span>${esc(t.knockout.final.home)}</span>
+                    <b>${t.knockout.final.played ? t.knockout.final.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${t.knockout.final.winner === t.knockout.final.away ? 'var(--accent-gold)' : '#fff'};font-weight:${t.knockout.final.winner === t.knockout.final.away ? '900' : '600'};margin-top:8px;">
+                    <span>${esc(t.knockout.final.away)}</span>
+                    <b>${t.knockout.final.played ? t.knockout.final.awayGoals : '-'}</b>
+                  </div>
+                  ${t.knockout.final.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:4px;">(${t.knockout.final.penalties.home}-${t.knockout.final.penalties.away} pens)</div>` : ''}
+                  ${t.champion ? `<div style="text-align:center;margin-top:10px;color:var(--accent-gold);font-weight:900;font-size:12px;">👑 ${esc(t.champion)} CHAMPIONS!</div>` : ''}
+                </div>
+              ` : '<div style="color:var(--text-dim);font-size:12px;">Awaiting Semi-Final winners...</div>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function launchGlobalTournamentNow() {
+  post('/api/world4/tournament', ref({})).then(data => {
+    if (data.tournament) S.globalTournament = data.tournament;
+    renderGame();
+    switchTab('tournament');
+  }).catch(err => {
+    // Call GET fallback
+    get('/api/world4/tournament').then(d => {
+      if (d.tournament) S.globalTournament = d.tournament;
+      renderGame();
+      switchTab('tournament');
+    }).catch(e => alert(e.message));
+  });
+}
+
+function simulateTournamentRoundUI() {
+  post('/api/world4/tournament/simulate', ref({})).then(data => {
+    if (data.error) return alert(data.error);
+    if (data.tournament) S.globalTournament = data.tournament;
+    playSfx('deal');
+    renderGame();
+    switchTab('tournament');
+  }).catch(err => alert(err.message));
+}
+
+// -------------------------------------------------------------
+// INCOMING AI TRANSFER OFFERS & INQUIRIES
+// -------------------------------------------------------------
+function openIncomingOffersModal() {
+  document.getElementById('incomingOffersModal')?.remove();
+  const offers = (S.incomingOffers || []).filter(o => o.status === 'pending');
+
+  const overlay = document.createElement('div');
+  overlay.id = 'incomingOffersModal';
+  overlay.className = 'modal-overlay';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(860px, 96vw);max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div class="card-kicker" style="color:#ef4444;">BOARDROOM TRANSFER DESK</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:2px 0 0 0;">
+            Incoming Rival Transfer Approaches (${offers.length} Pending)
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('incomingOffersModal').remove()">✕ CLOSE</button>
+      </div>
+
+      <!-- System Intelligence Note explaining WHY other clubs approach -->
+      <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:14px;margin-bottom:20px;font-size:12.5px;line-height:1.6;color:var(--text-muted);">
+        <b style="color:#fca5a5;">Why do other clubs approach for your players?</b><br>
+        AI clubs continuously scout your squad looking for standouts with <b>High Rating (72+)</b>, <b>Strong Match Form (78+)</b>, <b>High Goalscoring / Assist tallies</b>, <b>Wonderkids (U21)</b>, and <b>Contracts with 1 year remaining</b>. When identified, rival clubs submit cash bids that include a <b>15% to 45% premium markup</b> above the player's base valuation.
+      </div>
+
+      ${offers.length === 0 ? `
+        <div style="text-align:center;padding:40px 20px;background:var(--bg-card-subtle);border-radius:14px;border:1px solid var(--border-subtle);">
+          <div style="font-size:36px;margin-bottom:10px;">📭</div>
+          <h3 style="font-family:var(--font-display);font-size:18px;color:#fff;margin-bottom:6px;">No Active Bids in Transfer Inbox</h3>
+          <p style="font-size:13px;color:var(--text-muted);max-width:480px;margin:0 auto 16px;">
+            Rival scouts haven't submitted formal cash bids yet. You can actively invite market interest to stimulate aggressive offers from top domestic and continental suitors!
+          </p>
+          <button class="btn btn-primary btn-sm" style="font-weight:800;background:linear-gradient(90deg, #ef4444, #f59e0b);" onclick="solicitMarketInterest()">
+            📢 SOLICIT MARKET INTEREST / INVITE TRANSFER BIDS NOW
+          </button>
+        </div>
+      ` : `
+        <div style="display:flex;flex-direction:column;gap:16px;">
+          ${offers.map(o => `
+            <div style="background:var(--bg-card-subtle);border:1px solid rgba(239,68,68,0.35);border-radius:14px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span class="pill" style="background:#ef4444;color:#fff;font-weight:900;font-size:10px;">
+                      OFFICIAL ${o.type.toUpperCase()} BID
+                    </span>
+                    <span class="pill" style="background:rgba(255,255,255,0.08);color:#fff;font-size:11px;">
+                      ${esc(o.suitorCountry)} · Div ${o.suitorDivision}
+                    </span>
+                  </div>
+                  <h3 style="font-family:var(--font-display);font-size:20px;font-weight:900;color:#fff;margin:6px 0 2px;">
+                    ${esc(o.suitorClub)} approaches for <span style="color:var(--accent-neon);">${esc(o.playerName)}</span>
+                  </h3>
+                  <div style="font-size:12.5px;color:var(--text-muted);">
+                    Position: <b>${o.playerPosition}</b> · Overall Rating: <b>${o.playerRating}</b> · Age: <b>${o.playerAge || 24}</b>
+                  </div>
+                </div>
+
+                <div style="text-align:right;">
+                  <div style="font-size:11px;color:var(--text-dim);font-weight:700;">OFFERED TRANSFER FEE</div>
+                  <div style="font-family:var(--font-display);font-size:24px;font-weight:900;color:var(--accent-gold);">
+                    ₹${money(o.fee)}M
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted);">
+                    Base Valuation: ₹${money(o.playerValuation || 10)}M (${Math.round((o.fee / (o.playerValuation || 10) - 1) * 100)}% premium)
+                  </div>
+                </div>
+              </div>
+
+              <!-- Message & Intel -->
+              <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px;margin-bottom:14px;font-size:12.5px;line-height:1.5;">
+                <div style="color:#fff;margin-bottom:4px;">💬 "${esc(o.message)}"</div>
+                <div style="color:var(--accent-neon);font-size:12px;">🧠 <b>Player Reaction:</b> ${esc(o.playerStance)}</div>
+              </div>
+
+              <!-- Interactive Decision Buttons -->
+              <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+                <button class="btn btn-success btn-sm" style="font-weight:800;padding:8px 16px;" onclick="respondToIncomingOfferUI('${o.id}', 'accept')">
+                  🤝 ACCEPT &amp; SELL (+₹${money(o.fee)}M CASH)
+                </button>
+                <button class="btn btn-primary btn-sm" style="font-weight:800;padding:8px 16px;background:var(--accent-gold);color:#0a0f18;" onclick="respondToIncomingOfferUI('${o.id}', 'counter', ${o.fee})">
+                  ⚖️ COUNTER-OFFER
+                </button>
+                <button class="btn btn-danger btn-sm" style="font-weight:800;padding:8px 16px;" onclick="respondToIncomingOfferUI('${o.id}', 'reject')">
+                  🛑 REJECT BID
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function respondToIncomingOfferUI(offerId, decision, currentFee = 10) {
+  let counterFee = null;
+  if (decision === 'counter') {
+    const suggested = Math.round(currentFee * 1.25 * 10) / 10;
+    const input = prompt(`Enter your counter-offer price in ₹ Millions (Current offer is ₹${currentFee}M):`, String(suggested));
+    if (!input) return;
+    counterFee = Number(input);
+    if (isNaN(counterFee) || counterFee <= 0) return alert('Invalid counter price.');
+  }
+
+  post('/api/world4/offers/respond', ref({ offerId, decision, counterFee })).then(res => {
+    if (res.error) return alert(res.error);
+
+    if (res.status === 'accepted') {
+      playSfx('deal');
+      triggerLiveBudgetUpdate(`🤝 Transfer Complete: Sold player for ₹${money(res.cashGained)}M!`, 'revenue');
+    } else if (res.status === 'rejected') {
+      playSfx('kick');
+    }
+
+    alert(res.message);
+    document.getElementById('incomingOffersModal')?.remove();
+    renderGame();
+  }).catch(err => alert(err.message));
+}
+
+function solicitMarketInterest() {
+  post('/api/world4/offers/generate', ref({ count: 2 })).then(res => {
+    playSfx('deal');
+    alert(`📢 Scouts from ${res.offers?.length || 2} rival clubs responded to your inquiry! Review incoming transfer bids in your inbox.`);
+    renderGame();
+    openIncomingOffersModal();
+  }).catch(err => alert(err.message));
+}
+
+// -------------------------------------------------------------
+// RIVALRY DOSSIER & LIVE BUDGET MODALS
+// -------------------------------------------------------------
+function openRivalryDossierModal(initialTier = 'same') {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!c) return;
+
+  const sameR = c.rivals?.same || {
+    name: c.rivalName || 'League Rival',
+    division: c.division,
+    derbyName: c.derbyName || 'League Derby',
+    badge: `⚔️ DIVISION ${c.division} NEMESIS`,
+    tier: `Division ${c.division} League Nemesis`,
+    backstory: 'Direct league contenders fighting head-to-head for promotion and the division title.',
+    h2h: { played: 0, wins: 0, draws: 0, losses: 0 }
+  };
+  const highR = c.rivals?.higher;
+  const lowR = c.rivals?.lower;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'rivalryDossierModal';
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(860px, 96vw);max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div class="card-kicker" style="color:#ff4757;">INTELLIGENCE REPORT</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:2px 0 0 0;">
+            Terrace Rivalry Dossier
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('rivalryDossierModal').remove()">✕ CLOSE</button>
+      </div>
+
+      <p style="font-size:13.5px;color:var(--text-muted);line-height:1.6;margin-bottom:20px;">
+        Your club maintains active historical rivalries across multiple football pyramid tiers. Derby clashes generate heightened ticket gate receipts, massive fan passion swings, and special bounty payouts.
+      </p>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(250px, 1fr));gap:16px;margin-bottom:20px;">
+        <!-- Same Division Rival -->
+        <div style="background:var(--bg-card-subtle);border:1px solid ${initialTier==='same'?'var(--accent-neon)':'var(--border-subtle)'};border-radius:14px;padding:18px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span class="pill" style="font-size:9.5px;font-weight:900;background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid #ef4444;">
+              ⚔️ DIV ${sameR.division} NEMESIS
+            </span>
+            <span style="font-size:11px;font-weight:800;color:var(--text-dim);">SAME TIER</span>
+          </div>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:10px 0 2px 0;">
+            ${esc(sameR.name)}
+          </h3>
+          <div style="font-size:12px;color:var(--accent-gold);font-weight:700;margin-bottom:10px;">
+            ${esc(sameR.derbyName)}
+          </div>
+          <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">
+            ${esc(sameR.backstory)}
+          </p>
+          <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;display:flex;justify-content:space-around;text-align:center;">
+            <div>
+              <span style="font-size:10px;color:var(--text-dim);display:block;">WINS</span>
+              <b style="font-size:16px;color:var(--accent-neon);">${sameR.h2h?.wins || 0}</b>
+            </div>
+            <div>
+              <span style="font-size:10px;color:var(--text-dim);display:block;">DRAWS</span>
+              <b style="font-size:16px;color:#cbd5e1;">${sameR.h2h?.draws || 0}</b>
+            </div>
+            <div>
+              <span style="font-size:10px;color:var(--text-dim);display:block;">LOSSES</span>
+              <b style="font-size:16px;color:#ff7b92;">${sameR.h2h?.losses || 0}</b>
+            </div>
+          </div>
+          <div style="margin-top:10px;font-size:11px;color:#86efac;">
+            🎯 <b>Stakes:</b> +25% Ticket Gate revenue &amp; +15% Fan Satisfaction on victory
+          </div>
+        </div>
+
+        <!-- Higher Division Goliath -->
+        ${highR ? `
+          <div style="background:var(--bg-card-subtle);border:1px solid ${initialTier==='higher'?'var(--accent-gold)':'var(--border-subtle)'};border-radius:14px;padding:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="pill" style="font-size:9.5px;font-weight:900;background:rgba(234,179,8,0.2);color:#fef08a;border:1px solid #eab308;">
+                👑 DIV ${highR.division} GOLIATH
+              </span>
+              <span style="font-size:11px;font-weight:800;color:var(--accent-gold);">TOP FLIGHT</span>
+            </div>
+            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:10px 0 2px 0;">
+              ${esc(highR.name)}
+            </h3>
+            <div style="font-size:12px;color:var(--accent-gold);font-weight:700;margin-bottom:10px;">
+              ${esc(highR.derbyName)}
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">
+              ${esc(highR.backstory)}
+            </p>
+            <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;display:flex;justify-content:space-around;text-align:center;">
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">WINS</span>
+                <b style="font-size:16px;color:var(--accent-neon);">${highR.h2h?.wins || 0}</b>
+              </div>
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">DRAWS</span>
+                <b style="font-size:16px;color:#cbd5e1;">${highR.h2h?.draws || 0}</b>
+              </div>
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">LOSSES</span>
+                <b style="font-size:16px;color:#ff7b92;">${highR.h2h?.losses || 0}</b>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:#fef08a;">
+              ⭐ <b>Giant-Killing Bounty:</b> +₹1.5M Treasury Cash &amp; +20% Fan Frenzy upon cup upset
+            </div>
+          </div>
+        ` : ''}
+
+        <!-- Lower Division Grassroots Challenger -->
+        ${lowR ? `
+          <div style="background:var(--bg-card-subtle);border:1px solid ${initialTier==='lower'?'#38bdf8':'var(--border-subtle)'};border-radius:14px;padding:18px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="pill" style="font-size:9.5px;font-weight:900;background:rgba(56,189,248,0.2);color:#bae6fd;border:1px solid #38bdf8;">
+                🛡️ DIV ${lowR.division} CHALLENGER
+              </span>
+              <span style="font-size:11px;font-weight:800;color:#38bdf8;">GRASSROOTS</span>
+            </div>
+            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:10px 0 2px 0;">
+              ${esc(lowR.name)}
+            </h3>
+            <div style="font-size:12px;color:#bae6fd;font-weight:700;margin-bottom:10px;">
+              ${esc(lowR.derbyName)}
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);line-height:1.5;margin-bottom:14px;">
+              ${esc(lowR.backstory)}
+            </p>
+            <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:10px;display:flex;justify-content:space-around;text-align:center;">
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">WINS</span>
+                <b style="font-size:16px;color:var(--accent-neon);">${lowR.h2h?.wins || 0}</b>
+              </div>
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">DRAWS</span>
+                <b style="font-size:16px;color:#cbd5e1;">${lowR.h2h?.draws || 0}</b>
+              </div>
+              <div>
+                <span style="font-size:10px;color:var(--text-dim);display:block;">LOSSES</span>
+                <b style="font-size:16px;color:#ff7b92;">${lowR.h2h?.losses || 0}</b>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;color:#bae6fd;">
+              🛡️ <b>Terrace Pride:</b> Shock loss incurs -12% Fan Dissatisfaction penalty!
+            </div>
+          </div>
+        ` : ''}
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;padding:12px;font-weight:800;" onclick="document.getElementById('rivalryDossierModal').remove()">
+        CONFIRM INTEL &amp; RETURN TO HEADQUARTERS
       </button>
     </div>
   `;
+
+  document.body.appendChild(overlay);
+}
+
+// -------------------------------------------------------------
+// PERSISTENT LIVE BUDGET TRACKER & FINANCIAL FAIR PLAY ENGINE
+// -------------------------------------------------------------
+function calculateClientBudget(c) {
+  if (!c) return null;
+  const myPlayers = (S?.market || []).filter(p => p.ownerClub === c.name);
+  const totalSquadSalary = myPlayers.reduce((sum, p) => sum + (p.contract?.salary || 0.45), 0);
+  const managerSalary = c.manager?.salary || 0.4;
+  const wageBillAnnual = Math.round((totalSquadSalary + managerSalary) * 10) / 10;
+  const wageBillPerMatch = Math.round((wageBillAnnual / 24) * 100) / 100;
+
+  const stadiumCap = c.stadium?.capacity || 20000;
+  const projectedAttendance = c.lastProjectedAttendance || Math.round(stadiumCap * ((c.popularity || 60) / 100));
+  const ticketPrice = c.ticketPrice || 350;
+  const ticketRevPerMatch = Math.round(((projectedAttendance * ticketPrice) / 1000000) * 100) / 100;
+
+  const merchUnit = c.merchandise || 60;
+  const merchRevPerMatch = Math.round(((projectedAttendance * merchUnit * 0.35) / 1000000) * 100) / 100;
+
+  const sponsorAnnual = c.sponsor ? (c.sponsor.value || 2.5) : 1.5;
+  const sponsorPerMatch = Math.round((sponsorAnnual / 24) * 100) / 100;
+
+  const projectedRevPerMatch = Math.round((ticketRevPerMatch + merchRevPerMatch + sponsorPerMatch) * 100) / 100;
+  const netCashflowPerMatch = Math.round((projectedRevPerMatch - wageBillPerMatch) * 100) / 100;
+  const projectedTurnoverAnnual = Math.round((projectedRevPerMatch * 24) * 10) / 10;
+  const ffpRatio = projectedTurnoverAnnual > 0 ? Math.round((wageBillAnnual / projectedTurnoverAnnual) * 100) : 65;
+
+  let ffpGrade = 'A';
+  let ffpStatus = 'EXCELLENT';
+  let ffpColor = '#00e599'; // Emerald
+  if (ffpRatio > 85 || (c.cash || 0) < 1.0) {
+    ffpGrade = 'D';
+    ffpStatus = 'FFP RISK';
+    ffpColor = '#ef4444'; // Red
+  } else if (ffpRatio > 70) {
+    ffpGrade = 'C';
+    ffpStatus = 'MONITORED';
+    ffpColor = '#eab308'; // Amber
+  } else if (ffpRatio > 52) {
+    ffpGrade = 'B';
+    ffpStatus = 'HEALTHY';
+    ffpColor = '#00f0ff'; // Cyan
+  }
+
+  const transferWarChest = Math.max(0, Math.round(((c.cash || 0) * 0.6) * 10) / 10);
+  const wageReserve = Math.max(0, Math.round(((c.cash || 0) * 0.3) * 10) / 10);
+  const emergencyReserve = Math.max(0, Math.round(((c.cash || 0) * 0.1) * 10) / 10);
+
+  const budgetObj = {
+    cash: Math.round((c.cash || 0) * 10) / 10,
+    wageBillAnnual,
+    wageBillPerMatch,
+    projectedRevPerMatch,
+    ticketRevPerMatch,
+    merchRevPerMatch,
+    sponsorPerMatch,
+    sponsorAnnual,
+    netCashflowPerMatch,
+    projectedTurnoverAnnual,
+    ffpRatio,
+    ffpGrade,
+    ffpStatus,
+    ffpColor,
+    transferWarChest,
+    wageReserve,
+    emergencyReserve
+  };
+
+  c.budget = budgetObj;
+  return budgetObj;
+}
+
+function renderHeaderBudgetTrackerHtml(c, b) {
+  if (!b) b = calculateClientBudget(c);
+  if (!b) return '';
+
+  return `
+    <div id="headerLiveBudgetTracker" class="hud-budget-tracker" onclick="openLiveBudgetTrackerModal()" title="Live Club Budget Tracker & Financial Fair Play — Click to inspect Treasury, War Chest & Audit Ledger">
+      <div id="budgetTrackerPulseTag" class="hud-budget-pulse-tag" style="display:none;"></div>
+      
+      <!-- FFP Grade Hex Badge -->
+      <div class="hud-budget-icon" style="background:${b.ffpGrade==='D'?'rgba(239,68,68,0.2)':b.ffpGrade==='C'?'rgba(234,179,8,0.2)':'rgba(0,229,153,0.18)'};border:1px solid ${b.ffpColor};color:${b.ffpColor};" title="Financial Fair Play Grade ${b.ffpGrade} (${b.ffpStatus})">
+        <span style="font-size:12px;font-weight:900;font-family:var(--font-display);">${b.ffpGrade}</span>
+      </div>
+
+      <!-- Treasury & War Chest Metric -->
+      <div class="hud-budget-col">
+        <div class="hud-budget-top">
+          <span class="hud-budget-lbl">TREASURY</span>
+          <span id="hdrBudgetCashVal" class="hud-budget-val cash">₹${money(c.cash)}M</span>
+        </div>
+        <div class="hud-budget-sub">
+          <span>War Chest: <b id="hdrBudgetWarChestVal" style="color:var(--accent-gold);">₹${money(b.transferWarChest)}M</b></span>
+        </div>
+      </div>
+
+      <!-- Net Matchday Cashflow Metric -->
+      <div class="hud-budget-col" style="border-left:1px solid rgba(255,255,255,0.08);padding-left:10px;">
+        <div class="hud-budget-top">
+          <span class="hud-budget-lbl">NET CASHFLOW</span>
+          <span id="hdrBudgetCashflowVal" class="hud-budget-val" style="color:${b.netCashflowPerMatch>=0?'var(--accent-neon)':'#ff4757'};">
+            ${b.netCashflowPerMatch>=0?'+':''}₹${money(b.netCashflowPerMatch)}M<span style="font-size:10px;font-weight:400;color:var(--text-muted);">/m</span>
+          </span>
+        </div>
+        <div class="hud-budget-sub">
+          <span id="hdrBudgetFfpPill" style="color:${b.ffpColor};font-weight:800;">● ${b.ffpStatus}</span>
+          <span id="hdrBudgetRatioVal" style="color:var(--text-dim);">· ${b.ffpRatio}% Wage Ratio</span>
+        </div>
+      </div>
+
+      <!-- Interactive trigger pill -->
+      <div class="hud-budget-btn">
+        <span>AUDIT ↗</span>
+      </div>
+    </div>
+  `;
+}
+
+function triggerLiveBudgetUpdate(feedbackText = null, feedbackType = 'info') {
+  if (!S) return;
+  const c = S.clubs?.find(x => x.name === S.selectedClub);
+  if (!c) return;
+
+  const b = calculateClientBudget(c);
+  const container = document.getElementById('headerLiveBudgetTracker');
+  if (container) {
+    container.outerHTML = renderHeaderBudgetTrackerHtml(c, b);
+  }
+
+  const pulseTag = document.getElementById('budgetTrackerPulseTag');
+  if (pulseTag && feedbackText) {
+    pulseTag.textContent = feedbackText;
+    pulseTag.style.display = 'inline-block';
+    pulseTag.style.background = feedbackType === 'error' ? '#ef4444' : feedbackType === 'salary' ? '#06b6d4' : feedbackType === 'transfer' ? '#10b981' : feedbackType === 'revenue' ? '#f59e0b' : '#0284c7';
+    clearTimeout(window._budgetPulseTimeout);
+    window._budgetPulseTimeout = setTimeout(() => {
+      const t = document.getElementById('budgetTrackerPulseTag');
+      if (t) t.style.display = 'none';
+    }, 4000);
+  }
+
+  // Save session state to ensure full persistence
+  save();
+}
+
+function openContractRenewalModal(pid) {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!c) return;
+  const p = S.market.find(x => x.id === pid);
+  if (!p) return alert('Player not found.');
+
+  const curSalary = p.contract?.salary || 1.8;
+  const curYears = p.contract?.years || 2;
+  const b = calculateClientBudget(c);
+
+  let newSalary = curSalary;
+  let extYears = 1;
+  let signingBonus = 0;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'contractRenewalModal';
+
+  function renderRenewalContent() {
+    const wageDelta = Math.round((newSalary - curSalary) * 10) / 10;
+    const newAnnualWage = Math.round((b.wageBillAnnual + wageDelta) * 10) / 10;
+    const newPerMatchWage = Math.round((newAnnualWage / 24) * 100) / 100;
+    const newCashflow = Math.round((b.projectedRevPerMatch - newPerMatchWage) * 100) / 100;
+    const newFfpRatio = b.projectedTurnoverAnnual > 0 ? Math.round((newAnnualWage / b.projectedTurnoverAnnual) * 100) : 60;
+
+    return `
+      <div class="modal-box" style="width:min(620px, 96vw);max-height:92vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-neon);">SQUAD FINANCIAL GOVERNANCE</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:2px 0 0 0;">
+              Contract &amp; Salary Renegotiation
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('contractRenewalModal').remove()">✕</button>
+        </div>
+
+        <!-- Player Header Brief -->
+        <div style="display:flex;align-items:center;gap:14px;background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 16px;margin-bottom:18px;">
+          <div class="pos-badge ${p.position === 'GK' ? 'gk' : ['CB','LB','RB'].includes(p.position) ? 'def' : ['CMF','DMF','AMF'].includes(p.position) ? 'mid' : 'att'}" style="font-size:12px;width:38px;height:38px;">
+            ${esc(p.position || 'CF')}
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <b style="font-size:16px;color:#fff;">${esc(p.name)}</b>
+              <span style="font-size:11px;color:var(--accent-gold);font-weight:700;">★ ${p.rating} OVR</span>
+              <span class="pill" style="font-size:9.5px;background:rgba(255,255,255,0.06);">${p.age} yrs</span>
+            </div>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">
+              Current Terms: <b>₹${money(curSalary)}M / season</b> · ${curYears} years remaining
+            </div>
+          </div>
+        </div>
+
+        <!-- Controls for Salary & Extensions -->
+        <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;">
+          <!-- Salary Slider -->
+          <div class="form-group" style="background:var(--bg-card-subtle);padding:14px;border-radius:10px;border:1px solid var(--border-subtle);">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;">
+              <label style="font-size:12px;font-weight:800;color:#fff;">PROPOSED ANNUAL SALARY</label>
+              <span style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--accent-gold);">
+                ₹${money(newSalary)}M / yr
+              </span>
+            </div>
+            <input id="renewSalarySlider" type="range" min="0.3" max="30" step="0.1" value="${newSalary}" style="width:100%;accent-color:var(--accent-gold);" oninput="updateRenewalDraft()">
+            <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-dim);margin-top:4px;">
+              <span>Min: ₹0.3M/yr</span>
+              <span>Wage Delta: <b style="color:${wageDelta>=0?'var(--accent-gold)':'var(--accent-neon)'};">${wageDelta>=0?'+':''}₹${money(wageDelta)}M/yr</b></span>
+              <span>Max: ₹30.0M/yr</span>
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+            <!-- Contract Extension Length -->
+            <div class="form-group" style="background:var(--bg-card-subtle);padding:12px;border-radius:10px;border:1px solid var(--border-subtle);">
+              <label style="font-size:11px;font-weight:800;color:#fff;">EXTENSION DURATION</label>
+              <select id="renewYearsSelect" class="form-control" style="margin-top:6px;" onchange="updateRenewalDraft()">
+                <option value="1" ${extYears===1?'selected':''}>+1 Year Extension (${curYears+1} yrs total)</option>
+                <option value="2" ${extYears===2?'selected':''}>+2 Years Extension (${curYears+2} yrs total)</option>
+                <option value="3" ${extYears===3?'selected':''}>+3 Years Extension (${curYears+3} yrs total)</option>
+                <option value="4" ${extYears===4?'selected':''}>+4 Years Extension (${curYears+4} yrs total)</option>
+              </select>
+            </div>
+
+            <!-- Signing Loyalty Bonus -->
+            <div class="form-group" style="background:var(--bg-card-subtle);padding:12px;border-radius:10px;border:1px solid var(--border-subtle);">
+              <div style="display:flex;justify-content:space-between;align-items:baseline;">
+                <label style="font-size:11px;font-weight:800;color:#fff;">SIGNING BONUS</label>
+                <span id="bonusDisplay" style="font-size:13px;font-weight:900;color:var(--accent-neon);">₹${money(signingBonus)}M</span>
+              </div>
+              <input id="renewBonusSlider" type="range" min="0" max="${Math.min(10, Math.floor(c.cash))}" step="0.5" value="${signingBonus}" style="width:100%;accent-color:var(--accent-neon);margin-top:8px;" oninput="updateRenewalDraft()">
+              <div style="font-size:10px;color:var(--text-dim);margin-top:2px;">Paid upfront from Treasury</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Impact Feedback Grid -->
+        <div style="background:rgba(0,240,255,0.04);border:1px solid rgba(0,240,255,0.25);border-radius:12px;padding:14px;margin-bottom:20px;">
+          <div style="font-size:11px;font-weight:800;color:var(--accent-neon);letter-spacing:0.04em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:6px;">
+            <span>⚡ REAL-TIME FINANCIAL HEALTH AUDIT PREVIEW</span>
+          </div>
+
+          <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;text-align:center;">
+            <div style="background:rgba(0,0,0,0.3);padding:8px;border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-dim);font-weight:700;">ANNUAL WAGE BILL</div>
+              <div style="font-size:15px;font-weight:900;color:#fff;margin-top:2px;">₹${money(newAnnualWage)}M</div>
+              <div style="font-size:10px;color:${wageDelta>0?'#fca5a5':'#86efac'};">${wageDelta>=0?'+':''}₹${money(wageDelta)}M delta</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3);padding:8px;border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-dim);font-weight:700;">MATCHDAY CASHFLOW</div>
+              <div style="font-size:15px;font-weight:900;color:${newCashflow>=0?'var(--accent-neon)':'#ff4757'};margin-top:2px;">
+                ${newCashflow>=0?'+':''}₹${money(newCashflow)}M/m
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);">vs ₹${money(b.netCashflowPerMatch)}M now</div>
+            </div>
+            <div style="background:rgba(0,0,0,0.3);padding:8px;border-radius:8px;">
+              <div style="font-size:10px;color:var(--text-dim);font-weight:700;">FFP WAGE RATIO</div>
+              <div style="font-size:15px;font-weight:900;color:${newFfpRatio>70?'#fca5a5':'#86efac'};margin-top:2px;">
+                ${newFfpRatio}%
+              </div>
+              <div style="font-size:10px;color:${newFfpRatio>70?'#ef4444':'#22c55e'};font-weight:700;">
+                ${newFfpRatio>85?'FFP Risk':newFfpRatio>70?'Monitored':'Healthy'}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-primary" style="flex:1;padding:12px;font-weight:800;background:linear-gradient(90deg, #0284c7, #06b6d4);" onclick="submitContractRenewal('${p.id}')">
+            ✍️ SEAL CONTRACT TERMS (₹${money(newSalary)}M/yr)
+          </button>
+          <button class="btn btn-secondary" style="padding:12px 18px;" onclick="document.getElementById('contractRenewalModal').remove()">
+            CANCEL
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  window.updateRenewalDraft = function() {
+    const sEl = document.getElementById('renewSalarySlider');
+    const yEl = document.getElementById('renewYearsSelect');
+    const bEl = document.getElementById('renewBonusSlider');
+    if (sEl) newSalary = +sEl.value;
+    if (yEl) extYears = +yEl.value;
+    if (bEl) signingBonus = +bEl.value;
+    overlay.innerHTML = renderRenewalContent();
+  };
+
+  window.submitContractRenewal = function(playerId) {
+    post('/api/world4/contract/update', ref({
+      club: S.selectedClub,
+      playerId,
+      salary: newSalary,
+      signingBonus
+    })).then(res => {
+      if (res.state) S = res.state;
+      document.getElementById('contractRenewalModal')?.remove();
+      playSfx('deal');
+      playSfx('applause');
+      triggerLiveBudgetUpdate(`⚡ Wage Updated: ${p.name} (₹${money(newSalary)}M/yr)`, 'salary');
+      renderGame();
+      switchTab('squad');
+    }).catch(err => alert(err.message));
+  };
+
+  overlay.innerHTML = renderRenewalContent();
+  document.body.appendChild(overlay);
+}
+
+function openLiveBudgetTrackerModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!c) return;
+
+  const b = calculateClientBudget(c) || {
+    cash: c.cash || 0,
+    wageBillAnnual: 12.5,
+    wageBillPerMatch: 0.52,
+    projectedRevPerMatch: 1.25,
+    ticketRevPerMatch: 0.85,
+    merchRevPerMatch: 0.25,
+    sponsorPerMatch: 0.15,
+    sponsorAnnual: 3.6,
+    netCashflowPerMatch: 0.73,
+    projectedTurnoverAnnual: 30.0,
+    ffpRatio: 42,
+    ffpGrade: 'A',
+    ffpStatus: 'HEALTHY',
+    transferWarChest: Math.max(0, Math.round((c.cash * 0.6) * 10) / 10),
+    wageReserve: Math.max(0, Math.round((c.cash * 0.3) * 10) / 10),
+    emergencyReserve: Math.max(0, Math.round((c.cash * 0.1) * 10) / 10)
+  };
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'liveBudgetModal';
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(680px, 96vw);max-height:90vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div>
+          <div class="card-kicker" style="color:var(--accent-neon);">TREASURY &amp; FINANCIAL FAIR PLAY</div>
+          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:2px 0 0 0;">
+            Live Club Budget Tracker
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('liveBudgetModal').remove()">✕ CLOSE</button>
+      </div>
+
+      <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;margin-bottom:16px;">
+        <div style="background:var(--bg-card-subtle);padding:12px;border-radius:10px;border:1px solid var(--border-subtle);text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:800;">TRANSFER WAR CHEST</div>
+          <div style="font-size:20px;font-weight:900;color:var(--accent-gold);margin-top:2px;">₹${money(b.transferWarChest)}M</div>
+          <div style="font-size:10px;color:var(--text-muted);">60% Available</div>
+        </div>
+        <div style="background:var(--bg-card-subtle);padding:12px;border-radius:10px;border:1px solid var(--border-subtle);text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:800;">WAGE RESERVE</div>
+          <div style="font-size:20px;font-weight:900;color:var(--accent-neon);margin-top:2px;">₹${money(b.wageReserve)}M</div>
+          <div style="font-size:10px;color:var(--text-muted);">30% Committed</div>
+        </div>
+        <div style="background:var(--bg-card-subtle);padding:12px;border-radius:10px;border:1px solid var(--border-subtle);text-align:center;">
+          <div style="font-size:10px;color:var(--text-dim);font-weight:800;">EMERGENCY CUSHION</div>
+          <div style="font-size:20px;font-weight:900;color:#38bdf8;margin-top:2px;">₹${money(b.emergencyReserve)}M</div>
+          <div style="font-size:10px;color:var(--text-muted);">10% Liquidity</div>
+        </div>
+      </div>
+
+      <div style="background:rgba(0,0,0,0.25);border-radius:12px;padding:14px;border:1px solid var(--border-subtle);margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:#fff;font-weight:700;">Net Matchday Cashflow:</span>
+          <b style="font-size:16px;color:${b.netCashflowPerMatch>=0?'var(--accent-neon)':'#ff4757'};">
+            ${b.netCashflowPerMatch>=0?'+':''}₹${money(b.netCashflowPerMatch)}M / match
+          </b>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+          <span style="font-size:13px;color:#fff;font-weight:700;">FFP Compliance Rating:</span>
+          <span class="pill" style="font-size:10px;font-weight:900;background:${b.ffpGrade==='D'?'rgba(239,68,68,0.2)':'rgba(34,197,94,0.2)'};color:${b.ffpGrade==='D'?'#fca5a5':'#86efac'};border:1px solid ${b.ffpGrade==='D'?'#ef4444':'#22c55e'};">
+            Grade ${b.ffpGrade} · ${b.ffpStatus}
+          </span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <span style="font-size:13px;color:#fff;font-weight:700;">Wage-to-Turnover Ratio:</span>
+          <b style="font-size:14px;color:#fff;">${b.ffpRatio}% (Cap: 70%)</b>
+        </div>
+      </div>
+
+      <!-- Recent Audit Snippet -->
+      <div style="margin-bottom:20px;">
+        <div style="font-size:11px;color:var(--text-dim);font-weight:800;letter-spacing:0.04em;text-transform:uppercase;margin-bottom:8px;">
+          RECENT AUDIT LEDGER ENTRIES
+        </div>
+        <div style="max-height:160px;overflow-y:auto;background:var(--bg-card-subtle);border-radius:10px;padding:8px;border:1px solid var(--border-subtle);display:flex;flex-direction:column;gap:6px;">
+          ${(c.transactions && c.transactions.length ? c.transactions.slice(0, 5) : [
+            { date: `Season ${S.season}`, description: 'Owner Treasury Initial Allocation', amount: c.cash, type: 'income' }
+          ]).map(tx => `
+            <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 6px;border-bottom:1px solid rgba(255,255,255,0.03);">
+              <div>
+                <b style="color:#fff;">${esc(tx.description)}</b>
+                <div style="font-size:10.5px;color:var(--text-dim);">${esc(tx.date || 'Season 1')}</div>
+              </div>
+              <b style="font-weight:800;color:${tx.type==='income'?'var(--accent-neon)':'#ff4757'};">
+                ${tx.type==='income'?'+':'-'}₹${money(tx.amount)}M
+              </b>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-primary" style="flex:1;padding:12px;font-weight:800;" onclick="document.getElementById('liveBudgetModal').remove(); switchTab('stadium');">
+          📊 OPEN FULL FINANCIAL DASHBOARD &amp; LEDGER
+        </button>
+        <button class="btn btn-secondary" style="padding:12px 18px;" onclick="document.getElementById('liveBudgetModal').remove()">
+          CLOSE
+        </button>
+      </div>
+    </div>
+  `;
+
   document.body.appendChild(overlay);
 }
 

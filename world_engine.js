@@ -554,6 +554,8 @@ function seedSquad(clubObj, market, count = 16) {
 
 function upgradeLegacyWorld(s) {
   if (!s || !Array.isArray(s.clubs) || !Array.isArray(s.market)) return s;
+  if (s._upgraded) return s;
+  s._upgraded = true;
   // 1. Upgrade placeholder player names
   s.market.forEach((p, i) => {
     if (!p.name || p.name.startsWith('World Player')) {
@@ -665,6 +667,9 @@ function upgradeLegacyWorld(s) {
       p.merchandiseSales = p.merchandiseSales || 0;
       p.appearances = p.appearances || 0;
       p.goalsScored = p.goalsScored || 0;
+      p.assists = p.assists || 0;
+      p.cleanSheets = p.cleanSheets || 0;
+      p.awards = Array.isArray(p.awards) ? p.awards : [];
       p.signingCost = p.signingCost || p.askingPrice || 5;
       if (p.ownerClub) {
         const oc = s.clubs.find(c => c.name === p.ownerClub);
@@ -674,17 +679,56 @@ function upgradeLegacyWorld(s) {
       }
     });
   }
+  s.awardsHistory = Array.isArray(s.awardsHistory) ? s.awardsHistory : [];
+  s.tournamentHistory = Array.isArray(s.tournamentHistory) ? s.tournamentHistory : [];
+  s.incomingOffers = Array.isArray(s.incomingOffers) ? s.incomingOffers : [];
+  if (s.selectedClub && (!s.incomingOffers || !s.incomingOffers.length)) {
+    try { generateAiTransferApproaches(s, 2); } catch (e) {}
+  }
   return s;
 }
 
 function makeState(mode,code){
   const clubs=makeClubs(); const market=makeMarket();
   clubs.forEach(c => { seedSquad(c, market, 16); });
-  return {mode,roomCode:code||null,season:1,transferWindowOpen:true,transferWindow:'summer',countries:COUNTRIES.map(x=>({country:x[0],leagues:[x[1]]})),clubs,market,managers:managerCatalog(),selectedClub:null,news:[],competitions:{worldChampionsEvery:2,lastTournament:0},pendingBattles:{},matchIds:{},serverClock:Date.now()};
+  return {mode,roomCode:code||null,season:1,transferWindowOpen:true,transferWindow:'summer',countries:COUNTRIES.map(x=>({country:x[0],leagues:[x[1]]})),clubs,market,managers:managerCatalog(),selectedClub:null,news:[],competitions:{worldChampionsEvery:2,lastTournament:0},pendingBattles:{},matchIds:{},awardsHistory:[],tournamentHistory:[],incomingOffers:[],globalTournament:null,serverClock:Date.now()};
 }
 function club(state,name){return state.clubs.find(c=>c.name===name);}
-function player(state,idOrName){return state.market.find(p=>p.id===idOrName||slug(p.name)===slug(idOrName));}
-function clubPlayers(state,c){return (c?.players||[]).map(x=>player(state,x)).filter(Boolean);}
+function getPlayerMap(state){
+  if (!state) return new Map();
+  if (!state._playerMap || state._playerMapMarketLen !== (state.market ? state.market.length : 0)) {
+    const map = new Map();
+    if (state.market) {
+      for (let i = 0; i < state.market.length; i++) {
+        const p = state.market[i];
+        map.set(p.id, p);
+        if (p.name) map.set(p.name.toLowerCase(), p);
+      }
+    }
+    state._playerMap = map;
+    state._playerMapMarketLen = state.market ? state.market.length : 0;
+  }
+  return state._playerMap;
+}
+function player(state,idOrName){
+  if (!state || !idOrName) return null;
+  const map = getPlayerMap(state);
+  const found = map.get(idOrName) || map.get(String(idOrName).toLowerCase());
+  if (found) return found;
+  const sName = slug(idOrName);
+  return state.market.find(p=>p.id===idOrName||slug(p.name)===sName);
+}
+function clubPlayers(state,c){
+  if (!state || !c || !Array.isArray(c.players)) return [];
+  const map = getPlayerMap(state);
+  const res = [];
+  for (let i = 0; i < c.players.length; i++) {
+    const pid = c.players[i];
+    const p = map.get(pid) || map.get(String(pid).toLowerCase()) || player(state, pid);
+    if (p) res.push(p);
+  }
+  return res;
+}
 function addNews(state,text,type='world'){state.news.unshift({id:id('news'),season:state.season,type,text,at:new Date().toISOString()});state.news=state.news.slice(0,100);}
 function persist(){try{const data={rooms:[...worldRooms.entries()].map(([k,v])=>[k,v]),solo:[...soloWorlds.entries()].map(([k,v])=>[k,v])};fs.writeFileSync(SAVE,JSON.stringify(data));}catch(e){console.error('[WorldEngine]',e.message)}}
 function createRoom(name,maxHumans,host){let code='';do{code=Math.random().toString(36).slice(2,8).toUpperCase()}while(worldRooms.has(code));const s=makeState('online',code);s.roomName=name||'Friends Football League';s.maxHumans=Math.min(20,Math.max(2,Number(maxHumans)||10));s.humans={};s.host=host||null;worldRooms.set(code,s);persist();return s;}
@@ -889,6 +933,46 @@ function releasePlayer(s,clubName,playerId){
     goals
   };
 }
+function updatePlayerSalary(s, clubName, playerId, newSalary, signingBonus = 0) {
+  const c = club(s, clubName);
+  if (!c) return { error: 'Club not found.' };
+  const p = player(s, playerId);
+  if (!p) return { error: 'Player not found.' };
+  if (p.ownerClub !== c.name) return { error: 'Player is not owned by this club.' };
+
+  const parsedSalary = Math.max(0.2, Math.round(Number(newSalary) * 10) / 10);
+  const parsedBonus = Math.max(0, Math.round(Number(signingBonus) * 10) / 10);
+
+  if (parsedBonus > 0 && (c.cash || 0) < parsedBonus) {
+    return { error: `Insufficient treasury funds! Club cash is ₹${c.cash}M, needed ₹${parsedBonus}M.` };
+  }
+
+  const oldSalary = p.contract?.salary || Math.max(0.4, Math.round((p.askingPrice || 5) * 0.15 * 10) / 10);
+  p.contract = p.contract || {};
+  p.contract.salary = parsedSalary;
+  p.contract.years = Math.max(1, (p.contract.years || 2) + 1);
+
+  if (parsedBonus > 0) {
+    c.cash = Math.max(0, Math.round(((c.cash || 0) - parsedBonus) * 10) / 10);
+    recordTransaction(c, -parsedBonus, 'transfers', `Contract extension bonus: ${p.name}`, s);
+  }
+
+  const diff = Math.round((parsedSalary - oldSalary) * 10) / 10;
+  recordTransaction(c, 0, 'commercial', `Wage adjusted for ${p.name}: ₹${parsedSalary}M/yr (${diff >= 0 ? '+' : ''}₹${diff}M)`, s);
+  addNews(s, `${c.name} finalized contract extension for ${p.name} on ₹${parsedSalary}M/yr wage terms.`, 'transfer');
+
+  c.morale = Math.min(100, Math.max(20, (c.morale || 80) + (diff >= 0 ? 3 : -2)));
+  persist();
+  return {
+    ok: true,
+    player: p,
+    oldSalary,
+    newSalary: parsedSalary,
+    signingBonus: parsedBonus,
+    club: c,
+    budget: calculateClubBudget(s, c)
+  };
+}
 function sellPlayer(s,clubName,playerId,asking){const c=club(s,clubName),p=player(s,playerId);if(!c||!p||p.ownerClub!==c.name)return {error:'Player not owned by this club.'};p.askingPrice=Math.max(1,money(asking)||p.askingPrice);return startBattle(s,'FREE_MARKET_BUYER',p.id,p.askingPrice,p.contract.salary,p.contract.years,'sell');}
 function match(s,homeName,awayName,opts={}){
   const h=club(s,homeName),a=club(s,awayName);
@@ -1048,19 +1132,52 @@ function match(s,homeName,awayName,opts={}){
     }
   }
 
-  // Update player appearances, goals and merchandise sales
+  // Update player appearances, goals, assists, clean sheets, and merchandise sales
   const hPlayers = clubPlayers(s, h).slice(0, 11);
   const aPlayers = clubPlayers(s, a).slice(0, 11);
   [...hPlayers, ...aPlayers].forEach(p => {
     p.appearances = (p.appearances || 0) + 1;
+    p.awards = Array.isArray(p.awards) ? p.awards : [];
     const addMerch = Math.round((Math.max(0, (p.rating || 65) - 60) * 0.005 + ((p.form || 70) / 100) * 0.004) * 100) / 100;
     p.merchandiseSales = Math.round(((p.merchandiseSales || 0) + addMerch) * 10) / 10;
   });
+
   if (hg > 0 && hPlayers.length > 0) {
-    hPlayers[hPlayers.length - 1].goalsScored = (hPlayers[hPlayers.length - 1].goalsScored || 0) + hg;
+    const hAttackers = hPlayers.filter(p => ['CF', 'LWF', 'RWF', 'AMF', 'SS', 'ST'].includes(p.position));
+    const hScorers = hAttackers.length ? hAttackers : hPlayers;
+    for (let g = 0; g < hg; g++) {
+      const scorer = hScorers[Math.floor(Math.random() * hScorers.length)];
+      scorer.goalsScored = (scorer.goalsScored || 0) + 1;
+      const hPlaymakers = hPlayers.filter(p => p.id !== scorer.id && ['CMF', 'AMF', 'DMF', 'LWF', 'RWF'].includes(p.position));
+      if (hPlaymakers.length && Math.random() < 0.75) {
+        const assister = hPlaymakers[Math.floor(Math.random() * hPlaymakers.length)];
+        assister.assists = (assister.assists || 0) + 1;
+      }
+    }
   }
+
   if (ag > 0 && aPlayers.length > 0) {
-    aPlayers[aPlayers.length - 1].goalsScored = (aPlayers[aPlayers.length - 1].goalsScored || 0) + ag;
+    const aAttackers = aPlayers.filter(p => ['CF', 'LWF', 'RWF', 'AMF', 'SS', 'ST'].includes(p.position));
+    const aScorers = aAttackers.length ? aAttackers : aPlayers;
+    for (let g = 0; g < ag; g++) {
+      const scorer = aScorers[Math.floor(Math.random() * aScorers.length)];
+      scorer.goalsScored = (scorer.goalsScored || 0) + 1;
+      const aPlaymakers = aPlayers.filter(p => p.id !== scorer.id && ['CMF', 'AMF', 'DMF', 'LWF', 'RWF'].includes(p.position));
+      if (aPlaymakers.length && Math.random() < 0.75) {
+        const assister = aPlaymakers[Math.floor(Math.random() * aPlaymakers.length)];
+        assister.assists = (assister.assists || 0) + 1;
+      }
+    }
+  }
+
+  // Clean sheet tracking
+  if (ag === 0 && hPlayers.length) {
+    const hGk = hPlayers.find(p => p.position === 'GK') || hPlayers[0];
+    hGk.cleanSheets = (hGk.cleanSheets || 0) + 1;
+  }
+  if (hg === 0 && aPlayers.length) {
+    const aGk = aPlayers.find(p => p.position === 'GK') || aPlayers[0];
+    aGk.cleanSheets = (aGk.cleanSheets || 0) + 1;
   }
 
   const matchRecord = {
@@ -1176,6 +1293,16 @@ function simulate(s){
   }
 
   matchResult.otherResults = otherResults;
+
+  // Active AI approaches during season/transfer window:
+  if (s.transferWindowOpen && Math.random() < 0.45) {
+    try {
+      generateAiTransferApproaches(s, 1);
+    } catch (err) {
+      console.warn('[WorldEngine] AI approach generation error:', err.message);
+    }
+  }
+
   persist();
   return matchResult;
 }
@@ -1607,6 +1734,11 @@ function advanceSeason(s){
     }
   }
 
+  // Calculate Season Awards before resetting season statistics
+  const seasonAwards = generateSeasonAwards(s, s.season);
+  s.awardsHistory = s.awardsHistory || [];
+  s.awardsHistory.unshift(seasonAwards);
+
   // Accumulate player shirt & merchandise sales for the season
   s.clubs.forEach(c => {
     (c.players || []).forEach(pid => {
@@ -1630,17 +1762,22 @@ function advanceSeason(s){
     season: s.season - 1,
     userVerdict,
     promotions,
-    relegations
+    relegations,
+    awards: seasonAwards
   };
 
+  // Bi-annual Global Tournament for every league every 2 years:
   if (s.season % 2 === 0) {
     s.competitions.lastTournament = s.season;
-    addNews(s, `World Champions Tournament qualification is now active for the top clubs from participating leagues.`, 'competition');
+    initiateGlobalTournament(s);
   }
 
-  addNews(s, `Season ${s.season} begins. Summer Transfer Window is OPEN.`, 'season');
+  // Generate exciting AI transfer approaches for user players as transfer window opens!
+  generateAiTransferApproaches(s, 2);
+
+  addNews(s, `Season ${s.season} begins. Summer Transfer Window is OPEN. Other clubs are scouting your squad for transfer approaches!`, 'season');
   persist();
-  return { season: s.season, verdict: s.lastSeasonVerdict };
+  return { season: s.season, verdict: s.lastSeasonVerdict, awards: seasonAwards, globalTournament: s.globalTournament };
 }
 function updateEconomy(s,clubName,data){
   const c=club(s,clubName);
@@ -1862,11 +1999,672 @@ function globalState(s){
     ...s,
     clubs: s.clubs.map(c => ({
       ...c,
-      players: clubPlayers(s, c),
       budget: calculateClubBudget(s, c)
     })),
-    recommendations: s.selectedClub ? managerRecommendations(s, s.selectedClub) : []
+    recommendations: s.selectedClub ? managerRecommendations(s, s.selectedClub) : [],
+    awardsHistory: s.awardsHistory || [],
+    tournamentHistory: s.tournamentHistory || [],
+    incomingOffers: s.incomingOffers || [],
+    globalTournament: s.globalTournament || null
   };
 }
+
+// =============================================================
+// GLOBAL SEASON AWARDS & TEAM OF THE SEASON ENGINE
+// =============================================================
+function generateSeasonAwards(s, seasonNum) {
+  const contractedPlayers = [];
+  s.clubs.forEach(c => {
+    (c.players || []).forEach(pid => {
+      const p = player(s, pid);
+      if (p) {
+        contractedPlayers.push({ p, club: c });
+      }
+    });
+  });
+
+  if (!contractedPlayers.length) return null;
+
+  const getPerfScore = (item) => {
+    const { p, club: c } = item;
+    const base = (p.rating || 70) * 1.5;
+    const form = ((p.form || 75) - 60) * 0.4;
+    const goals = (p.goalsScored || 0) * 3.5;
+    const assists = (p.assists || 0) * 2.5;
+    const cleanSheets = (p.cleanSheets || 0) * (p.position === 'GK' ? 4.0 : 2.5);
+    const divWeight = c.division === 1 ? 14 : c.division === 2 ? 8 : c.division === 3 ? 3 : 0;
+    const repWeight = ((c.reputation || 60) - 50) * 0.15;
+    const champBonus = (c.stats?.points > 20 || (c.history?.titles || 0) > 0) ? 8 : 0;
+    return base + form + goals + assists + cleanSheets + divWeight + repWeight + champBonus;
+  };
+
+  const ranked = [...contractedPlayers].sort((a, b) => getPerfScore(b) - getPerfScore(a));
+
+  // 1. Ballon d'Or / Global Footballer of the Year
+  const topCandidates = ranked.slice(0, 5).map((item, idx) => {
+    const score = Math.round(getPerfScore(item));
+    const votes = Math.round(520 - (idx * 70) + (Math.random() * 25));
+    return {
+      rank: idx + 1,
+      id: item.p.id,
+      name: item.p.name,
+      rating: item.p.rating,
+      position: item.p.position,
+      nationality: item.p.nationality || 'International',
+      club: item.club.name,
+      country: item.club.country,
+      division: item.club.division,
+      goals: item.p.goalsScored || 0,
+      assists: item.p.assists || 0,
+      cleanSheets: item.p.cleanSheets || 0,
+      votes,
+      points: score
+    };
+  });
+
+  const ballonDorWinner = topCandidates[0];
+  const pWinner = player(s, ballonDorWinner.id);
+  if (pWinner) {
+    pWinner.awards = pWinner.awards || [];
+    pWinner.awards.unshift(`🏆 Season ${seasonNum} Ballon d'Or Winner`);
+    pWinner.rating = Math.min(99, (pWinner.rating || 75) + 2);
+    pWinner.askingPrice = Math.round((pWinner.askingPrice || 20) * 1.35);
+    pWinner.form = 95;
+    const winClub = club(s, ballonDorWinner.club);
+    if (winClub) {
+      winClub.history = winClub.history || {};
+      winClub.history.awards = (winClub.history.awards || 0) + 1;
+    }
+  }
+
+  // 2. World Golden Boot (Top Goalscorer)
+  const scorers = [...contractedPlayers].filter(x => (x.p.goalsScored || 0) > 0).sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0));
+  const goldenBoot = scorers.length ? {
+    id: scorers[0].p.id,
+    name: scorers[0].p.name,
+    club: scorers[0].club.name,
+    country: scorers[0].club.country,
+    goals: scorers[0].p.goalsScored || 0,
+    rating: scorers[0].p.rating
+  } : {
+    id: ballonDorWinner.id,
+    name: ballonDorWinner.name,
+    club: ballonDorWinner.club,
+    country: ballonDorWinner.country,
+    goals: Math.max(10, ballonDorWinner.goals || 12),
+    rating: ballonDorWinner.rating
+  };
+  const pGb = player(s, goldenBoot.id);
+  if (pGb) {
+    pGb.awards = pGb.awards || [];
+    pGb.awards.unshift(`👟 Season ${seasonNum} World Golden Boot`);
+  }
+
+  // 3. World Golden Glove (Best Goalkeeper)
+  const goalkeepers = contractedPlayers.filter(x => x.p.position === 'GK').sort((a, b) => getPerfScore(b) - getPerfScore(a));
+  const goldenGlove = goalkeepers.length ? {
+    id: goalkeepers[0].p.id,
+    name: goalkeepers[0].p.name,
+    club: goalkeepers[0].club.name,
+    country: goalkeepers[0].club.country,
+    cleanSheets: goalkeepers[0].p.cleanSheets || 0,
+    rating: goalkeepers[0].p.rating
+  } : null;
+  if (goldenGlove) {
+    const pGk = player(s, goldenGlove.id);
+    if (pGk) {
+      pGk.awards = pGk.awards || [];
+      pGk.awards.unshift(`🧤 Season ${seasonNum} World Golden Glove`);
+    }
+  }
+
+  // 4. World Playmaker Award (Best Midfielder)
+  const playmakers = contractedPlayers.filter(x => ['AMF', 'CMF', 'DMF'].includes(x.p.position)).sort((a, b) => getPerfScore(b) - getPerfScore(a));
+  const playmaker = playmakers.length ? {
+    id: playmakers[0].p.id,
+    name: playmakers[0].p.name,
+    club: playmakers[0].club.name,
+    position: playmakers[0].p.position,
+    rating: playmakers[0].p.rating
+  } : null;
+  if (playmaker) {
+    const pPm = player(s, playmaker.id);
+    if (pPm) {
+      pPm.awards = pPm.awards || [];
+      pPm.awards.unshift(`🎯 Season ${seasonNum} World Playmaker of the Year`);
+    }
+  }
+
+  // 5. World Golden Boy (Best U21 Player)
+  const u21s = contractedPlayers.filter(x => (x.p.age || 25) <= 21).sort((a, b) => getPerfScore(b) - getPerfScore(a));
+  const goldenBoy = u21s.length ? {
+    id: u21s[0].p.id,
+    name: u21s[0].p.name,
+    club: u21s[0].club.name,
+    age: u21s[0].p.age,
+    rating: u21s[0].p.rating
+  } : null;
+  if (goldenBoy) {
+    const pGbBoy = player(s, goldenBoy.id);
+    if (pGbBoy) {
+      pGbBoy.awards = pGbBoy.awards || [];
+      pGbBoy.awards.unshift(`💎 Season ${seasonNum} World Golden Boy`);
+      pGbBoy.rating = Math.min(96, (pGbBoy.rating || 72) + 2);
+    }
+  }
+
+  // 6. Per-League / Per-Division Awards & Team of the Season (TOTS)
+  const leagueAwards = [];
+  const countries = [...new Set(s.clubs.map(c => c.country))];
+
+  countries.forEach(country => {
+    for (let div = 1; div <= 4; div++) {
+      const divClubs = s.clubs.filter(c => c.country === country && c.division === div);
+      if (!divClubs.length) continue;
+
+      const divPlayers = [];
+      divClubs.forEach(c => {
+        (c.players || []).forEach(pid => {
+          const p = player(s, pid);
+          if (p) divPlayers.push({ p, club: c });
+        });
+      });
+
+      if (divPlayers.length < 11) continue;
+      divPlayers.sort((a, b) => getPerfScore(b) - getPerfScore(a));
+
+      const mvp = divPlayers[0];
+      const pMvp = player(s, mvp.p.id);
+      if (pMvp) {
+        pMvp.awards = pMvp.awards || [];
+        pMvp.awards.unshift(`🥇 S${seasonNum} ${country} D${div} Player of the Season`);
+      }
+
+      const divScorers = [...divPlayers].sort((a, b) => (b.p.goalsScored || 0) - (a.p.goalsScored || 0));
+      const lgb = divScorers[0];
+
+      const bestGk = divPlayers.find(x => x.p.position === 'GK') || divPlayers[divPlayers.length - 1];
+      const bestDefs = divPlayers.filter(x => ['CB', 'LB', 'RB', 'FB'].includes(x.p.position)).slice(0, 4);
+      const bestMids = divPlayers.filter(x => ['CMF', 'AMF', 'DMF', 'LMF', 'RMF'].includes(x.p.position)).slice(0, 3);
+      const bestAtts = divPlayers.filter(x => ['CF', 'WF', 'LWF', 'RWF', 'SS', 'ST'].includes(x.p.position)).slice(0, 3);
+
+      const totsXI = [
+        bestGk,
+        ...bestDefs,
+        ...bestMids,
+        ...bestAtts
+      ].filter(Boolean).map(x => ({
+        id: x.p.id,
+        name: x.p.name,
+        position: x.p.position,
+        rating: x.p.rating,
+        club: x.club.name,
+        goals: x.p.goalsScored || 0
+      }));
+
+      totsXI.forEach(tPlayer => {
+        const targetP = player(s, tPlayer.id);
+        if (targetP) {
+          targetP.awards = targetP.awards || [];
+          if (!targetP.awards.some(a => a.includes(`S${seasonNum} ${country} D${div} Best XI`))) {
+            targetP.awards.unshift(`⭐ S${seasonNum} ${country} D${div} Best XI`);
+          }
+        }
+      });
+
+      leagueAwards.push({
+        country,
+        division: div,
+        leagueName: div === 1 ? (COUNTRIES.find(x => x[0] === country)?.[1] || `${country} Division 1`) : `${country} Division ${div}`,
+        mvp: {
+          id: mvp.p.id,
+          name: mvp.p.name,
+          club: mvp.club.name,
+          rating: mvp.p.rating,
+          position: mvp.p.position
+        },
+        goldenBoot: {
+          id: lgb.p.id,
+          name: lgb.p.name,
+          club: lgb.club.name,
+          goals: lgb.p.goalsScored || 0
+        },
+        tots: totsXI
+      });
+    }
+  });
+
+  const fullAwardsRecord = {
+    season: seasonNum,
+    timestamp: Date.now(),
+    global: {
+      ballonDor: {
+        winner: ballonDorWinner,
+        podium: topCandidates
+      },
+      goldenBoot,
+      goldenGlove,
+      playmaker,
+      goldenBoy
+    },
+    leagues: leagueAwards
+  };
+
+  addNews(s, `🌟 AWARDS GALA: ${ballonDorWinner.name} (${ballonDorWinner.club}) wins the Season ${seasonNum} Ballon d'Or! Full league Best XIs announced.`, 'season');
+  return fullAwardsRecord;
+}
+
+// =============================================================
+// BI-ANNUAL GLOBAL TOURNAMENT (EVERY 2 YEARS)
+// =============================================================
+function initiateGlobalTournament(s) {
+  const user = club(s, s.selectedClub);
+  const d1Clubs = s.clubs.filter(c => c.division === 1);
+  const selectedClubs = [];
+
+  // Always include user club
+  if (user) {
+    selectedClubs.push(user);
+  }
+
+  // Champions & elite powerhouses across countries
+  const countries = [...new Set(d1Clubs.map(c => c.country))];
+  countries.forEach(cty => {
+    const ctyClubs = d1Clubs.filter(c => c.country === cty);
+    if (ctyClubs.length) {
+      const topCty = ctyClubs.sort((a, b) => (b.stats?.points || 0) - (a.stats?.points || 0) || (b.reputation || 60) - (a.reputation || 60))[0];
+      if (topCty && !selectedClubs.find(c => c.name === topCty.name)) {
+        selectedClubs.push(topCty);
+      }
+    }
+  });
+
+  // Top up to 16 teams
+  const remaining = s.clubs.filter(c => !selectedClubs.find(x => x.name === c.name)).sort((a, b) => (b.reputation || 60) - (a.reputation || 60));
+  while (selectedClubs.length < 16 && remaining.length > 0) {
+    selectedClubs.push(remaining.shift());
+  }
+
+  const shuffled = [...selectedClubs].sort(() => Math.random() - 0.5);
+  const groupNames = ['A', 'B', 'C', 'D'];
+  const groups = {};
+
+  groupNames.forEach((gName, idx) => {
+    const groupClubs = shuffled.slice(idx * 4, idx * 4 + 4);
+    groups[gName] = {
+      name: `Group ${gName}`,
+      standings: groupClubs.map(c => ({
+        clubName: c.name,
+        country: c.country,
+        division: c.division,
+        reputation: c.reputation || 60,
+        played: 0,
+        won: 0,
+        drawn: 0,
+        lost: 0,
+        gf: 0,
+        ga: 0,
+        gd: 0,
+        points: 0
+      }))
+    };
+  });
+
+  s.globalTournament = {
+    edition: Math.max(1, Math.floor(s.season / 2)),
+    season: s.season,
+    name: 'Global Club World Championship',
+    status: 'groups',
+    currentRound: 1,
+    groups,
+    knockout: {
+      quarterFinals: [],
+      semiFinals: [],
+      thirdPlace: null,
+      final: null
+    },
+    champion: null,
+    runnerUp: null,
+    historyLog: []
+  };
+
+  addNews(s, `🌍 TOURNAMENT INAUGURATION: The Bi-Annual Global Club World Championship begins for Season ${s.season}! 16 elite clubs compete across 4 global groups.`, 'competition');
+  persist();
+  return s.globalTournament;
+}
+
+function simulateGlobalTournamentRound(s) {
+  if (!s.globalTournament) {
+    initiateGlobalTournament(s);
+  }
+  const t = s.globalTournament;
+  if (t.status === 'completed') {
+    return { error: `Current Global Tournament edition is completed. Next edition scheduled for Season ${t.season + 2}.` };
+  }
+
+  const user = club(s, s.selectedClub);
+  let roundResults = [];
+
+  if (t.status === 'groups') {
+    const gKeys = ['A', 'B', 'C', 'D'];
+    gKeys.forEach(gKey => {
+      const grp = t.groups[gKey];
+      const clubsInGroup = grp.standings;
+      let pairs = [];
+      if (t.currentRound === 1) pairs = [[0, 1], [2, 3]];
+      else if (t.currentRound === 2) pairs = [[0, 2], [1, 3]];
+      else pairs = [[0, 3], [1, 2]];
+
+      pairs.forEach(([i1, i2]) => {
+        const c1Name = clubsInGroup[i1].clubName;
+        const c2Name = clubsInGroup[i2].clubName;
+        const res = match(s, c1Name, c2Name, {
+          isCup: true,
+          competitionName: `Global Championship · Group ${gKey} MD${t.currentRound}`,
+          isAiOnly: (user?.name !== c1Name && user?.name !== c2Name)
+        });
+
+        const s1 = clubsInGroup[i1];
+        const s2 = clubsInGroup[i2];
+        s1.played++; s2.played++;
+        s1.gf += res.homeGoals; s1.ga += res.awayGoals; s1.gd = s1.gf - s1.ga;
+        s2.gf += res.awayGoals; s2.ga += res.homeGoals; s2.gd = s2.gf - s2.ga;
+
+        if (res.homeGoals > res.awayGoals) {
+          s1.won++; s1.points += 3; s2.lost++;
+        } else if (res.homeGoals < res.awayGoals) {
+          s2.won++; s2.points += 3; s1.lost++;
+        } else {
+          s1.drawn++; s1.points += 1;
+          s2.drawn++; s2.points += 1;
+        }
+
+        roundResults.push(res);
+      });
+
+      grp.standings.sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+    });
+
+    t.currentRound++;
+    if (t.currentRound > 3) {
+      t.status = 'quarter_finals';
+      const qfPairs = [
+        { home: t.groups['A'].standings[0].clubName, away: t.groups['B'].standings[1].clubName, label: 'QF 1 (1A vs 2B)' },
+        { home: t.groups['B'].standings[0].clubName, away: t.groups['A'].standings[1].clubName, label: 'QF 2 (1B vs 2A)' },
+        { home: t.groups['C'].standings[0].clubName, away: t.groups['D'].standings[1].clubName, label: 'QF 3 (1C vs 2D)' },
+        { home: t.groups['D'].standings[0].clubName, away: t.groups['C'].standings[1].clubName, label: 'QF 4 (1D vs 2C)' }
+      ];
+      t.knockout.quarterFinals = qfPairs.map(p => ({
+        ...p,
+        homeGoals: null,
+        awayGoals: null,
+        winner: null,
+        played: false
+      }));
+      addNews(s, `🌍 TOURNAMENT UPDATE: Group stage completed! 8 clubs advance to the Global Club World Championship Quarter-Finals!`, 'competition');
+    }
+  } else if (t.status === 'quarter_finals') {
+    const winners = [];
+    t.knockout.quarterFinals.forEach(qf => {
+      const res = match(s, qf.home, qf.away, {
+        isCup: true,
+        cupStage: 'GCWC Quarter-Final',
+        competitionName: `Global Championship · ${qf.label}`,
+        isAiOnly: (user?.name !== qf.home && user?.name !== qf.away)
+      });
+      qf.homeGoals = res.homeGoals;
+      qf.awayGoals = res.awayGoals;
+      qf.penalties = res.penalties;
+      qf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? qf.home : qf.away);
+      qf.played = true;
+      winners.push(qf.winner);
+      roundResults.push(res);
+    });
+
+    t.status = 'semi_finals';
+    t.knockout.semiFinals = [
+      { home: winners[0], away: winners[2], label: 'Semi-Final 1', played: false },
+      { home: winners[1], away: winners[3], label: 'Semi-Final 2', played: false }
+    ];
+    addNews(s, `🌍 TOURNAMENT SEMI-FINALS: ${winners.join(', ')} advance to the Global Club World Championship Final 4!`, 'competition');
+  } else if (t.status === 'semi_finals') {
+    const finalPairs = [];
+    const losers = [];
+    t.knockout.semiFinals.forEach(sf => {
+      const res = match(s, sf.home, sf.away, {
+        isCup: true,
+        cupStage: 'GCWC Semi-Final',
+        competitionName: `Global Championship · ${sf.label}`,
+        isAiOnly: (user?.name !== sf.home && user?.name !== sf.away)
+      });
+      sf.homeGoals = res.homeGoals;
+      sf.awayGoals = res.awayGoals;
+      sf.penalties = res.penalties;
+      sf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? sf.home : sf.away);
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      losers.push(sf.winner === sf.home ? sf.away : sf.home);
+      roundResults.push(res);
+    });
+
+    t.status = 'final';
+    t.knockout.thirdPlace = { home: losers[0], away: losers[1], played: false };
+    t.knockout.final = { home: finalPairs[0], away: finalPairs[1], played: false };
+    addNews(s, `🏆 GLOBAL GRAND FINAL: ${finalPairs[0]} vs ${finalPairs[1]} for the Global Club World Championship Trophy!`, 'competition');
+  } else if (t.status === 'final') {
+    const fRes = match(s, t.knockout.final.home, t.knockout.final.away, {
+      isCup: true,
+      cupStage: 'GCWC Grand Final',
+      competitionName: `Global Championship · 🏆 GRAND FINAL`,
+      isAiOnly: (user?.name !== t.knockout.final.home && user?.name !== t.knockout.final.away)
+    });
+    t.knockout.final.homeGoals = fRes.homeGoals;
+    t.knockout.final.awayGoals = fRes.awayGoals;
+    t.knockout.final.penalties = fRes.penalties;
+    const champName = fRes.cupWinner || (fRes.homeGoals > fRes.awayGoals ? t.knockout.final.home : t.knockout.final.away);
+    const runnerName = (champName === t.knockout.final.home) ? t.knockout.final.away : t.knockout.final.home;
+
+    t.knockout.final.winner = champName;
+    t.knockout.final.played = true;
+    t.champion = champName;
+    t.runnerUp = runnerName;
+    t.status = 'completed';
+
+    const champClub = club(s, champName);
+    if (champClub) {
+      champClub.cash = Math.round((champClub.cash + 50.0) * 10) / 10;
+      champClub.reputation = Math.min(99, (champClub.reputation || 70) + 12);
+      champClub.history = champClub.history || {};
+      champClub.history.worldTrophies = (champClub.history.worldTrophies || 0) + 1;
+      recordTransaction(champClub, 50.0, 'tournament_prize', '🏆 Global Club World Champions Prize Money!', s);
+    }
+
+    const runnerClub = club(s, runnerName);
+    if (runnerClub) {
+      runnerClub.cash = Math.round((runnerClub.cash + 25.0) * 10) / 10;
+      recordTransaction(runnerClub, 25.0, 'tournament_prize', '🥈 Global Club Championship Runners-Up Prize', s);
+    }
+
+    s.tournamentHistory = s.tournamentHistory || [];
+    s.tournamentHistory.unshift({
+      edition: t.edition,
+      season: t.season,
+      champion: champName,
+      runnerUp: runnerName,
+      score: `${fRes.homeGoals}-${fRes.awayGoals}${fRes.penalties ? ` (${fRes.penalties.home}-${fRes.penalties.away} pens)` : ''}`,
+      date: new Date().toISOString()
+    });
+
+    addNews(s, `👑 WORLD CHAMPIONS: ${champName} win the Global Club World Championship Trophy and claim ₹50M prize money!`, 'competition');
+    roundResults.push(fRes);
+  }
+
+  persist();
+  return { tournament: t, results: roundResults };
+}
+
+// =============================================================
+// AI TRANSFER APPROACHES & INCOMING OFFERS FOR USER PLAYERS
+// =============================================================
+function generateAiTransferApproaches(s, forceCount = null) {
+  const user = club(s, s.selectedClub);
+  if (!user || !user.players || !user.players.length) return [];
+
+  s.incomingOffers = s.incomingOffers || [];
+  s.incomingOffers = s.incomingOffers.filter(o => o.status === 'pending');
+  if (s.incomingOffers.length >= 4) return s.incomingOffers;
+
+  const userPlayers = clubPlayers(s, user);
+  if (!userPlayers.length) return [];
+
+  const targets = userPlayers.filter(p => 
+    (p.rating || 65) >= 72 || 
+    (p.form || 70) >= 78 || 
+    (p.goalsScored || 0) >= 2 || 
+    ((p.age || 25) <= 21 && (p.rating || 65) >= 68) ||
+    (p.contract && p.contract.years <= 1)
+  );
+
+  if (!targets.length) return s.incomingOffers;
+
+  const otherClubs = s.clubs.filter(c => c.name !== user.name && (c.cash >= 8 || c.division <= 2));
+  if (!otherClubs.length) return s.incomingOffers;
+
+  const countToGenerate = forceCount !== null ? forceCount : (Math.random() < 0.65 ? 1 : 2);
+
+  for (let i = 0; i < countToGenerate; i++) {
+    const p = targets[Math.floor(Math.random() * targets.length)];
+    if (s.incomingOffers.some(o => o.playerId === p.id && o.status === 'pending')) continue;
+
+    const suitor = otherClubs[Math.floor(Math.random() * otherClubs.length)];
+    const baseVal = Math.max(3, p.askingPrice || Math.round((p.rating || 70) * 0.45));
+    const markup = 1.12 + (Math.random() * 0.38);
+    const offeredFee = Math.round(baseVal * markup * 10) / 10;
+    const offeredSalary = Math.round(((p.contract?.salary || 2.0) * 1.35) * 10) / 10;
+    const isLoan = ((p.age || 25) <= 22 && Math.random() < 0.35);
+
+    const reasons = [
+      `${suitor.name} submitted an official transfer bid to sign ${p.name} as their marquee starter for the upcoming campaign.`,
+      `Chief scouts from ${suitor.name} watched ${p.name} live and formally proposed a lucrative transfer package.`,
+      `${suitor.name} are aggressively looking to reinforce their starting XI and identified ${p.name} as their prime target.`,
+      `Following ${p.name}'s impressive performances, ${suitor.name} boardroom have submitted a formal cash bid.`
+    ];
+
+    const offer = {
+      id: `offer_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      suitorClub: suitor.name,
+      suitorCountry: suitor.country,
+      suitorDivision: suitor.division,
+      suitorReputation: suitor.reputation || 70,
+      playerId: p.id,
+      playerName: p.name,
+      playerPosition: p.position,
+      playerRating: p.rating,
+      playerAge: p.age,
+      playerValuation: p.askingPrice,
+      fee: isLoan ? Math.max(1.5, Math.round(offeredFee * 0.15 * 10) / 10) : offeredFee,
+      salary: offeredSalary,
+      type: isLoan ? 'loan' : 'transfer',
+      message: reasons[Math.floor(Math.random() * reasons.length)],
+      playerStance: p.mentality === 'Loyal' ? 'Player loves your club, but is flattered by the inquiry.' :
+                    p.mentality === 'Money-Minded' ? 'Player is heavily tempted by the lucrative wage package offered.' :
+                    p.mentality === 'European Ambition' ? 'Player dreams of high-level continental silverware and requests consideration.' :
+                    'Player remains professional and awaits your managerial decision.',
+      createdAt: Date.now(),
+      status: 'pending'
+    };
+
+    s.incomingOffers.unshift(offer);
+    addNews(s, `📢 TRANSFER INQUIRY: ${suitor.name} have officially submitted a ₹${offer.fee}M ${offer.type} bid for ${p.name}!`, 'transfer');
+  }
+
+  persist();
+  return s.incomingOffers;
+}
+
+function respondToIncomingOffer(s, offerId, decision, counterFee = null) {
+  s.incomingOffers = s.incomingOffers || [];
+  const offer = s.incomingOffers.find(o => o.id === offerId);
+  if (!offer) return { error: 'Transfer offer not found or already expired.' };
+  if (offer.status !== 'pending') return { error: `Offer is already marked as ${offer.status}.` };
+
+  const user = club(s, s.selectedClub);
+  const suitor = club(s, offer.suitorClub);
+  const p = player(s, offer.playerId);
+
+  if (!user || !p) return { error: 'Club or player not found.' };
+
+  if (decision === 'accept') {
+    offer.status = 'accepted';
+    user.cash = Math.round((user.cash + offer.fee) * 10) / 10;
+    recordTransaction(user, offer.fee, 'player_sale', `Official Sale: ${p.name} transferred to ${offer.suitorClub}`, s);
+
+    user.players = (user.players || []).filter(id => id !== p.id);
+    if (suitor) {
+      suitor.players = suitor.players || [];
+      suitor.players.push(p.id);
+      suitor.cash = Math.max(0, Math.round((suitor.cash - offer.fee) * 10) / 10);
+    }
+    p.ownerClub = offer.suitorClub;
+    p.contract = p.contract || {};
+    p.contract.salary = offer.salary;
+    p.contract.years = 3;
+
+    addNews(s, `🤝 DEAL AGREED: ${user.name} accepted ₹${offer.fee}M bid from ${offer.suitorClub} for ${p.name}!`, 'transfer');
+    persist();
+    return {
+      status: 'accepted',
+      message: `Deal agreed! ${p.name} has moved to ${offer.suitorClub} for ₹${offer.fee}M. Cash has been wired to your club treasury.`,
+      cashGained: offer.fee,
+      player: p
+    };
+  }
+
+  if (decision === 'reject') {
+    offer.status = 'rejected';
+    if (p.mentality === 'Money-Minded' || p.mentality === 'European Ambition') {
+      p.morale = Math.max(50, (p.morale || 75) - 6);
+      p.form = Math.max(55, (p.form || 75) - 5);
+    } else {
+      p.morale = Math.min(100, (p.morale || 75) + 6);
+    }
+    addNews(s, `🛑 BID REJECTED: ${user.name} turned down ${offer.suitorClub}'s ₹${offer.fee}M approach for ${p.name}.`, 'transfer');
+    persist();
+    return {
+      status: 'rejected',
+      message: `Offer firmly rejected. ${p.name} remains at your club.`,
+      player: p
+    };
+  }
+
+  if (decision === 'counter') {
+    const counter = Number(counterFee) || (offer.fee * 1.25);
+    if (counter <= offer.fee * 1.2) {
+      offer.fee = Math.round(counter * 10) / 10;
+      return respondToIncomingOffer(s, offerId, 'accept');
+    } else if (counter <= offer.fee * 1.45) {
+      const compromisedFee = Math.round(((offer.fee + counter) / 2) * 10) / 10;
+      offer.fee = compromisedFee;
+      return {
+        status: 'counter_compromise',
+        message: `${offer.suitorClub} responded: "We cannot meet ₹${counter}M, but we can offer a revised compromise of ₹${compromisedFee}M. Will you accept?"`,
+        revisedFee: compromisedFee,
+        offer
+      };
+    } else {
+      offer.status = 'walked_away';
+      addNews(s, `🚶 TALKS BROKE DOWN: ${offer.suitorClub} walked away from negotiations for ${p.name} due to unrealistic valuation demands.`, 'transfer');
+      persist();
+      return {
+        status: 'walked_away',
+        message: `${offer.suitorClub} representatives walked out: "Your counter-valuation of ₹${counter}M is exorbitant. Negotiations are closed."`,
+        player: p
+      };
+    }
+  }
+
+  return { error: 'Unknown decision.' };
+}
+
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,simulate,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer};

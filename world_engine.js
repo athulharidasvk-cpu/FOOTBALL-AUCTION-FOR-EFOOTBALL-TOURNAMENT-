@@ -1682,16 +1682,23 @@ function launchJersey(s, clubName) {
   const c = club(s, clubName);
   if (!c) return { error: 'Club not found.' };
   if (!c.jersey) {
-    c.jersey = { home: '#0b2545', away: '#e8edf4', third: '#163820', pattern: 'stripes', collar: '#ffffff', shorts: '#0b2545', quality: 75 };
+    c.jersey = {
+      home: '#0b2545',
+      away: '#e8edf4',
+      third: '#163820',
+      pattern: 'stripes',
+      collar: '#ffffff',
+      shorts: '#0b2545',
+      quality: 75
+    };
   }
+
   const quality = Number(c.jersey.quality) || 75;
   const fanSatisfaction = Number(c.fanSatisfaction) || 75;
   const rep = Number(c.reputation) || 55;
   const division = c.division || 3;
 
-  // Determination: HIT or FLOP
-  // A kit is a certified HIT if quality is high and fans are satisfied
-  const isHit = (quality >= 70 && fanSatisfaction >= 60) || (quality >= 82);
+  const isHit = (quality >= 70 && fanSatisfaction >= 60) || quality >= 82;
   const verdict = isHit ? 'hit' : 'flop';
 
   let unitsSold = 0;
@@ -1699,32 +1706,43 @@ function launchJersey(s, clubName) {
   let review = '';
 
   if (isHit) {
-    // HIT JERSEY
     const baseUnits = division === 1 ? 125000 : division === 2 ? 65000 : division === 3 ? 36000 : 16000;
-    unitsSold = Math.round(baseUnits * (0.85 + (quality / 180) + (rep / 300) + (Math.random() * 0.2)));
-    revenue = Math.round((unitsSold * 90) / 100000) / 10; // in Millions, e.g. ₹3.2M - ₹11M
+    unitsSold = Math.round(
+      baseUnits * (0.85 + (quality / 180) + (rep / 300) + (Math.random() * 0.2))
+    );
+    revenue = Math.round((unitsSold * 90) / 100000) / 10;
     review = `🔥 SENSATIONAL HIT JERSEY! Supporters flooded the club megastore and queued around the stadium concourse! Social media praised the stunning aesthetic design, and global distributors reported instant sell-outs across all sizes.`;
     c.fanSatisfaction = Math.min(100, fanSatisfaction + 6);
     c.popularity = Math.min(100, (c.popularity || 60) + 4);
     c.merchandise = Math.min(100, Math.round(quality * 0.7 + 25));
-    c.cash = Math.round((c.cash + revenue) * 10) / 10;
-    addNews(s, `👕 RETAIL SENSATION: ${c.name} launched their official season kit! Rated a certified HIT JERSEY, selling ${unitsSold.toLocaleString()} shirts and generating ₹${revenue}M in commercial revenue!`, 'club');
   } else {
-    // FLOP JERSEY
     const baseUnits = division === 1 ? 28000 : division === 2 ? 14000 : division === 3 ? 6200 : 2800;
-    unitsSold = Math.round(baseUnits * (0.6 + (quality / 300) + (Math.random() * 0.2)));
-    revenue = Math.round((unitsSold * 45) / 100000) / 10; // in Millions, e.g. ₹0.3M - ₹0.8M
+    unitsSold = Math.round(
+      baseUnits * (0.6 + (quality / 300) + (Math.random() * 0.2))
+    );
+    revenue = Math.round((unitsSold * 45) / 100000) / 10;
     review = `⚠️ DISAPPOINTING FLOP JERSEY. Supporters protested the lack of craftsmanship and questionable styling. Unsold replica inventory is languishing in outlet clearance bins with heavy discounts.`;
     c.fanSatisfaction = Math.max(15, fanSatisfaction - 5);
     c.popularity = Math.max(15, (c.popularity || 60) - 2);
     c.merchandise = Math.max(15, Math.round(quality * 0.4 + 10));
-    c.cash = Math.round((c.cash + revenue) * 10) / 10;
-    recordTransaction(c, revenue, 'kit_sales', `Kit Launch: ${verdict.toUpperCase()} (${unitsSold.toLocaleString()} jerseys sold)`, s);
-    addNews(s, `👕 RETAIL SLUMP: ${c.name} official kit launch designated a FLOP JERSEY. Weak retail reception generated only ${unitsSold.toLocaleString()} shirt sales.`, 'club');
-  } else {
-    c.cash = Math.round((c.cash + revenue) * 10) / 10;
-    recordTransaction(c, revenue, 'kit_sales', `Kit Launch: ${verdict.toUpperCase()} (${unitsSold.toLocaleString()} jerseys sold)`, s);
   }
+
+  c.cash = Math.round((c.cash + revenue) * 10) / 10;
+  recordTransaction(
+    c,
+    revenue,
+    'kit_sales',
+    `Kit Launch: ${verdict.toUpperCase()} (${unitsSold.toLocaleString()} jerseys sold)`,
+    s
+  );
+
+  addNews(
+    s,
+    verdict === 'hit'
+      ? `👕 RETAIL SENSATION: ${c.name} launched their official season kit! Rated a certified HIT JERSEY, selling ${unitsSold.toLocaleString()} shirts and generating ₹${revenue}M in commercial revenue!`
+      : `👕 RETAIL SLUMP: ${c.name} official kit launch designated a FLOP JERSEY. Weak retail reception generated only ${unitsSold.toLocaleString()} shirt sales.`,
+    'club'
+  );
 
   c.jersey.launched = true;
   c.jersey.launchedSeason = s.season;

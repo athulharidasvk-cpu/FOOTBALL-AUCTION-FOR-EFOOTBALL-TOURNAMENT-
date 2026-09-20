@@ -1205,8 +1205,55 @@ function modeScreen() {
   `;
 }
 
-function createSoloWorld() {
-  socket.emit('world4:soloCreate');
+async function createSoloWorld() {
+  const cards = document.querySelectorAll('.game-card');
+  cards.forEach(card => {
+    if (card.getAttribute('onclick') === 'createSoloWorld()') {
+      card.style.pointerEvents = 'none';
+      card.style.opacity = '0.7';
+    }
+  });
+
+  try {
+    // Use the HTTP API as the primary path. This is more reliable on mobile
+    // and still works when the Socket.IO connection is reconnecting.
+    const res = await fetch('/api/world4/solo/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.soloId || !data.state) {
+      throw new Error(data.error || 'Unable to create solo career.');
+    }
+
+    session = {
+      ...(session || {}),
+      type: 'solo',
+      soloId: data.soloId,
+      roomCode: null,
+      managerId: null
+    };
+    save();
+    S = data.state;
+    renderGame();
+  } catch (err) {
+    console.error('[Solo Career]', err);
+
+    // Fallback to Socket.IO if the HTTP request failed.
+    if (socket && socket.connected) {
+      socket.emit('world4:soloCreate');
+    } else {
+      alert('Solo Career could not start. Please refresh the page and try again.');
+    }
+
+    cards.forEach(card => {
+      if (card.getAttribute('onclick') === 'createSoloWorld()') {
+        card.style.pointerEvents = '';
+        card.style.opacity = '';
+      }
+    });
+  }
 }
 
 function resumeSession() {

@@ -516,22 +516,91 @@ function makeMarket(){
   return market;
 }
 
+function getDivisionRatingRange(division) {
+  switch (Number(division)) {
+    case 1: return { min: 72, max: 82, avg: 76, name: 'Top Flight' };
+    case 2: return { min: 66, max: 73, avg: 69, name: 'Championship' };
+    case 4: return { min: 54, max: 62, avg: 58, name: 'Grassroots' };
+    case 3:
+    default: return { min: 60, max: 68, avg: 64, name: 'Regional Tier' };
+  }
+}
+
+function rebalanceSquadToDivision(s, c) {
+  if (!s || !c) return;
+  const tier = getDivisionRatingRange(c.division || 3);
+  c.players = Array.isArray(c.players) ? c.players : [];
+  const eliteClubs = s.clubs.filter(x => x.division === 1 && x.name !== c.name);
+  const validPlayerIds = [];
+  const targetMax = c.division === 3 ? 65 : tier.max;
+  const targetMin = tier.min;
+
+  c.players.forEach(pid => {
+    const p = player(s, pid);
+    if (!p) return;
+    if (p.rating > targetMax) {
+      if (eliteClubs.length && Math.random() < 0.8) {
+        const target = eliteClubs[Math.floor(Math.random() * eliteClubs.length)];
+        p.ownerClub = target.name;
+        target.players = Array.isArray(target.players) ? target.players : [];
+        if (!target.players.includes(p.id)) target.players.push(p.id);
+      } else {
+        p.ownerClub = null;
+        p.status = 'free_agent';
+      }
+      let repl = s.market.find(x => x.position === p.position && !x.ownerClub && !validPlayerIds.includes(x.id) && x.rating >= targetMin && x.rating <= targetMax);
+      if (!repl) {
+        const pId = 'p_div_' + Math.random().toString(36).slice(2, 9);
+        const rating = Math.min(targetMax, Math.max(targetMin, Math.round(targetMin + Math.random() * (targetMax - targetMin))));
+        const randFirst = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
+        const randLast = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
+        repl = {
+          id: pId,
+          name: `${randFirst} ${randLast}`,
+          position: p.position,
+          rating: rating,
+          age: 20 + Math.floor(Math.random() * 8),
+          nationality: c.country || 'International',
+          ownerClub: c.name,
+          askingPrice: Math.max(1, Math.round(rating * 0.18)),
+          status: 'contracted',
+          contract: { salary: Math.max(0.2, Math.round(rating * 0.025 * 10) / 10), years: 3 }
+        };
+        s.market.push(repl);
+      } else {
+        repl.ownerClub = c.name;
+        repl.status = 'contracted';
+      }
+      validPlayerIds.push(repl.id);
+    } else {
+      p.ownerClub = c.name;
+      p.status = 'contracted';
+      validPlayerIds.push(p.id);
+    }
+  });
+
+  c.players = validPlayerIds;
+  if (c.players.length < 16) {
+    seedSquad(c, s.market, 16);
+  }
+}
+
 function seedSquad(clubObj, market, count = 16) {
   if (!clubObj) return;
   clubObj.players = Array.isArray(clubObj.players) ? clubObj.players : [];
+  const tier = getDivisionRatingRange(clubObj.division || 3);
   const needed = ['GK','GK','CB','CB','CB','LB','RB','DMF','CMF','CMF','AMF','AMF','CF','CF','LWF','RWF'];
   needed.forEach(pos => {
     if (clubObj.players.length >= count) return;
-    let p = market.find(x => x.position === pos && !x.ownerClub && !clubObj.players.includes(x.id));
-    if (!p) p = market.find(x => !x.ownerClub && !clubObj.players.includes(x.id));
+    let p = market.find(x => x.position === pos && !x.ownerClub && !clubObj.players.includes(x.id) && x.rating >= tier.min && x.rating <= tier.max);
+    if (!p) p = market.find(x => !x.ownerClub && !clubObj.players.includes(x.id) && x.rating >= tier.min && x.rating <= tier.max);
     if (p) {
       p.ownerClub = clubObj.name;
       p.status = 'contracted';
       if (!clubObj.players.includes(p.id)) clubObj.players.push(p.id);
     } else {
       const pId = 'p_seed_' + Math.random().toString(36).slice(2, 9);
-      const rep = Number(clubObj.reputation) || 72;
-      const rating = Math.min(84, Math.max(68, Math.round(rep * 0.95 + (Math.random() * 6 - 3))));
+      const rating = Math.min(tier.max, Math.max(tier.min, Math.round(tier.avg + (Math.random() * 5 - 2.5))));
       const randFirst = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)];
       const randLast = LAST_NAMES[Math.floor(Math.random() * LAST_NAMES.length)];
       const newP = {
@@ -539,12 +608,12 @@ function seedSquad(clubObj, market, count = 16) {
         name: `${randFirst} ${randLast}`,
         position: pos,
         rating: rating,
-        age: 20 + Math.floor(Math.random() * 9),
+        age: 19 + Math.floor(Math.random() * 9),
         nationality: clubObj.country || 'International',
         ownerClub: clubObj.name,
-        askingPrice: Math.round(rating * 0.35),
+        askingPrice: Math.max(1, Math.round(rating * 0.18)),
         status: 'contracted',
-        contract: { salary: Math.max(0.4, Math.round(rating * 0.05 * 10) / 10), years: 3 }
+        contract: { salary: Math.max(0.2, Math.round(rating * 0.025 * 10) / 10), years: 3 }
       };
       market.push(newP);
       clubObj.players.push(pId);
@@ -682,6 +751,10 @@ function upgradeLegacyWorld(s) {
   s.awardsHistory = Array.isArray(s.awardsHistory) ? s.awardsHistory : [];
   s.tournamentHistory = Array.isArray(s.tournamentHistory) ? s.tournamentHistory : [];
   s.incomingOffers = Array.isArray(s.incomingOffers) ? s.incomingOffers : [];
+  if (s.selectedClub) {
+    const selC = club(s, s.selectedClub);
+    if (selC) rebalanceSquadToDivision(s, selC);
+  }
   if (s.selectedClub && (!s.incomingOffers || !s.incomingOffers.length)) {
     try { generateAiTransferApproaches(s, 2); } catch (e) {}
   }
@@ -696,7 +769,7 @@ function makeState(mode,code){
 function club(state,name){return state.clubs.find(c=>c.name===name);}
 function getPlayerMap(state){
   if (!state) return new Map();
-  if (!state._playerMap || state._playerMapMarketLen !== (state.market ? state.market.length : 0)) {
+  if (!state._playerMap || !(state._playerMap instanceof Map) || state._playerMapMarketLen !== (state.market ? state.market.length : 0)) {
     const map = new Map();
     if (state.market) {
       for (let i = 0; i < state.market.length; i++) {
@@ -730,7 +803,33 @@ function clubPlayers(state,c){
   return res;
 }
 function addNews(state,text,type='world'){state.news.unshift({id:id('news'),season:state.season,type,text,at:new Date().toISOString()});state.news=state.news.slice(0,100);}
-function persist(){try{const data={rooms:[...worldRooms.entries()].map(([k,v])=>[k,v]),solo:[...soloWorlds.entries()].map(([k,v])=>[k,v])};fs.writeFileSync(SAVE,JSON.stringify(data));}catch(e){console.error('[WorldEngine]',e.message)}}
+let persistTimeout = null;
+function persist(){
+  if (persistTimeout) return;
+  persistTimeout = setTimeout(() => {
+    persistTimeout = null;
+    try {
+      const data = {
+        rooms: [...worldRooms.entries()].map(([k,v])=>[k,v]),
+        solo: [...soloWorlds.entries()].map(([k,v])=>[k,v])
+      };
+      fs.writeFile(SAVE, JSON.stringify(data), err => {
+        if (err) console.error('[WorldEngine] Persist error:', err.message);
+      });
+    } catch(e) {
+      console.error('[WorldEngine]', e.message);
+    }
+  }, 100);
+}
+function persistSync(){
+  try {
+    const data = {
+      rooms: [...worldRooms.entries()].map(([k,v])=>[k,v]),
+      solo: [...soloWorlds.entries()].map(([k,v])=>[k,v])
+    };
+    fs.writeFileSync(SAVE, JSON.stringify(data));
+  } catch(e){}
+}
 function createRoom(name,maxHumans,host){let code='';do{code=Math.random().toString(36).slice(2,8).toUpperCase()}while(worldRooms.has(code));const s=makeState('online',code);s.roomName=name||'Friends Football League';s.maxHumans=Math.min(20,Math.max(2,Number(maxHumans)||10));s.humans={};s.host=host||null;worldRooms.set(code,s);persist();return s;}
 function createSolo(){const sid=id('solo');const s=makeState('solo',null);s.soloId=sid;soloWorlds.set(sid,s);persist();return s;}
 function getWorld(ref){
@@ -832,6 +931,7 @@ function chooseClub(s,name,managerId){
     recordTransaction(c, c.cash, 'starting_capital', 'Division 3 Boardroom Capital Allocation', s);
   }
   if(!c.players||c.players.length<16)seedSquad(c,s.market,16);
+  rebalanceSquadToDivision(s, c);
   (c.players || []).forEach(pid => {
     const p = player(s, pid);
     if (p) {
@@ -839,6 +939,10 @@ function chooseClub(s,name,managerId){
       p.status = 'contracted';
     }
   });
+  const myP = (c.players || []).map(pid => player(s, pid)).filter(Boolean);
+  if (myP.length > 0) {
+    c.rating = Math.round(myP.reduce((sum, p) => sum + (p.rating || 62), 0) / myP.length);
+  }
   if(s.mode==='online'&&managerId&&s.humans?.[managerId])s.humans[managerId].club=c.name;
   persist();
   return c;
@@ -1205,103 +1309,306 @@ function match(s,homeName,awayName,opts={}){
   return matchRecord;
 }
 
+function getNextFixture(s) {
+  const user = club(s, s?.selectedClub);
+  if (!user) return null;
+  const matchday = (s.matchday || 0) + 1;
+
+  let isGlobalCup = false;
+  let gtOpponent = null;
+  let gtStage = '';
+
+  if (!s.globalTournament && (s.season % 2 === 0 || s.matchday >= 5)) {
+    try { initiateGlobalTournament(s); } catch (e) {}
+  }
+
+  if (s.globalTournament && s.globalTournament.status !== 'completed') {
+    const gt = s.globalTournament;
+    let userInGroup = null;
+    if (gt.status === 'groups') {
+      ['A', 'B', 'C', 'D'].forEach(k => {
+        if (gt.groups[k]?.standings.some(x => x.clubName === user.name)) {
+          userInGroup = k;
+        }
+      });
+      if (userInGroup) {
+        if (matchday % 3 === 0 && (gt.currentRound || 1) <= 3) {
+          isGlobalCup = true;
+          gtStage = `Group ${userInGroup} · Matchday ${gt.currentRound || 1}`;
+          const grp = gt.groups[userInGroup];
+          const clubsInGroup = grp.standings;
+          let pairs = [];
+          if (gt.currentRound === 1) pairs = [[0, 1], [2, 3]];
+          else if (gt.currentRound === 2) pairs = [[0, 2], [1, 3]];
+          else pairs = [[0, 3], [1, 2]];
+          const userIdx = clubsInGroup.findIndex(x => x.clubName === user.name);
+          const pair = pairs.find(p => p.includes(userIdx));
+          if (pair) {
+            const oppIdx = pair[0] === userIdx ? pair[1] : pair[0];
+            gtOpponent = club(s, clubsInGroup[oppIdx]?.clubName);
+          }
+        }
+      }
+    } else if (gt.status === 'knockout') {
+      const ko = gt.knockout;
+      let userKoMatch = null;
+      let koStageName = '';
+      if (ko.quarterFinals?.length && ko.quarterFinals.some(m => !m.completed && (m.home === user.name || m.away === user.name))) {
+        userKoMatch = ko.quarterFinals.find(m => !m.completed && (m.home === user.name || m.away === user.name));
+        koStageName = 'Quarter-Final';
+      } else if (ko.semiFinals?.length && ko.semiFinals.some(m => !m.completed && (m.home === user.name || m.away === user.name))) {
+        userKoMatch = ko.semiFinals.find(m => !m.completed && (m.home === user.name || m.away === user.name));
+        koStageName = 'Semi-Final';
+      } else if (ko.final && !ko.final.completed && (ko.final.home === user.name || ko.final.away === user.name)) {
+        userKoMatch = ko.final;
+        koStageName = 'Grand Final';
+      }
+      if (userKoMatch && (matchday % 3 === 0)) {
+        isGlobalCup = true;
+        gtStage = koStageName;
+        const oppName = userKoMatch.home === user.name ? userKoMatch.away : userKoMatch.home;
+        gtOpponent = club(s, oppName);
+      }
+    }
+  }
+
+  let compType = 'league';
+  let compLabel = 'REGULAR LEAGUE MATCH';
+  let compBadgeColor = '#38bdf8';
+  let compStage = `Matchday ${Math.ceil(matchday * 0.75)}`;
+  let opp = null;
+  let winBonus = 0.5;
+  let stakes = '+3 Points in Division Standings';
+
+  if (isGlobalCup && gtOpponent) {
+    compType = 'global_cup';
+    compLabel = 'GLOBAL CLUB WORLD CUP';
+    compBadgeColor = '#f59e0b';
+    compStage = gtStage;
+    opp = gtOpponent;
+    winBonus = 12.5;
+    stakes = `Global Cup Group/Knockout Progression · ₹${winBonus}M Bonus`;
+  } else if ((user.division === 1 || (user.reputation || 60) >= 80) && (matchday % 4 === 0)) {
+    compType = 'champions_league';
+    compLabel = 'UEFA CHAMPIONS LEAGUE';
+    compBadgeColor = '#818cf8';
+    compStage = matchday <= 8 ? `Group Stage · MD ${Math.ceil(matchday / 4)}` : matchday === 12 ? 'Quarter-Final' : 'European Semi-Final';
+    winBonus = 8.0;
+    stakes = 'European Prestige & Continental Progression';
+    const foreignPool = s.clubs.filter(c => c.name !== user.name && c.country !== user.country && c.division === 1);
+    opp = foreignPool[matchday % (foreignPool.length || 1)] || s.clubs.find(c => c.name !== user.name);
+  } else if (user.division === 2 && (matchday % 4 === 0)) {
+    compType = 'conference_league';
+    compLabel = 'UEFA CONFERENCE LEAGUE';
+    compBadgeColor = '#10b981';
+    compStage = matchday <= 8 ? `Group Stage · MD ${Math.ceil(matchday / 4)}` : 'Knockout Playoff';
+    winBonus = 4.0;
+    stakes = 'Continental Conference Advancement';
+    const foreignPool = s.clubs.filter(c => c.name !== user.name && c.country !== user.country && c.division <= 2);
+    opp = foreignPool[matchday % (foreignPool.length || 1)] || s.clubs.find(c => c.name !== user.name);
+  } else if (matchday % 4 === 0) {
+    compType = 'domestic_cup';
+    compLabel = 'DOMESTIC FA CUP';
+    compBadgeColor = '#ef4444';
+    compStage = matchday === 4 ? 'Round of 16' : matchday === 8 ? 'Quarter-Final' : matchday === 12 ? 'Semi-Final' : 'Cup Final';
+    winBonus = 2.0;
+    stakes = 'Knockout Cup Tie · Single-Leg Elimination';
+    const cupPool = s.clubs.filter(c => c.name !== user.name && c.country === user.country);
+    opp = cupPool[matchday % (cupPool.length || 1)] || s.clubs.find(c => c.name !== user.name);
+  } else {
+    const leagueClubs = s.clubs.filter(c => c.country === user.country && c.division === user.division && c.name !== user.name);
+    const rival = leagueClubs.find(c => c.name === user.rivalName);
+    if (rival && (matchday === 3 || matchday === 7 || matchday === 11)) {
+      opp = rival;
+      stakes = `🔥 HEATED LOCAL DERBY vs ${rival.name} (+3 Pts & Fan Pride)`;
+    } else {
+      opp = leagueClubs[matchday % (leagueClubs.length || 1)] || s.clubs.find(c => c.name !== user.name);
+    }
+  }
+
+  if (!opp) opp = s.clubs.find(c => c.name !== user.name) || { name: 'Rival FC', country: user.country, division: user.division, reputation: 60 };
+
+  const isHome = matchday % 2 !== 0;
+  const oppPlayers = clubPlayers(s, opp);
+  const oppOvr = oppPlayers.length ? Math.round(oppPlayers.reduce((a, b) => a + b.rating, 0) / oppPlayers.length) : (opp.reputation || 60);
+  const oppKeyPlayer = oppPlayers.sort((a, b) => b.rating - a.rating)[0];
+
+  const userPlayers = clubPlayers(s, user);
+  const userOvr = userPlayers.length ? Math.round(userPlayers.reduce((a, b) => a + b.rating, 0) / userPlayers.length) : 64;
+
+  return {
+    matchday,
+    compType,
+    compLabel,
+    compBadgeColor,
+    compStage,
+    fullTitle: `${compLabel} · ${compStage}`,
+    isHome,
+    stadium: isHome ? (user.stadium?.name || `${user.name} Ground`) : (opp.stadium?.name || `${opp.name} Arena`),
+    homeTeam: isHome ? user.name : opp.name,
+    awayTeam: isHome ? opp.name : user.name,
+    userTeam: {
+      name: user.name,
+      division: user.division,
+      rating: userOvr,
+      crest: user.crest || 'crest_lion',
+      jersey: user.jersey || { home: '#0f172a' }
+    },
+    opponent: {
+      name: opp.name,
+      country: opp.country,
+      division: opp.division,
+      reputation: opp.reputation || 60,
+      crest: opp.crest || 'crest_lion',
+      jersey: opp.jersey || { home: '#1e293b' },
+      rating: oppOvr,
+      keyPlayer: oppKeyPlayer ? { name: oppKeyPlayer.name, rating: oppKeyPlayer.rating, position: oppKeyPlayer.position } : null
+    },
+    stakes,
+    winBonus
+  };
+}
+
 function simulate(s){
   const user = club(s, s.selectedClub);
   if (!user) return { error: 'Choose a club first.' };
 
-  s.matchday = (s.matchday || 0) + 1;
-  const isCup = (s.matchday % 4 === 0);
-  
-  let cupStage = 'FA Cup Round of 16';
-  if (s.matchday === 4) cupStage = 'FA Cup Round of 16';
-  else if (s.matchday === 8) cupStage = 'FA Cup Quarter-Final';
-  else if (s.matchday === 12) cupStage = 'FA Cup Semi-Final';
-  else if (s.matchday >= 16) cupStage = 'FA Cup Final';
+  const fixture = getNextFixture(s);
+  if (!fixture) return { error: 'Fixture schedule unavailable.' };
 
+  s.matchday = (s.matchday || 0) + 1;
   let matchResult = null;
   const otherResults = [];
 
-  if (isCup) {
-    // Domestic Knockout Cup Fixture!
-    const cupPool = s.clubs.filter(c => c.name !== user.name && c.country === user.country);
-    const opp = cupPool.length ? cupPool[Math.floor(Math.random() * cupPool.length)] : s.clubs.find(c => c.name !== user.name);
-    if (!opp) return { error: 'No cup opponent available.' };
-
-    matchResult = match(s, user.name, opp.name, {
+  if (fixture.compType === 'global_cup') {
+    matchResult = match(s, fixture.homeTeam, fixture.awayTeam, {
       isCup: true,
-      cupStage,
-      competitionName: `${user.country} FA Cup · ${cupStage}`
+      competitionName: fixture.fullTitle
     });
 
-    // Simulate concurrent cup ties
-    const remainingPool = cupPool.filter(c => c.name !== opp.name);
-    for (let i = 0; i < Math.min(4, remainingPool.length - 1); i += 2) {
-      const c1 = remainingPool[i];
-      const c2 = remainingPool[i + 1];
-      if (c1 && c2) {
-        const res = match(s, c1.name, c2.name, {
-          isCup: true,
-          cupStage,
-          competitionName: `${user.country} FA Cup · ${cupStage}`,
-          isAiOnly: true
+    const gt = s.globalTournament;
+    if (gt && gt.status === 'groups') {
+      const gKeys = ['A', 'B', 'C', 'D'];
+      gKeys.forEach(gKey => {
+        const grp = gt.groups[gKey];
+        if (!grp) return;
+        const clubsInGroup = grp.standings;
+        let pairs = [];
+        if (gt.currentRound === 1) pairs = [[0, 1], [2, 3]];
+        else if (gt.currentRound === 2) pairs = [[0, 2], [1, 3]];
+        else pairs = [[0, 3], [1, 2]];
+
+        pairs.forEach(([i1, i2]) => {
+          const c1Name = clubsInGroup[i1].clubName;
+          const c2Name = clubsInGroup[i2].clubName;
+          if ((c1Name === fixture.homeTeam && c2Name === fixture.awayTeam) || (c2Name === fixture.homeTeam && c1Name === fixture.awayTeam)) {
+            const s1 = clubsInGroup[i1];
+            const s2 = clubsInGroup[i2];
+            const hg = c1Name === fixture.homeTeam ? matchResult.homeGoals : matchResult.awayGoals;
+            const ag = c1Name === fixture.homeTeam ? matchResult.awayGoals : matchResult.homeGoals;
+            s1.played++; s2.played++;
+            s1.gf += hg; s1.ga += ag; s1.gd = s1.gf - s1.ga;
+            s2.gf += ag; s2.ga += hg; s2.gd = s2.gf - s2.ga;
+            if (hg > ag) { s1.won++; s1.points += 3; s2.lost++; }
+            else if (hg < ag) { s2.won++; s2.points += 3; s1.lost++; }
+            else { s1.drawn++; s2.drawn++; s1.points++; s2.points++; }
+          } else {
+            const res = match(s, c1Name, c2Name, { isCup: true, competitionName: `Global Cup · Group ${gKey}`, isAiOnly: true });
+            otherResults.push({ home: c1Name, away: c2Name, homeGoals: res.homeGoals, awayGoals: res.awayGoals });
+            const s1 = clubsInGroup[i1];
+            const s2 = clubsInGroup[i2];
+            s1.played++; s2.played++;
+            s1.gf += res.homeGoals; s1.ga += res.awayGoals; s1.gd = s1.gf - s1.ga;
+            s2.gf += res.awayGoals; s2.ga += res.homeGoals; s2.gd = s2.gf - s2.ga;
+            if (res.homeGoals > res.awayGoals) { s1.won++; s1.points += 3; s2.lost++; }
+            else if (res.homeGoals < res.awayGoals) { s2.won++; s2.points += 3; s1.lost++; }
+            else { s1.drawn++; s2.drawn++; s1.points++; s2.points++; }
+          }
         });
+        grp.standings.sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+      });
+
+      gt.currentRound = (gt.currentRound || 1) + 1;
+      if (gt.currentRound > 3) {
+        gt.status = 'knockout';
+        const qf = [];
+        const topClubs = [];
+        ['A', 'B', 'C', 'D'].forEach(k => {
+          topClubs.push(gt.groups[k].standings[0].clubName);
+          topClubs.push(gt.groups[k].standings[1].clubName);
+        });
+        qf.push({ id: 'gt_qf_1', home: topClubs[0], away: topClubs[3], homeGoals: null, awayGoals: null, completed: false });
+        qf.push({ id: 'gt_qf_2', home: topClubs[2], away: topClubs[1], homeGoals: null, awayGoals: null, completed: false });
+        qf.push({ id: 'gt_qf_3', home: topClubs[4], away: topClubs[7], homeGoals: null, awayGoals: null, completed: false });
+        qf.push({ id: 'gt_qf_4', home: topClubs[6], away: topClubs[5], homeGoals: null, awayGoals: null, completed: false });
+        gt.knockout.quarterFinals = qf;
+        addNews(s, '🌍 GLOBAL CUP: Group Stage concludes! Quarter-Final matchups are officially drawn.', 'competition');
+      }
+    }
+
+    if ((matchResult.home === user.name && matchResult.homeGoals > matchResult.awayGoals) || (matchResult.away === user.name && matchResult.awayGoals > matchResult.homeGoals)) {
+      recordTransaction(user, fixture.winBonus, 'tournament_prize', `Global Cup Victory: ${fixture.compStage}`, s);
+      addNews(s, `🏆 GLOBAL CUP WIN: ${user.name} triumph in the Global Cup (+₹${fixture.winBonus}M Prize Money)!`, 'club');
+    }
+  } else if (fixture.compType === 'champions_league' || fixture.compType === 'conference_league') {
+    matchResult = match(s, fixture.homeTeam, fixture.awayTeam, {
+      isCup: true,
+      competitionName: fixture.fullTitle
+    });
+    if ((matchResult.home === user.name && matchResult.homeGoals > matchResult.awayGoals) || (matchResult.away === user.name && matchResult.awayGoals > matchResult.homeGoals)) {
+      recordTransaction(user, fixture.winBonus, 'continental_prize', `${fixture.compLabel} Victory Bonus`, s);
+      addNews(s, `⭐ EUROPEAN GLORY: ${user.name} victorious against ${fixture.opponent.name} (+₹${fixture.winBonus}M)!`, 'club');
+    }
+  } else if (fixture.compType === 'domestic_cup') {
+    matchResult = match(s, fixture.homeTeam, fixture.awayTeam, {
+      isCup: true,
+      cupStage: fixture.compStage,
+      competitionName: fixture.fullTitle
+    });
+    if ((matchResult.home === user.name && matchResult.homeGoals > matchResult.awayGoals) || (matchResult.away === user.name && matchResult.awayGoals > matchResult.homeGoals)) {
+      recordTransaction(user, fixture.winBonus, 'cup_prize', `FA Cup Victory: ${fixture.compStage}`, s);
+    }
+    const cupPool = s.clubs.filter(c => c.name !== fixture.homeTeam && c.name !== fixture.awayTeam && c.country === user.country);
+    for (let i = 0; i < Math.min(4, cupPool.length - 1); i += 2) {
+      const c1 = cupPool[i];
+      const c2 = cupPool[i + 1];
+      if (c1 && c2) {
+        const res = match(s, c1.name, c2.name, { isCup: true, cupStage: fixture.compStage, competitionName: fixture.fullTitle, isAiOnly: true });
         otherResults.push({ home: c1.name, away: c2.name, homeGoals: res.homeGoals, awayGoals: res.awayGoals, penalties: res.penalties });
       }
     }
   } else {
-    // Regular League Fixture!
-    const leagueClubs = s.clubs.filter(c => c.country === user.country && c.division === user.division);
-    const availableOpponents = leagueClubs.filter(c => c.name !== user.name);
-    if (!availableOpponents.length) return { error: 'No opponents found in division.' };
-
-    let opp = null;
-    const rivalInLeague = availableOpponents.find(c => c.name === user.rivalName);
-    if (rivalInLeague && (s.matchday === 3 || s.matchday === 7 || Math.random() < 0.28)) {
-      opp = rivalInLeague;
-    } else {
-      opp = availableOpponents[Math.floor(Math.random() * availableOpponents.length)];
-    }
-    const roundNumber = Math.ceil(s.matchday * 0.75);
-    const compName = `${user.country} Division ${user.division} League · Matchday ${roundNumber}`;
-
-    matchResult = match(s, user.name, opp.name, {
+    // League match
+    matchResult = match(s, fixture.homeTeam, fixture.awayTeam, {
       isCup: false,
-      competitionName: compName,
-      roundNumber
+      competitionName: fixture.fullTitle,
+      roundNumber: Math.ceil(s.matchday * 0.75)
     });
 
-    // KEY FIX: Pair up ALL other clubs in the division and simulate their fixtures so AI league points update!
-    const otherDivClubs = availableOpponents.filter(c => c.name !== opp.name);
-    for (let i = otherDivClubs.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [otherDivClubs[i], otherDivClubs[j]] = [otherDivClubs[j], otherDivClubs[i]];
-    }
-
-    for (let i = 0; i < otherDivClubs.length; i += 2) {
-      if (i + 1 < otherDivClubs.length) {
-        const c1 = otherDivClubs[i];
-        const c2 = otherDivClubs[i + 1];
-        const res = match(s, c1.name, c2.name, {
-          isCup: false,
-          competitionName: compName,
-          roundNumber,
-          isAiOnly: true
-        });
+    const leagueClubs = s.clubs.filter(c => c.country === user.country && c.division === user.division && c.name !== fixture.homeTeam && c.name !== fixture.awayTeam);
+    for (let i = 0; i < leagueClubs.length; i += 2) {
+      if (i + 1 < leagueClubs.length) {
+        const c1 = leagueClubs[i];
+        const c2 = leagueClubs[i + 1];
+        const res = match(s, c1.name, c2.name, { isCup: false, competitionName: fixture.fullTitle, roundNumber: Math.ceil(s.matchday * 0.75), isAiOnly: true });
         otherResults.push({ home: c1.name, away: c2.name, homeGoals: res.homeGoals, awayGoals: res.awayGoals });
       }
     }
   }
 
+  matchResult.fixture = fixture;
+  matchResult.compLabel = fixture.compLabel;
+  matchResult.compType = fixture.compType;
+  matchResult.compBadgeColor = fixture.compBadgeColor;
+  matchResult.compStage = fixture.compStage;
   matchResult.otherResults = otherResults;
 
-  // Active AI approaches during season/transfer window:
   if (s.transferWindowOpen && Math.random() < 0.45) {
-    try {
-      generateAiTransferApproaches(s, 1);
-    } catch (err) {
-      console.warn('[WorldEngine] AI approach generation error:', err.message);
-    }
+    try { generateAiTransferApproaches(s, 1); } catch (err) {}
   }
+
+  const nextFixture = getNextFixture(s);
+  matchResult.nextFixture = nextFixture;
 
   persist();
   return matchResult;
@@ -2667,4 +2974,4 @@ function respondToIncomingOffer(s, offerId, decision, counterFee = null) {
 }
 
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer};

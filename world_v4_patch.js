@@ -1056,8 +1056,782 @@ world.globalState = function(w) {
     s.managerMilestones = world.evaluateManagerMilestones(w);
     s.jobOffers = w.jobOffers || [];
     s.nationalTeamRole = w.nationalTeamRole || null;
+
+    // Feature Enriched State Modules
+    s.youthAcademy = world.getYouthAcademyState(w, s.selectedClub);
+    s.boardStatus = world.getBoardStatus(w, s.selectedClub);
+    s.backroomStaff = world.getBackroomStaff(w, s.selectedClub);
+    s.facilities = world.getFacilitiesState(w, s.selectedClub);
+    s.sponsorshipDeals = world.getSponsorshipBids(w, s.selectedClub);
+    s.ffpReport = world.getFFPReport(w, s.selectedClub);
+    s.setPieces = world.getSetPieceTactics(w, s.selectedClub);
   }
   return s;
 };
+
+// -------------------------------------------------------------
+// 11. YOUTH ACADEMY & ANNUAL YOUTH INTAKE SYSTEM
+// -------------------------------------------------------------
+const YOUTH_WONDERKID_TRAITS = [
+  'Generational Finisher', 'Midfield Maestro', 'Aerial Dominator',
+  'Trickster Winger', 'Wall Goalkeeper', 'High-Press Engine',
+  'Ball-Playing Defender', 'Dead-Ball Specialist', 'Golden Boy Prospect'
+];
+
+const YOUTH_PERSONALITIES = [
+  'Determined', 'Model Professional', 'Ambitious', 'Resilient', 'Leader', 'Perfectionist'
+];
+
+world.getYouthAcademyState = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  c.academyLevel = c.academyLevel || 1;
+  c.youthIntakeClass = c.youthIntakeClass || [];
+  c.mentorshipLinks = c.mentorshipLinks || [];
+
+  const upgradeCosts = { 1: 4.0, 2: 8.0, 3: 14.0, 4: 22.0, 5: 0 };
+  const nextCost = upgradeCosts[c.academyLevel] || 0;
+
+  // Auto-generate initial intake if empty
+  if (!c.youthIntakeClass.length) {
+    world.generateYouthIntakeBatch(w, c);
+  }
+
+  const squad = (w.market || []).filter(p => p.ownerClub === c.name);
+  const eligibleMentors = squad.filter(p => (p.age || 26) >= 26);
+  const academyPlayersInSquad = squad.filter(p => p.isYouthAcademy || (p.age || 24) <= 21);
+
+  return {
+    level: c.academyLevel,
+    maxLevel: 5,
+    nextUpgradeCost: nextCost,
+    facilityTierName: ['Grassroots Pitches', 'Regional Center', 'Elite Training Complex', 'State-of-the-Art Academy', 'World-Class Talent Factory'][c.academyLevel - 1],
+    wonderkidChance: c.academyLevel * 18,
+    prospects: c.youthIntakeClass,
+    mentorshipLinks: c.mentorshipLinks,
+    eligibleMentors,
+    academyPlayersInSquad
+  };
+};
+
+world.generateYouthIntakeBatch = function(w, clubObj) {
+  const c = clubObj;
+  const level = c.academyLevel || 1;
+  const firstNames = ['Lucas', 'Mateo', 'Aiden', 'Leo', 'Noah', 'Gabriel', 'Kaito', 'Siddharth', 'Milan', 'Tariq', 'Rafael', 'Julian', 'Enzo', 'Benoit', 'Thiago'];
+  const lastNames = ['Silva', 'Moreno', 'Rossi', 'Muller', 'Nakamura', 'Patel', 'Fernandez', 'Kovacs', 'Diallo', 'Alves', 'Santos', 'Becker', 'Costa', 'Dubois', 'Park'];
+  const positions = ['GK', 'CB', 'LB', 'RB', 'DMF', 'CMF', 'AMF', 'LWF', 'RWF', 'CF'];
+
+  const count = 4 + (level >= 3 ? 1 : 0);
+  const intake = [];
+
+  for (let i = 0; i < count; i++) {
+    const f = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const l = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const pos = positions[Math.floor(Math.random() * positions.length)];
+    const age = 16 + Math.floor(Math.random() * 3); // 16 - 18
+    const baseRating = 60 + (level * 3) + Math.floor(Math.random() * 4); // level 1: 63-67, level 5: 75-79
+    const potential = Math.min(96, baseRating + 14 + Math.floor(Math.random() * (level * 3)));
+    const stars = potential >= 90 ? 5 : potential >= 85 ? 4.5 : potential >= 80 ? 4 : 3.5;
+
+    intake.push({
+      id: `intake_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 6)}`,
+      name: `${f} ${l}`,
+      age,
+      position: pos,
+      rating: baseRating,
+      potential,
+      stars,
+      trait: YOUTH_WONDERKID_TRAITS[Math.floor(Math.random() * YOUTH_WONDERKID_TRAITS.length)],
+      personality: YOUTH_PERSONALITIES[Math.floor(Math.random() * YOUTH_PERSONALITIES.length)],
+      determination: 65 + Math.floor(Math.random() * 30),
+      nationality: c.country || 'International',
+      origin: `${c.name} U18 Academy`,
+      signingFee: 0.1,
+      salary: 0.4
+    });
+  }
+
+  c.youthIntakeClass = intake;
+  return intake;
+};
+
+world.triggerYouthIntake = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const batch = world.generateYouthIntakeBatch(w, c);
+  w.news.unshift({
+    id: `youth_intake_${Date.now()}`,
+    season: w.season,
+    type: 'academy',
+    text: `🌟 YOUTH INTAKE DAY: ${c.name} have unveiled ${batch.length} promising academy starlets! Highest potential: ${batch.reduce((max, p) => p.potential > max.potential ? p : max, batch[0]).name} (${batch[0].potential} POT).`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, prospects: batch };
+};
+
+world.upgradeYouthAcademy = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+  c.academyLevel = c.academyLevel || 1;
+  if (c.academyLevel >= 5) return { error: 'Youth Academy is already at maximum Level 5 (World-Class)!' };
+
+  const upgradeCosts = { 1: 4.0, 2: 8.0, 3: 14.0, 4: 22.0 };
+  const cost = upgradeCosts[c.academyLevel] || 10.0;
+  if (c.cash < cost) {
+    return { error: `Insufficient treasury funds! Upgrading to Level ${c.academyLevel + 1} requires ₹${cost}M. Club currently holds ₹${Math.round(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - cost) * 10) / 10);
+  c.academyLevel++;
+
+  w.news.unshift({
+    id: `academy_upg_${Date.now()}`,
+    season: w.season,
+    type: 'facility',
+    text: `🏗️ ACADEMY EXPANSION: ${c.name} invested ₹${cost}M to upgrade their Youth Academy to Level ${c.academyLevel}! Scouted wonderkid potential has increased substantially.`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, newLevel: c.academyLevel, remainingCash: c.cash };
+};
+
+world.promoteYouthProspect = function(w, clubName, prospectId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  c.youthIntakeClass = c.youthIntakeClass || [];
+  const idx = c.youthIntakeClass.findIndex(p => p.id === prospectId);
+  if (idx === -1) return { error: 'Youth prospect not found in intake class' };
+
+  const p = c.youthIntakeClass.splice(idx, 1)[0];
+
+  const seniorPlayer = {
+    id: `prospect_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+    name: p.name,
+    age: p.age,
+    position: p.position,
+    rating: p.rating,
+    potential: p.potential,
+    trait: p.trait,
+    personality: p.personality,
+    ownerClub: c.name,
+    nationality: p.nationality,
+    form: 80,
+    price: Math.max(2, Math.round(p.rating / 10)),
+    askingPrice: Math.max(3, Math.round(p.rating / 8)),
+    salary: p.salary || 0.5,
+    contractYears: 3,
+    status: 'contracted',
+    isYouthAcademy: true,
+    determination: p.determination || 75
+  };
+
+  w.market.push(seniorPlayer);
+  c.players.push(seniorPlayer.id);
+
+  // Morale & Board Boost
+  c.morale = Math.min(99, (c.morale || 70) + 3);
+  w.news.unshift({
+    id: `youth_promo_${Date.now()}`,
+    season: w.season,
+    type: 'transfer',
+    text: `⭐ SENIOR CONTRACT SIGNED: ${c.name} officially promoted 17yo wonderkid ${p.name} (${p.position} · ${p.rating} OVR · ${p.trait}) to the first-team squad!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, player: seniorPlayer };
+};
+
+world.mentorYouthProspect = function(w, clubName, youthId, mentorId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const youth = (w.market || []).find(p => p.id === youthId && p.ownerClub === c.name);
+  const mentor = (w.market || []).find(p => p.id === mentorId && p.ownerClub === c.name);
+
+  if (!youth || !mentor) return { error: 'Youth prospect or Senior mentor not found in squad' };
+
+  c.mentorshipLinks = c.mentorshipLinks || [];
+  c.mentorshipLinks = c.mentorshipLinks.filter(m => m.youthId !== youthId);
+
+  // Stat progression & mentorship perks
+  youth.rating = Math.min(youth.potential || 90, (youth.rating || 65) + 1);
+  youth.determination = Math.min(99, (youth.determination || 70) + 5);
+  youth.form = Math.min(99, (youth.form || 75) + 8);
+  youth.mentoredBy = mentor.name;
+
+  c.mentorshipLinks.push({
+    youthId,
+    youthName: youth.name,
+    mentorId,
+    mentorName: mentor.name,
+    establishedSeason: w.season
+  });
+
+  w.news.unshift({
+    id: `mentor_${Date.now()}`,
+    season: w.season,
+    type: 'training',
+    text: `🤝 MENTORSHIP PACT: Veteran ${mentor.name} is now mentoring young talent ${youth.name}. Youth determination boosted!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, youth, mentor };
+};
+
+// -------------------------------------------------------------
+// 12. PRESS CONFERENCES, MIND GAMES & BOARD CONFIDENCE
+// -------------------------------------------------------------
+world.getPressConference = function(w, clubName, stage = 'pre') {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const matchday = (w.matchday || 0) + 1;
+  const oppClub = w.clubs.find(x => x.name !== c.name && x.division === c.division) || w.clubs[0];
+
+  const questions = [
+    {
+      id: 'q1_tactics',
+      outlet: 'Sky Sports Football',
+      journalist: 'David Croft',
+      question: `Manager, how are you approaching the upcoming clash against ${oppClub.name}? Pundits question whether your tactics are too open defensively.`,
+      options: [
+        {
+          id: 'opt1_agg',
+          style: 'Combative / Aggressive',
+          quote: `"We don't fear anyone. We're going to play on the front foot and tear right through them!"`,
+          effects: { morale: +5, pressure: +10, fanApproval: +6, rivalComposure: -8 }
+        },
+        {
+          id: 'opt2_comp',
+          style: 'Composed / Tactical',
+          quote: `"We've analyzed their transitional patterns. Tactical discipline and compactness will win this fixture."`,
+          effects: { morale: +3, focus: +10, boardConfidence: +5, rivalComposure: 0 }
+        },
+        {
+          id: 'opt3_hum',
+          style: 'Passionate / Fan-Focused',
+          quote: `"This match is for the supporters filling the stands. Every player will leave everything on that grass today."`,
+          effects: { morale: +10, fanApproval: +12, chemistry: +4 }
+        }
+      ]
+    },
+    {
+      id: 'q2_squad',
+      outlet: 'The Athletic Football Review',
+      journalist: 'Amy Lawrence',
+      question: `There are whispers in the dressing room about squad rotation and playing time. How do you keep star players content?`,
+      options: [
+        {
+          id: 'opt2_merit',
+          style: 'Meritocracy',
+          quote: `"Reputation counts for zero. Whoever trains hardest and executes on matchday starts. Simple as that."`,
+          effects: { morale: +4, determination: +6, focus: +5 }
+        },
+        {
+          id: 'opt2_diplomatic',
+          style: 'Diplomatic Shield',
+          quote: `"We have a united dressing room with an incredible bond. We succeed as a brotherhood."`,
+          effects: { morale: +8, chemistry: +6, boardConfidence: +3 }
+        },
+        {
+          id: 'opt2_warning',
+          style: 'Stern Warning',
+          quote: `"Anyone who puts personal ego above the badge can find themselves sitting in the reserves."`,
+          effects: { discipline: +10, morale: -2, rivalComposure: -4 }
+        }
+      ]
+    },
+    {
+      id: 'q3_board',
+      outlet: 'Gazetta Del Calcio',
+      journalist: 'Matteo Bellini',
+      question: `The board has made their seasonal ambitions clear. Do you feel the pressure on your shoulders?`,
+      options: [
+        {
+          id: 'opt3_thrive',
+          style: 'Thrive on Pressure',
+          quote: `"Pressure is a privilege. I came here to conquer titles, not hide in mid-table obscurity."`,
+          effects: { boardConfidence: +8, reputation: +3, morale: +5 }
+        },
+        {
+          id: 'opt3_patient',
+          style: 'Long-Term Process',
+          quote: `"We are building a sustainable football identity block by block. Trust the process."`,
+          effects: { boardConfidence: +4, fanApproval: +4, financialDiscipline: +5 }
+        },
+        {
+          id: 'opt3_demand_funds',
+          style: 'Demand Reinforcements',
+          quote: `"If the board want trophies, they need to continue backing us in the transfer market."`,
+          effects: { boardConfidence: -5, fanApproval: +8, transferUrgency: +10 }
+        }
+      ]
+    }
+  ];
+
+  return { stage, questions, club: c.name, opponent: oppClub.name };
+};
+
+world.submitPressConference = function(w, clubName, answers = []) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  let totalMoraleChange = 0;
+  let totalBoardChange = 0;
+  let totalFanChange = 0;
+
+  answers.forEach(ans => {
+    if (ans.effects) {
+      totalMoraleChange += ans.effects.morale || 0;
+      totalBoardChange += ans.effects.boardConfidence || 0;
+      totalFanChange += ans.effects.fanApproval || 0;
+    }
+  });
+
+  c.morale = Math.max(30, Math.min(99, (c.morale || 70) + totalMoraleChange));
+  c.fanSatisfaction = Math.max(30, Math.min(99, (c.fanSatisfaction || 70) + totalFanChange));
+  c.boardConfidence = Math.max(25, Math.min(99, (c.boardConfidence || 75) + totalBoardChange));
+
+  w.news.unshift({
+    id: `press_${Date.now()}`,
+    season: w.season,
+    type: 'media',
+    text: `🎙️ PRESS BRIEFING: ${c.name} manager held an electric media conference. Squad morale stands at ${c.morale}% and Board confidence at ${c.boardConfidence}%.`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return {
+    success: true,
+    newMorale: c.morale,
+    newBoardConfidence: c.boardConfidence,
+    newFanApproval: c.fanSatisfaction
+  };
+};
+
+world.getBoardStatus = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  c.boardConfidence = c.boardConfidence !== undefined ? c.boardConfidence : 78;
+  const exp = c.expectation || (c.division === 1 ? 'top4' : 'promotion');
+
+  const objectives = [
+    {
+      title: 'Division Performance',
+      target: c.division === 1 ? 'Finish in Top 4' : `Secure Promotion from Div ${c.division}`,
+      status: (c.division === 1 ? 'On Course' : 'Competitive'),
+      weight: 45
+    },
+    {
+      title: 'Financial Fair Play Compliance',
+      target: 'Maintain positive wage-to-revenue ratio < 70%',
+      status: (c.cash >= 15 ? 'Excellent' : 'Stable'),
+      weight: 30
+    },
+    {
+      title: 'Youth Development Pipeline',
+      target: 'Field or promote at least 1 academy wonderkid',
+      status: (c.players || []).some(id => (w.market || []).find(p => p.id === id)?.isYouthAcademy) ? 'Achieved' : 'Pending',
+      weight: 25
+    }
+  ];
+
+  let stance = 'Delighted';
+  if (c.boardConfidence < 40) stance = 'Ultimatum / Under Pressure';
+  else if (c.boardConfidence < 60) stance = 'Stern / Expecting Improvement';
+  else if (c.boardConfidence < 80) stance = 'Supportive & Confident';
+
+  return {
+    confidence: c.boardConfidence,
+    stance,
+    objectives,
+    expectation: exp,
+    fanSatisfaction: c.fanSatisfaction || 75
+  };
+};
+
+// -------------------------------------------------------------
+// 13. BACKROOM STAFF & WORLDWIDE SCOUTING EXPEDITIONS
+// -------------------------------------------------------------
+const STAFF_CANDIDATES = {
+  assistantManager: [
+    { id: 'st_am_1', name: 'Zeljko Buvac', role: 'Assistant Manager', rating: 88, specialty: 'Tactical Preparation & Auto-Subs', cost: 1.2, perk: '+4% Match Win Rate' },
+    { id: 'st_am_2', name: 'Mikel Arteta Jr.', role: 'Assistant Manager', rating: 84, specialty: 'Set-Piece Structure & Drills', cost: 0.9, perk: '+20% Free Kick Precision' },
+    { id: 'st_am_3', name: 'Carlos Queiroz', role: 'Assistant Manager', rating: 91, specialty: 'Defensive Organization', cost: 1.5, perk: '-35% Conceded Chances' }
+  ],
+  headScout: [
+    { id: 'st_sc_1', name: 'Piet de Visser', role: 'Head Scout', rating: 93, specialty: 'Wonderkid Potential Radar', cost: 1.4, perk: 'Unlocks Exact Potential (POT)' },
+    { id: 'st_sc_2', name: 'Damien Comolli', role: 'Head Scout', rating: 85, specialty: 'Bargain Hunting', cost: 0.8, perk: '-15% Transfer Asking Prices' },
+    { id: 'st_sc_3', name: 'Monchi', role: 'Head Scout', rating: 92, specialty: 'Global Scouting Network', cost: 1.6, perk: '+2 Discovered Talents per Mission' }
+  ],
+  headPhysio: [
+    { id: 'st_ph_1', name: 'Dr. Paco Biosca', role: 'Head Physio', rating: 90, specialty: 'Fatigue Regeneration', cost: 1.1, perk: '+25% Stamina Recovery' },
+    { id: 'st_ph_2', name: 'Lieven Maesschalck', role: 'Head Physio', rating: 87, specialty: 'Injury Prevention', cost: 0.8, perk: '-50% Muscle Injuries' }
+  ],
+  setPieceCoach: [
+    { id: 'st_sp_1', name: 'Gianni Vio', role: 'Set-Piece Specialist', rating: 92, specialty: 'Routine Choreography', cost: 1.0, perk: '+30% Corner Conversion' },
+    { id: 'st_sp_2', name: 'Nicolas Jover', role: 'Set-Piece Specialist', rating: 89, specialty: 'Near-Post Overload', cost: 0.8, perk: '+25% Set-Piece Goals' }
+  ]
+};
+
+world.getBackroomStaff = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  c.backroomStaff = c.backroomStaff || {
+    assistantManager: STAFF_CANDIDATES.assistantManager[0],
+    headScout: STAFF_CANDIDATES.headScout[0],
+    headPhysio: STAFF_CANDIDATES.headPhysio[0],
+    setPieceCoach: STAFF_CANDIDATES.setPieceCoach[0]
+  };
+
+  return {
+    hired: c.backroomStaff,
+    availableCandidates: STAFF_CANDIDATES
+  };
+};
+
+world.hireBackroomStaff = function(w, clubName, role, staffId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const pool = STAFF_CANDIDATES[role] || [];
+  const staff = pool.find(s => s.id === staffId);
+  if (!staff) return { error: 'Staff member not found' };
+
+  if (c.cash < staff.cost) {
+    return { error: `Insufficient funds! Signing ${staff.name} costs ₹${staff.cost}M. Club has ₹${Math.round(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - staff.cost) * 10) / 10);
+  c.backroomStaff = c.backroomStaff || {};
+  c.backroomStaff[role] = staff;
+
+  w.news.unshift({
+    id: `staff_hired_${Date.now()}`,
+    season: w.season,
+    type: 'staff',
+    text: `👔 STAFF APPOINTMENT: ${c.name} hired elite ${staff.role} ${staff.name} (${staff.specialty})!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, hired: staff, remainingCash: c.cash };
+};
+
+world.dispatchWorldScouting = function(w, clubName, region = 'South America') {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const fee = 0.5;
+  if (c.cash < fee) return { error: `Scouting expedition requires ₹${fee}M travel & operational budget.` };
+  c.cash = Math.max(0, Math.round((c.cash - fee) * 10) / 10);
+
+  const regionNations = {
+    'South America': ['Brazil', 'Argentina', 'Uruguay', 'Colombia'],
+    'Continental Europe': ['France', 'Spain', 'Germany', 'Portugal', 'Netherlands'],
+    'Africa': ['Nigeria', 'Senegal', 'Ghana', 'Ivory Coast', 'Morocco'],
+    'Asia & Middle East': ['Japan', 'South Korea', 'Saudi Arabia', 'Australia']
+  };
+
+  const poolNations = regionNations[region] || ['International'];
+  const results = [];
+  const positions = ['CF', 'LWF', 'RWF', 'AMF', 'CMF', 'CB', 'GK'];
+
+  for (let i = 0; i < 3; i++) {
+    const nation = poolNations[Math.floor(Math.random() * poolNations.length)];
+    const ovr = 74 + Math.floor(Math.random() * 10);
+    const pot = Math.min(94, ovr + 8 + Math.floor(Math.random() * 8));
+    const val = Math.max(4, Math.round(ovr * 0.3));
+
+    const scoutedPlayer = {
+      id: `scout_find_${Date.now()}_${i}`,
+      name: `${region.slice(0, 3)} Prospect ${Math.floor(Math.random() * 900 + 100)}`,
+      nationality: nation,
+      position: positions[Math.floor(Math.random() * positions.length)],
+      rating: ovr,
+      potential: pot,
+      askingPrice: val,
+      salary: Math.max(0.8, Math.round(val * 0.12 * 10) / 10),
+      region,
+      scoutVerdict: pot >= 88 ? '⭐ Generational Talent - Sign Urgently' : '✔️ High-Quality Starter'
+    };
+    results.push(scoutedPlayer);
+  }
+
+  c.lastScoutingExpedition = {
+    region,
+    timestamp: new Date().toISOString(),
+    results
+  };
+
+  world.persist();
+  return { success: true, region, results };
+};
+
+// -------------------------------------------------------------
+// 14. STADIUM EXPANSION, SPONSORSHIPS & FINANCIAL FAIR PLAY (FFP)
+// -------------------------------------------------------------
+world.getFacilitiesState = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  c.facilities = c.facilities || {
+    vipSuites: 12,
+    hybridPitch: false,
+    trainingGroundLevel: 2,
+    stadiumCapacity: c.stadiumCapacity || 25000
+  };
+
+  return c.facilities;
+};
+
+world.upgradeFacility = function(w, clubName, facilityType) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  c.facilities = c.facilities || { vipSuites: 12, hybridPitch: false, trainingGroundLevel: 2, stadiumCapacity: c.stadiumCapacity || 25000 };
+
+  if (facilityType === 'vip_suites') {
+    const cost = 6.0;
+    if (c.cash < cost) return { error: `VIP Luxury Hospitality upgrade costs ₹${cost}M.` };
+    c.cash = Math.max(0, Math.round((c.cash - cost) * 10) / 10);
+    c.facilities.vipSuites += 10;
+    w.news.unshift({
+      id: `fac_vip_${Date.now()}`,
+      season: w.season,
+      type: 'facility',
+      text: `🍾 CORPORATE EXPANSION: ${c.name} added 10 VIP Hospitality Suites (+₹0.4M/matchday).`,
+      at: new Date().toISOString()
+    });
+  } else if (facilityType === 'hybrid_pitch') {
+    const cost = 4.0;
+    if (c.cash < cost) return { error: `Hybrid Grass Turf installation costs ₹${cost}M.` };
+    c.cash = Math.max(0, Math.round((c.cash - cost) * 10) / 10);
+    c.facilities.hybridPitch = true;
+    w.news.unshift({
+      id: `fac_pitch_${Date.now()}`,
+      season: w.season,
+      type: 'facility',
+      text: `🌱 PITCH PERFECTION: ${c.name} installed a Premier Hybrid Turf, cutting injury risks and boosting home dominance.`,
+      at: new Date().toISOString()
+    });
+  } else if (facilityType === 'training_ground') {
+    const cost = 8.0;
+    if (c.cash < cost) return { error: `Training Ground modernization costs ₹${cost}M.` };
+    c.cash = Math.max(0, Math.round((c.cash - cost) * 10) / 10);
+    c.facilities.trainingGroundLevel = Math.min(5, (c.facilities.trainingGroundLevel || 2) + 1);
+    w.news.unshift({
+      id: `fac_train_${Date.now()}`,
+      season: w.season,
+      type: 'facility',
+      text: `🏋️ TRAINING COMPLEX: ${c.name} upgraded High-Performance Training Ground to Level ${c.facilities.trainingGroundLevel}!`,
+      at: new Date().toISOString()
+    });
+  } else {
+    return { error: 'Unknown facility upgrade type' };
+  }
+
+  world.persist();
+  return { success: true, facilities: c.facilities, remainingCash: c.cash };
+};
+
+world.getSponsorshipBids = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return [];
+
+  const rep = c.reputation || 70;
+  const baseVal = Math.max(3, Math.round(rep * 0.1));
+
+  return [
+    {
+      id: 'sp_bid_1',
+      brand: 'Apex Energy Drink',
+      type: 'Guaranteed High Base',
+      baseAnnual: baseVal + 3.0,
+      bonusChampions: 2.0,
+      bonusPromotion: 2.5,
+      contractYears: 2,
+      tag: '🛡️ MAXIMUM SECURITY'
+    },
+    {
+      id: 'sp_bid_2',
+      brand: 'Quantum Fintech Global',
+      type: 'Performance Heavy',
+      baseAnnual: baseVal + 1.0,
+      bonusChampions: 7.5,
+      bonusPromotion: 5.0,
+      contractYears: 3,
+      tag: '🚀 HIGH REWARD'
+    },
+    {
+      id: 'sp_bid_3',
+      brand: 'Skyline Airways',
+      type: 'Prestige Partner',
+      baseAnnual: baseVal + 2.0,
+      bonusChampions: 4.0,
+      bonusPromotion: 3.5,
+      contractYears: 2,
+      tag: '⭐ BALANCED LUXURY'
+    }
+  ];
+};
+
+world.acceptSponsorshipProposal = function(w, clubName, bidId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const bids = world.getSponsorshipBids(w, clubName);
+  const chosen = bids.find(b => b.id === bidId) || bids[0];
+
+  c.sponsor = {
+    name: chosen.brand,
+    value: chosen.baseAnnual,
+    years: chosen.contractYears,
+    bonusChampions: chosen.bonusChampions,
+    bonusPromotion: chosen.bonusPromotion,
+    objective: 'Finish above previous league position'
+  };
+
+  // Immediate signing upfront bonus
+  const upfrontBonus = 2.0;
+  c.cash = Math.round((c.cash + upfrontBonus) * 10) / 10;
+
+  w.news.unshift({
+    id: `sponsor_sign_${Date.now()}`,
+    season: w.season,
+    type: 'finance',
+    text: `💼 COMMERCIAL RECORD: ${c.name} signed a ₹${chosen.baseAnnual}M/yr agreement with ${chosen.brand}! Upfront payment of ₹${upfrontBonus}M wired to club treasury.`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, sponsor: c.sponsor, remainingCash: c.cash };
+};
+
+world.getFFPReport = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  const squad = (w.market || []).filter(p => p.ownerClub === c.name);
+  const totalWagesAnnual = squad.reduce((sum, p) => sum + (Number(p.salary) || 1.2), 0);
+  const revenueEst = Math.max(12, Math.round(((c.stadiumCapacity || 20000) * 0.0006 * 20) + (c.sponsor?.value || 5) * 1.5));
+  const wageRatio = Math.round((totalWagesAnnual / revenueEst) * 100);
+
+  let status = 'HEALTHY & COMPLIANT';
+  let badgeColor = '#22c55e';
+  let penaltyWarning = 'All UEFA and League Financial Fair Play regulations are fully met.';
+
+  if (wageRatio > 85) {
+    status = 'TRANSFER EMBARGO WARNING';
+    badgeColor = '#ef4444';
+    penaltyWarning = 'Critical Wage Ratio! Excessive wage expenditure threatens upcoming transfer window sanctions.';
+  } else if (wageRatio > 70) {
+    status = 'FFP WATCHLIST';
+    badgeColor = '#f59e0b';
+    penaltyWarning = 'Wage bill exceeds 70% threshold. Board requests prudent fiscal restraint.';
+  }
+
+  return {
+    status,
+    badgeColor,
+    totalWagesAnnual: Math.round(totalWagesAnnual * 10) / 10,
+    projectedRevenueAnnual: revenueEst,
+    wageToTurnoverRatio: wageRatio,
+    maxPermittedRatio: 70,
+    penaltyWarning,
+    threeSeasonNetBalance: Math.round((c.cash - (totalWagesAnnual * 0.5)) * 10) / 10
+  };
+};
+
+// -------------------------------------------------------------
+// 15. TACTICAL SET-PIECES & INTERACTIVE PENALTY SHOOTOUT
+// -------------------------------------------------------------
+world.getSetPieceTactics = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return null;
+
+  c.setPieceTactics = c.setPieceTactics || {
+    cornerRoutine: 'near_post',
+    freekickRoutine: 'direct_curler',
+    penaltyTaker: null,
+    cornerTaker: null,
+    freekickTaker: null
+  };
+
+  const squad = (w.market || []).filter(p => p.ownerClub === c.name);
+
+  return {
+    tactics: c.setPieceTactics,
+    squadList: squad.map(p => ({ id: p.id, name: p.name, rating: p.rating, position: p.position }))
+  };
+};
+
+world.saveSetPieceTactics = function(w, clubName, newTactics = {}) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  c.setPieceTactics = {
+    cornerRoutine: newTactics.cornerRoutine || 'near_post',
+    freekickRoutine: newTactics.freekickRoutine || 'direct_curler',
+    penaltyTaker: newTactics.penaltyTaker || null,
+    cornerTaker: newTactics.cornerTaker || null,
+    freekickTaker: newTactics.freekickTaker || null
+  };
+
+  world.persist();
+  return { success: true, tactics: c.setPieceTactics };
+};
+
+world.simulatePenaltyShootout = function(w, clubName, opponentName, userShot = 'top_left', userDive = 'left') {
+  const user = w.clubs.find(x => x.name === clubName);
+  const opp = w.clubs.find(x => x.name === opponentName) || w.clubs[0];
+
+  const directions = ['left', 'center', 'right'];
+  const oppDive = directions[Math.floor(Math.random() * directions.length)];
+  const oppShotDir = directions[Math.floor(Math.random() * directions.length)];
+
+  // User Shot evaluation
+  let userScored = true;
+  if (userShot.includes(oppDive)) {
+    userScored = Math.random() > 0.65; // Keeper dived right way, still 35% chance to sneak in
+  } else if (userShot === 'panenka') {
+    userScored = oppDive !== 'center';
+  }
+
+  // Opponent Shot evaluation
+  let oppScored = true;
+  if (userDive === oppShotDir) {
+    oppScored = Math.random() > 0.70; // User dived the right way!
+  }
+
+  return {
+    round: 1,
+    userScored,
+    oppScored,
+    userShotChoice: userShot,
+    oppDiveChoice: oppDive,
+    oppShotChoice: oppShotDir,
+    userDiveChoice: userDive,
+    commentaryUser: userScored
+      ? `⚽ GOAL! You drilled it into the corner beyond the keeper's reach!`
+      : `❌ SAVED! The opposition keeper anticipates the trajectory and parries it away!`,
+    commentaryOpp: !oppScored
+      ? `🧤 MAGNIFICENT SAVE! You read the shooter's eyes and kept it out!`
+      : `⚽ GOAL. Opponent strikes with venom into the side netting.`
+  };
+};
+
+module.exports = world;
+
 
 

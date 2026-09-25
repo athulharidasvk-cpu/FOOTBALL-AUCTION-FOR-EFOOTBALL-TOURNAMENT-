@@ -112,6 +112,35 @@ function attachApp(app){
   app.get('/api/world4/offers/incoming',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({offers:w.incomingOffers||[]});});
   app.post('/api/world4/offers/respond',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.respondToIncomingOffer(w,req.body?.offerId,req.body?.decision,req.body?.counterFee);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
   app.post('/api/world4/offers/generate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.generateAiTransferApproaches(w,req.body?.count||1);world.persist();if(ioRef)broadcast(ioRef,w);res.json({offers:r});});
+
+  // Feature 1: Youth Academy & Intake
+  app.get('/api/world4/youth/academy',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getYouthAcademyState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/youth/upgrade',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.upgradeYouthAcademy(w,req.body?.club||w.selectedClub);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/youth/intake/trigger',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.triggerYouthIntake(w,req.body?.club||w.selectedClub);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/youth/promote',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.promoteYouthProspect(w,req.body?.club||w.selectedClub,req.body?.prospectId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/youth/mentor',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.mentorYouthProspect(w,req.body?.club||w.selectedClub,req.body?.youthId,req.body?.mentorId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature 2: Press Conferences & Board Confidence
+  app.get('/api/world4/press/questions',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getPressConference(w,req.query?.club||w.selectedClub,req.query?.stage||'pre'));});
+  app.post('/api/world4/press/submit',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.submitPressConference(w,req.body?.club||w.selectedClub,req.body?.answers||[]);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/board/status',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getBoardStatus(w,req.query?.club||w.selectedClub));});
+
+  // Feature 4: Stadium Facilities & FFP & Sponsorships
+  app.get('/api/world4/facilities',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getFacilitiesState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/facility/upgrade',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.upgradeFacility(w,req.body?.club||w.selectedClub,req.body?.type);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/sponsorship/bids',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getSponsorshipBids(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/sponsorship/accept',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.acceptSponsorshipProposal(w,req.body?.club||w.selectedClub,req.body?.bidId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/ffp/report',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getFFPReport(w,req.query?.club||w.selectedClub));});
+
+  // Feature 5: Backroom Staff & Worldwide Scouting
+  app.get('/api/world4/staff',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getBackroomStaff(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/staff/hire',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.hireBackroomStaff(w,req.body?.club||w.selectedClub,req.body?.role,req.body?.staffId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/scout/mission',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.dispatchWorldScouting(w,req.body?.club||w.selectedClub,req.body?.region);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature 6: Set-Pieces & Shootout
+  app.get('/api/world4/setpieces',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getSetPieceTactics(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/setpieces/save',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.saveSetPieceTactics(w,req.body?.club||w.selectedClub,req.body?.tactics);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/shootout/round',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulatePenaltyShootout(w,req.body?.club||w.selectedClub,req.body?.opponent,req.body?.userShot,req.body?.userDive);res.json(r);});
 }
 function attachIO(io){
   if(attachedIO)return;attachedIO=true;ioRef=io;

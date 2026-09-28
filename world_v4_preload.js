@@ -64,6 +64,7 @@ function attachApp(app){
   // (ensures req.body is parsed even when routes are registered before server.js's app.use(express.json()))
   app.use('/api/world4', express.json({ limit: '10mb' }));
   app.use('/api/world4', express.urlencoded({ extended: true, limit: '10mb' }));
+  app.get('/',(req,res)=>res.sendFile(require('path').join(__dirname,'public','football-world.html')));
   app.get('/football-world',(req,res)=>res.sendFile(require('path').join(__dirname,'public','football-world.html')));
   app.get('/api/world4/rooms',(req,res)=>res.json(world.roomsList()));
   app.post('/api/world4/solo/create',(req,res)=>{const w=world.createSolo();res.json({soloId:w.soloId,state:safeState(w)});});
@@ -94,6 +95,8 @@ function attachApp(app){
   app.post('/api/world4/scout/dispatch',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.dispatchScout(w,req.body?.club,req.body?.mission);if(r?.error)return res.status(400).json(r);world.persist();res.json({result:r,state:safeState(w)});});
   app.post('/api/world4/player/create',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.createCustomPlayer(w,req.body?.club,req.body?.player);if(r?.error)return res.status(400).json(r);world.persist();res.json({result:r,state:safeState(w)});});
   app.post('/api/world4/transfer/negotiate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.negotiateTransfer(w,req.body?.club,req.body?.playerId,req.body?.offer);if(r?.error)return res.status(400).json(r);world.persist();res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/transfer/exercise-buyout',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.exerciseLoanBuyout(w,req.body?.club||w.selectedClub,req.body?.playerId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/transfer/expiring',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({players:world.getExpiringContracts(w)});});
   app.get('/api/world4/fixture/next',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getNextFixture(w));});
   app.post('/api/world4/match/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulate(w,req.body||{});if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({match:r,...r,state:safeState(w),nextFixture:world.getNextFixture(w)});});
   app.post('/api/world4/youth/train',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.trainYouthAcademy(w,req.body?.club||w.selectedClub,req.body?.regime);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
@@ -109,6 +112,42 @@ function attachApp(app){
   app.get('/api/world4/tournament',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});if(!w.globalTournament&&w.season%2===0)world.initiateGlobalTournament(w);res.json({tournament:w.globalTournament,history:w.tournamentHistory||[]});});
   app.post('/api/world4/tournament',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});if(!w.globalTournament)world.initiateGlobalTournament(w);world.persist();if(ioRef)broadcast(ioRef,w);res.json({tournament:w.globalTournament,history:w.tournamentHistory||[]});});
   app.post('/api/world4/tournament/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulateGlobalTournamentRound(w);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Competitions: UCL, Europa, Domestic FA Cup, Promotion Playoffs & Deadline Day
+  app.get('/api/world4/ucl',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({ucl:world.initiateUclTournament(w)});});
+  app.post('/api/world4/ucl/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulateUclRound(w);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  app.get('/api/world4/europa',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({europa:world.initiateEuropaTournament(w)});});
+  app.post('/api/world4/europa/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulateEuropaRound(w);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  app.get('/api/world4/cup',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({cup:world.initiateDomesticCup(w)});});
+  app.post('/api/world4/cup/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulateDomesticCupRound(w);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  app.get('/api/world4/playoffs',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({playoffs:world.initiatePlayoffs(w)});});
+  app.post('/api/world4/playoffs/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulatePlayoffsRound(w,Number(req.body?.targetTier||2));world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  app.get('/api/world4/deadline-day',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getDeadlineDayState(w));});
+  app.post('/api/world4/deadline-day/action',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeDeadlineDayAction(w,req.body?.action,req.body);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Feature A: Swap Deals
+  app.post('/api/world4/transfer/swap',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeSwapTransfer(w,req.body?.club||w.selectedClub,req.body?.offeredPlayerId,req.body?.targetPlayerId,req.body?.additionalCash);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature B: Dressing Room Revolts & 1-on-1 Talks
+  app.get('/api/world4/dressingroom/status',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getDressingRoomStatus(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/dressingroom/talk',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.resolveDressingRoomTalk(w,req.body?.club||w.selectedClub,req.body?.playerId,req.body?.action);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature C: International Management
+  app.get('/api/world4/international/status',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getInternationalStatus(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/international/accept',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.acceptInternationalRole(w,req.body?.nation);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/international/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulateInternationalMatch(w);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature D: Visual Stadium Architecture & Ultras Tifos
+  app.get('/api/world4/stadium/visual',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getStadiumVisualState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/stadium/upgrade-module',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.upgradeStadiumModule(w,req.body?.club||w.selectedClub,req.body?.moduleType);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.post('/api/world4/stadium/tifo',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.setStadiumTifo(w,req.body?.club||w.selectedClub,req.body?.tifo);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+
+  // Feature E: Derby Day & Historical Head-to-Head
+  app.get('/api/world4/derby/h2h',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getDerbyHeadToHead(w,req.query?.club||w.selectedClub));});
   app.get('/api/world4/offers/incoming',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({offers:w.incomingOffers||[]});});
   app.post('/api/world4/offers/respond',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.respondToIncomingOffer(w,req.body?.offerId,req.body?.decision,req.body?.counterFee);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
   app.post('/api/world4/offers/generate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.generateAiTransferApproaches(w,req.body?.count||1);world.persist();if(ioRef)broadcast(ioRef,w);res.json({offers:r});});
@@ -141,6 +180,20 @@ function attachApp(app){
   app.get('/api/world4/setpieces',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getSetPieceTactics(w,req.query?.club||w.selectedClub));});
   app.post('/api/world4/setpieces/save',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.saveSetPieceTactics(w,req.body?.club||w.selectedClub,req.body?.tactics);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
   app.post('/api/world4/shootout/round',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulatePenaltyShootout(w,req.body?.club||w.selectedClub,req.body?.opponent,req.body?.userShot,req.body?.userDive);res.json(r);});
+
+  // Feature 7: Advanced Manager vs Club Owner Deep Systems
+  app.get('/api/world4/scout/opponent',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getOpponentScoutingReport(w,req.query?.club||w.selectedClub));});
+  app.get('/api/world4/manager/elite-offers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getManagerJobOffers(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/manager/accept-elite',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.acceptManagerJobOffer(w,req.body?.currentClub||w.selectedClub,req.body?.targetClub);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/owner/naming-offers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getNamingRightsOffers(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/owner/sign-naming',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.signNamingRightsDeal(w,req.body?.club||w.selectedClub,req.body?.bidType,req.body?.bidId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/owner/equity-offers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getMinorityStakeOffers(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/owner/sell-equity',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.sellMinorityStake(w,req.body?.club||w.selectedClub,req.body?.offerId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/owner/dof-candidates',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({candidates:world.getDoFCandidates(w)});});
+  app.post('/api/world4/owner/hire-dof',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.hireDirectorOfFootball(w,req.body?.club||w.selectedClub,req.body?.dofId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/mandates',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getSeasonalMandates(w,req.query?.club||w.selectedClub));});
+  app.get('/api/world4/player/meetings',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getPlayerMeetings(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/player/resolve-meeting',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.resolvePlayerMeeting(w,req.body?.club||w.selectedClub,req.body?.meetingId,req.body?.choiceId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
 }
 function attachIO(io){
   if(attachedIO)return;attachedIO=true;ioRef=io;

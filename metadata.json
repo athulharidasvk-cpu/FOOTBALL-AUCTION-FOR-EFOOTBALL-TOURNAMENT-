@@ -1,6 +1,6 @@
 {
   "name": "Football Auction",
-  "description": "Multiplayer football auction and club management app with matchday simulation, first-person player POV, league salary cap enforcement with live wage budget warnings, animated talent scouting, and authentic European league management.",
+  "description": "Football club management simulator featuring Head Manager and Club Owner career modes, tactical set-pieces, youth academy, stadium expansion, real-time transfers, and dynamic matchday competition.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

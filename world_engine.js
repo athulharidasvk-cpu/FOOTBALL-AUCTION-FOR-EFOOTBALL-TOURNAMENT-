@@ -758,6 +758,21 @@ function upgradeLegacyWorld(s) {
   if (s.selectedClub && (!s.incomingOffers || !s.incomingOffers.length)) {
     try { generateAiTransferApproaches(s, 2); } catch (e) {}
   }
+  if (!s.uclTournament) {
+    try { initiateUclTournament(s); } catch (e) {}
+  }
+  if (!s.europaTournament) {
+    try { initiateEuropaTournament(s); } catch (e) {}
+  }
+  if (!s.domesticCup) {
+    try { initiateDomesticCup(s); } catch (e) {}
+  }
+  if (!s.playoffs) {
+    try { initiatePlayoffs(s); } catch (e) {}
+  }
+  if (!s.deadlineDay) {
+    try { getDeadlineDayState(s); } catch (e) {}
+  }
   return s;
 }
 
@@ -2079,12 +2094,20 @@ function advanceSeason(s){
     initiateGlobalTournament(s);
   }
 
+  // Fresh competitions for Season:
+  try {
+    initiateUclTournament(s);
+    initiateEuropaTournament(s);
+    initiateDomesticCup(s);
+    initiatePlayoffs(s);
+  } catch (e) {}
+
   // Generate exciting AI transfer approaches for user players as transfer window opens!
   generateAiTransferApproaches(s, 2);
 
   addNews(s, `Season ${s.season} begins. Summer Transfer Window is OPEN. Other clubs are scouting your squad for transfer approaches!`, 'season');
   persist();
-  return { season: s.season, verdict: s.lastSeasonVerdict, awards: seasonAwards, globalTournament: s.globalTournament };
+  return { season: s.season, verdict: s.lastSeasonVerdict, awards: seasonAwards, globalTournament: s.globalTournament, uclTournament: s.uclTournament };
 }
 function updateEconomy(s,clubName,data){
   const c=club(s,clubName);
@@ -2312,7 +2335,14 @@ function globalState(s){
     awardsHistory: s.awardsHistory || [],
     tournamentHistory: s.tournamentHistory || [],
     incomingOffers: s.incomingOffers || [],
-    globalTournament: s.globalTournament || null
+    globalTournament: s.globalTournament || null,
+    uclTournament: s.uclTournament || null,
+    europaTournament: s.europaTournament || null,
+    domesticCup: s.domesticCup || null,
+    playoffs: s.playoffs || null,
+    deadlineDay: s.deadlineDay || null,
+    international: s.international || null,
+    derbyHistory: s.derbyHistory || {}
   };
 }
 
@@ -2973,5 +3003,1077 @@ function respondToIncomingOffer(s, offerId, decision, counterFee = null) {
   return { error: 'Unknown decision.' };
 }
 
+// =============================================================
+// UEFA CHAMPIONS LEAGUE (UCL) COMPETITION ENGINE
+// =============================================================
+function initiateUclTournament(s) {
+  if (s.uclTournament && s.uclTournament.season === s.season) return s.uclTournament;
+  const user = club(s, s.selectedClub);
+  const selectedClubs = [];
+
+  if (user && (user.division === 1 || user.reputation >= 65)) {
+    selectedClubs.push(user);
+  }
+
+  const marqueeClubs = [
+    'Madrid CF', 'Catalunya FC', 'Munich FC', 'Paris FC', 
+    'Manchester Blue', 'Merseyside Red', 'Milano Rosso', 'Turin FC', 
+    'Lisbon Eagles', 'Amsterdam FC', 'Dortmund United', 'West London United', 
+    'Milano Nero', 'Porto Athletic', 'Brussels FC', 'Vienna FC'
+  ];
+  marqueeClubs.forEach(mName => {
+    const found = s.clubs.find(c => c.name === mName);
+    if (found && !selectedClubs.find(c => c.name === found.name)) selectedClubs.push(found);
+  });
+
+  const pool = s.clubs.filter(c => c.division === 1 && !selectedClubs.find(x => x.name === c.name)).sort((a,b) => (b.reputation||60) - (a.reputation||60));
+  while (selectedClubs.length < 16 && pool.length > 0) {
+    selectedClubs.push(pool.shift());
+  }
+
+  const standings = selectedClubs.map(c => ({
+    clubName: c.name,
+    country: c.country,
+    division: c.division,
+    reputation: c.reputation || 70,
+    played: 0,
+    won: 0,
+    drawn: 0,
+    lost: 0,
+    gf: 0,
+    ga: 0,
+    gd: 0,
+    points: 0,
+    form: []
+  }));
+
+  s.uclTournament = {
+    season: s.season,
+    name: 'UEFA Champions League',
+    trophy: '⭐ UEFA Champions League Trophy',
+    status: 'league_phase',
+    currentRound: 1,
+    maxRounds: 4,
+    standings,
+    knockout: {
+      quarterFinals: [],
+      semiFinals: [],
+      final: null
+    },
+    topScorers: [],
+    champion: null,
+    runnerUp: null
+  };
+
+  addNews(s, `⭐ UEFA CHAMPIONS LEAGUE DRAW: Season ${s.season} League Phase kicks off with 16 elite European clubs! ₹85M Grand Bounty on the line.`, 'competition');
+  persist();
+  return s.uclTournament;
+}
+
+function simulateUclRound(s) {
+  if (!s.uclTournament || s.uclTournament.season !== s.season) initiateUclTournament(s);
+  const u = s.uclTournament;
+  if (u.status === 'completed') {
+    return { error: 'Current UCL season edition is completed.' };
+  }
+
+  const user = club(s, s.selectedClub);
+  const roundResults = [];
+
+  if (u.status === 'league_phase') {
+    const teams = u.standings;
+    let pairs = [];
+    if (u.currentRound === 1) {
+      for (let i = 0; i < 16; i += 2) pairs.push([i, i + 1]);
+    } else if (u.currentRound === 2) {
+      for (let i = 0; i < 16; i += 4) { pairs.push([i, i + 2]); pairs.push([i + 1, i + 3]); }
+    } else if (u.currentRound === 3) {
+      for (let i = 0; i < 16; i += 4) { pairs.push([i, i + 3]); pairs.push([i + 1, i + 2]); }
+    } else {
+      pairs = [[0, 4], [1, 5], [2, 6], [3, 7], [8, 12], [9, 13], [10, 14], [11, 15]];
+    }
+
+    pairs.forEach(([i1, i2]) => {
+      const c1 = teams[i1];
+      const c2 = teams[i2];
+      const res = match(s, c1.clubName, c2.clubName, {
+        isCup: true,
+        competitionName: `UEFA Champions League · League Phase MD${u.currentRound}`,
+        isAiOnly: (user?.name !== c1.clubName && user?.name !== c2.clubName)
+      });
+
+      c1.played++; c2.played++;
+      c1.gf += res.homeGoals; c1.ga += res.awayGoals; c1.gd = c1.gf - c1.ga;
+      c2.gf += res.awayGoals; c2.ga += res.homeGoals; c2.gd = c2.gf - c2.ga;
+
+      if (res.homeGoals > res.awayGoals) {
+        c1.won++; c1.points += 3; c1.form.push('W');
+        c2.lost++; c2.form.push('L');
+      } else if (res.homeGoals < res.awayGoals) {
+        c2.won++; c2.points += 3; c2.form.push('W');
+        c1.lost++; c1.form.push('L');
+      } else {
+        c1.drawn++; c1.points += 1; c1.form.push('D');
+        c2.drawn++; c2.points += 1; c2.form.push('D');
+      }
+      if (c1.form.length > 5) c1.form.shift();
+      if (c2.form.length > 5) c2.form.shift();
+
+      roundResults.push(res);
+    });
+
+    u.standings.sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+    u.currentRound++;
+
+    if (u.currentRound > u.maxRounds) {
+      u.status = 'quarter_finals';
+      const qfPairs = [
+        { home: u.standings[0].clubName, away: u.standings[7].clubName, label: 'UCL QF 1 (1st vs 8th)' },
+        { home: u.standings[1].clubName, away: u.standings[6].clubName, label: 'UCL QF 2 (2nd vs 7th)' },
+        { home: u.standings[2].clubName, away: u.standings[5].clubName, label: 'UCL QF 3 (3rd vs 6th)' },
+        { home: u.standings[3].clubName, away: u.standings[4].clubName, label: 'UCL QF 4 (4th vs 5th)' }
+      ];
+      u.knockout.quarterFinals = qfPairs.map(p => ({
+        ...p,
+        homeGoals: null,
+        awayGoals: null,
+        penalties: null,
+        winner: null,
+        played: false
+      }));
+      addNews(s, `⭐ UCL UPDATE: League Phase concluded! Top 8 clubs advance into the UEFA Champions League Quarter-Final bracket!`, 'competition');
+    }
+  } else if (u.status === 'quarter_finals') {
+    const winners = [];
+    u.knockout.quarterFinals.forEach(qf => {
+      const res = match(s, qf.home, qf.away, {
+        isCup: true,
+        cupStage: 'UCL Quarter-Final',
+        competitionName: `UCL · ${qf.label}`,
+        isAiOnly: (user?.name !== qf.home && user?.name !== qf.away)
+      });
+      qf.homeGoals = res.homeGoals;
+      qf.awayGoals = res.awayGoals;
+      qf.penalties = res.penalties;
+      qf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? qf.home : qf.away);
+      qf.played = true;
+      winners.push(qf.winner);
+      roundResults.push(res);
+    });
+    u.status = 'semi_finals';
+    u.knockout.semiFinals = [
+      { home: winners[0], away: winners[2], label: 'UCL Semi-Final 1', played: false },
+      { home: winners[1], away: winners[3], label: 'UCL Semi-Final 2', played: false }
+    ];
+    addNews(s, `⭐ UCL SEMI-FINALS: ${winners.join(', ')} qualify for the Champions League Final Four!`, 'competition');
+  } else if (u.status === 'semi_finals') {
+    const finalPairs = [];
+    u.knockout.semiFinals.forEach(sf => {
+      const res = match(s, sf.home, sf.away, {
+        isCup: true,
+        cupStage: 'UCL Semi-Final',
+        competitionName: `UCL · ${sf.label}`,
+        isAiOnly: (user?.name !== sf.home && user?.name !== sf.away)
+      });
+      sf.homeGoals = res.homeGoals;
+      sf.awayGoals = res.awayGoals;
+      sf.penalties = res.penalties;
+      sf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? sf.home : sf.away);
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      roundResults.push(res);
+    });
+    u.status = 'final';
+    u.knockout.final = { home: finalPairs[0], away: finalPairs[1], label: 'UCL Grand Final', played: false };
+    addNews(s, `⭐ UCL GRAND FINAL: ${finalPairs[0]} vs ${finalPairs[1]} for the European Champions Crown!`, 'competition');
+  } else if (u.status === 'final') {
+    const fn = u.knockout.final;
+    const res = match(s, fn.home, fn.away, {
+      isCup: true,
+      cupStage: 'UCL Grand Final',
+      competitionName: 'UEFA Champions League · ⭐ GRAND FINAL',
+      isAiOnly: (user?.name !== fn.home && user?.name !== fn.away)
+    });
+    fn.homeGoals = res.homeGoals;
+    fn.awayGoals = res.awayGoals;
+    fn.penalties = res.penalties;
+    const champ = res.cupWinner || (res.homeGoals > res.awayGoals ? fn.home : fn.away);
+    const runner = (champ === fn.home) ? fn.away : fn.home;
+    fn.winner = champ;
+    fn.played = true;
+    u.champion = champ;
+    u.runnerUp = runner;
+    u.status = 'completed';
+
+    const cClub = club(s, champ);
+    if (cClub) {
+      cClub.cash = Math.round((cClub.cash + 85.0) * 10) / 10;
+      cClub.reputation = Math.min(99, (cClub.reputation || 70) + 15);
+      cClub.trophyCabinet = cClub.trophyCabinet || [];
+      cClub.trophyCabinet.unshift({ id: `ucl_s${s.season}`, type: 'ucl', name: 'UEFA Champions League Trophy', season: s.season, icon: '⭐' });
+      recordTransaction(cClub, 85.0, 'tournament_prize', '⭐ UEFA Champions League Winners Prize Purse!', s);
+    }
+    const rClub = club(s, runner);
+    if (rClub) {
+      rClub.cash = Math.round((rClub.cash + 40.0) * 10) / 10;
+      recordTransaction(rClub, 40.0, 'tournament_prize', '🥈 UEFA Champions League Runners-Up Prize', s);
+    }
+    addNews(s, `👑 EUROPEAN KINGS: ${champ} crowned UEFA Champions League Winners for Season ${s.season}, collecting ₹85.0M!`, 'competition');
+    roundResults.push(res);
+  }
+
+  persist();
+  return { ucl: u, results: roundResults };
+}
+
+// =============================================================
+// EUROPA CHALLENGERS LEAGUE (EUROPA CUP) ENGINE
+// =============================================================
+function initiateEuropaTournament(s) {
+  if (s.europaTournament && s.europaTournament.season === s.season) return s.europaTournament;
+  const user = club(s, s.selectedClub);
+  const uclTeams = s.uclTournament?.standings?.map(x => x.clubName) || [];
+  
+  let candidates = s.clubs.filter(c => !uclTeams.includes(c.name) && (c.division <= 2));
+  if (user && !uclTeams.includes(user.name)) {
+    candidates = [user, ...candidates.filter(c => c.name !== user.name)];
+  }
+  const selected = candidates.slice(0, 12);
+  while (selected.length < 12) {
+    const filler = s.clubs.find(c => !selected.find(x => x.name === c.name));
+    if (filler) selected.push(filler); else break;
+  }
+
+  const grpA = selected.slice(0, 6).map(c => ({ clubName: c.name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 }));
+  const grpB = selected.slice(6, 12).map(c => ({ clubName: c.name, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, points: 0 }));
+
+  s.europaTournament = {
+    season: s.season,
+    name: 'Europa Challengers League',
+    trophy: '🥈 Europa Challengers Cup',
+    status: 'groups',
+    currentRound: 1,
+    maxRounds: 3,
+    groups: { A: grpA, B: grpB },
+    knockout: {
+      semiFinals: [],
+      final: null
+    },
+    champion: null,
+    runnerUp: null
+  };
+
+  addNews(s, `🥈 EUROPA CHALLENGERS LEAGUE: Season ${s.season} group stages set! 12 top continental contenders battle for European glory & ₹35M.`, 'competition');
+  persist();
+  return s.europaTournament;
+}
+
+function simulateEuropaRound(s) {
+  if (!s.europaTournament || s.europaTournament.season !== s.season) initiateEuropaTournament(s);
+  const e = s.europaTournament;
+  if (e.status === 'completed') return { error: 'Current Europa season edition is completed.' };
+
+  const user = club(s, s.selectedClub);
+  const roundResults = [];
+
+  if (e.status === 'groups') {
+    ['A', 'B'].forEach(gKey => {
+      const g = e.groups[gKey];
+      let pairs = [];
+      if (e.currentRound === 1) pairs = [[0, 1], [2, 3], [4, 5]];
+      else if (e.currentRound === 2) pairs = [[0, 2], [1, 4], [3, 5]];
+      else pairs = [[0, 3], [1, 5], [2, 4]];
+
+      pairs.forEach(([i1, i2]) => {
+        if (!g[i1] || !g[i2]) return;
+        const res = match(s, g[i1].clubName, g[i2].clubName, {
+          isCup: true,
+          competitionName: `Europa League · Group ${gKey} MD${e.currentRound}`,
+          isAiOnly: (user?.name !== g[i1].clubName && user?.name !== g[i2].clubName)
+        });
+        g[i1].played++; g[i2].played++;
+        g[i1].gf += res.homeGoals; g[i1].ga += res.awayGoals; g[i1].gd = g[i1].gf - g[i1].ga;
+        g[i2].gf += res.awayGoals; g[i2].ga += res.homeGoals; g[i2].gd = g[i2].gf - g[i2].ga;
+
+        if (res.homeGoals > res.awayGoals) { g[i1].won++; g[i1].points += 3; g[i2].lost++; }
+        else if (res.homeGoals < res.awayGoals) { g[i2].won++; g[i2].points += 3; g[i1].lost++; }
+        else { g[i1].drawn++; g[i1].points++; g[i2].drawn++; g[i2].points++; }
+        roundResults.push(res);
+      });
+      g.sort((a, b) => b.points - a.points || b.gd - a.gd || b.gf - a.gf);
+    });
+
+    e.currentRound++;
+    if (e.currentRound > e.maxRounds) {
+      e.status = 'semi_finals';
+      e.knockout.semiFinals = [
+        { home: e.groups.A[0].clubName, away: e.groups.B[1].clubName, label: 'Semi-Final 1 (1A vs 2B)', played: false },
+        { home: e.groups.B[0].clubName, away: e.groups.A[1].clubName, label: 'Semi-Final 2 (1B vs 2A)', played: false }
+      ];
+      addNews(s, `🥈 EUROPA CUP SEMI-FINALS: Top 2 from Group A & B advance to the Knockout Semi-Finals!`, 'competition');
+    }
+  } else if (e.status === 'semi_finals') {
+    const finalPairs = [];
+    e.knockout.semiFinals.forEach(sf => {
+      const res = match(s, sf.home, sf.away, {
+        isCup: true,
+        cupStage: 'Europa Semi-Final',
+        competitionName: `Europa League · ${sf.label}`,
+        isAiOnly: (user?.name !== sf.home && user?.name !== sf.away)
+      });
+      sf.homeGoals = res.homeGoals;
+      sf.awayGoals = res.awayGoals;
+      sf.penalties = res.penalties;
+      sf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? sf.home : sf.away);
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      roundResults.push(res);
+    });
+    e.status = 'final';
+    e.knockout.final = { home: finalPairs[0], away: finalPairs[1], label: 'Europa Cup Final', played: false };
+    addNews(s, `🥈 EUROPA GRAND FINAL: ${finalPairs[0]} vs ${finalPairs[1]} for the Europa Challengers Cup!`, 'competition');
+  } else if (e.status === 'final') {
+    const fn = e.knockout.final;
+    const res = match(s, fn.home, fn.away, {
+      isCup: true,
+      cupStage: 'Europa Cup Final',
+      competitionName: 'Europa League · 🥈 GRAND FINAL',
+      isAiOnly: (user?.name !== fn.home && user?.name !== fn.away)
+    });
+    fn.homeGoals = res.homeGoals;
+    fn.awayGoals = res.awayGoals;
+    fn.penalties = res.penalties;
+    const champ = res.cupWinner || (res.homeGoals > res.awayGoals ? fn.home : fn.away);
+    const runner = (champ === fn.home) ? fn.away : fn.home;
+    fn.winner = champ;
+    fn.played = true;
+    e.champion = champ;
+    e.runnerUp = runner;
+    e.status = 'completed';
+
+    const cClub = club(s, champ);
+    if (cClub) {
+      cClub.cash = Math.round((cClub.cash + 35.0) * 10) / 10;
+      cClub.reputation = Math.min(99, (cClub.reputation || 65) + 8);
+      cClub.trophyCabinet = cClub.trophyCabinet || [];
+      cClub.trophyCabinet.unshift({ id: `europa_s${s.season}`, type: 'europa', name: 'Europa Challengers Cup', season: s.season, icon: '🥈' });
+      recordTransaction(cClub, 35.0, 'tournament_prize', '🥈 Europa Challengers Cup Winners Prize!', s);
+    }
+    const rClub = club(s, runner);
+    if (rClub) {
+      rClub.cash = Math.round((rClub.cash + 18.0) * 10) / 10;
+      recordTransaction(rClub, 18.0, 'tournament_prize', 'Europa Cup Runners-Up Prize', s);
+    }
+    addNews(s, `🥈 EUROPA CUP CHAMPIONS: ${champ} triumph in the Grand Final, banking ₹35.0M!`, 'competition');
+    roundResults.push(res);
+  }
+
+  persist();
+  return { europa: e, results: roundResults };
+}
+
+// =============================================================
+// DOMESTIC FA CUP (NATIONAL CUP) ENGINE
+// =============================================================
+function initiateDomesticCup(s) {
+  if (s.domesticCup && s.domesticCup.season === s.season) return s.domesticCup;
+  const user = club(s, s.selectedClub);
+  const country = user ? user.country : 'England';
+
+  const ctyClubs = s.clubs.filter(c => c.country === country);
+  const d1 = ctyClubs.filter(c => c.division === 1).slice(0, 4);
+  const d2 = ctyClubs.filter(c => c.division === 2).slice(0, 4);
+  const d3 = ctyClubs.filter(c => c.division === 3).slice(0, 4);
+  const d4 = ctyClubs.filter(c => c.division === 4).slice(0, 4);
+
+  let selected = [...d1, ...d2, ...d3, ...d4];
+  if (user && !selected.find(x => x.name === user.name)) {
+    selected[selected.length - 1] = user;
+  }
+  while (selected.length < 16) {
+    const filler = s.clubs.find(c => !selected.find(x => x.name === c.name));
+    if (filler) selected.push(filler); else break;
+  }
+
+  const shuffled = [...selected].sort(() => Math.random() - 0.5);
+  const r16 = [];
+  for (let i = 0; i < 16; i += 2) {
+    r16.push({
+      home: shuffled[i].name,
+      away: shuffled[i + 1].name,
+      homeDiv: shuffled[i].division,
+      awayDiv: shuffled[i + 1].division,
+      label: `Round of 16 Tie ${Math.floor(i / 2) + 1}`,
+      homeGoals: null,
+      awayGoals: null,
+      penalties: null,
+      winner: null,
+      played: false
+    });
+  }
+
+  s.domesticCup = {
+    season: s.season,
+    country,
+    name: `${country} National FA Cup`,
+    trophy: `🏆 ${country} FA Cup Trophy`,
+    status: 'round_of_16',
+    bracket: {
+      roundOf16: r16,
+      quarterFinals: [],
+      semiFinals: [],
+      final: null
+    },
+    champion: null,
+    runnerUp: null
+  };
+
+  addNews(s, `🏆 FA CUP DRAW: The ${country} National FA Cup Round of 16 draw completed! All 4 tiers collide in knockout combat.`, 'competition');
+  persist();
+  return s.domesticCup;
+}
+
+function simulateDomesticCupRound(s) {
+  if (!s.domesticCup || s.domesticCup.season !== s.season) initiateDomesticCup(s);
+  const cup = s.domesticCup;
+  if (cup.status === 'completed') return { error: 'Domestic Cup already completed this season.' };
+
+  const user = club(s, s.selectedClub);
+  const roundResults = [];
+
+  if (cup.status === 'round_of_16') {
+    const winners = [];
+    cup.bracket.roundOf16.forEach(tie => {
+      const res = match(s, tie.home, tie.away, {
+        isCup: true,
+        cupStage: 'National Cup R16',
+        competitionName: `${cup.name} · ${tie.label}`,
+        isAiOnly: (user?.name !== tie.home && user?.name !== tie.away)
+      });
+      tie.homeGoals = res.homeGoals;
+      tie.awayGoals = res.awayGoals;
+      tie.penalties = res.penalties;
+      tie.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? tie.home : tie.away);
+      tie.played = true;
+      winners.push(tie.winner);
+      roundResults.push(res);
+    });
+
+    cup.status = 'quarter_finals';
+    cup.bracket.quarterFinals = [
+      { home: winners[0], away: winners[1], label: 'QF 1', played: false },
+      { home: winners[2], away: winners[3], label: 'QF 2', played: false },
+      { home: winners[4], away: winners[5], label: 'QF 3', played: false },
+      { home: winners[6], away: winners[7], label: 'QF 4', played: false }
+    ];
+    addNews(s, `🏆 FA CUP QFs: 8 survivors progress into the National FA Cup Quarter-Finals!`, 'competition');
+  } else if (cup.status === 'quarter_finals') {
+    const winners = [];
+    cup.bracket.quarterFinals.forEach(qf => {
+      const res = match(s, qf.home, qf.away, {
+        isCup: true,
+        cupStage: 'National Cup QF',
+        competitionName: `${cup.name} · ${qf.label}`,
+        isAiOnly: (user?.name !== qf.home && user?.name !== qf.away)
+      });
+      qf.homeGoals = res.homeGoals;
+      qf.awayGoals = res.awayGoals;
+      qf.penalties = res.penalties;
+      qf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? qf.home : qf.away);
+      qf.played = true;
+      winners.push(qf.winner);
+      roundResults.push(res);
+    });
+
+    cup.status = 'semi_finals';
+    cup.bracket.semiFinals = [
+      { home: winners[0], away: winners[2], label: 'Semi-Final 1 (Wembley Arena)', played: false },
+      { home: winners[1], away: winners[3], label: 'Semi-Final 2 (Wembley Arena)', played: false }
+    ];
+    addNews(s, `🏆 FA CUP SEMIS: The National FA Cup Final Four battle at the National Stadium!`, 'competition');
+  } else if (cup.status === 'semi_finals') {
+    const finalPairs = [];
+    cup.bracket.semiFinals.forEach(sf => {
+      const res = match(s, sf.home, sf.away, {
+        isCup: true,
+        cupStage: 'National Cup Semi-Final',
+        competitionName: `${cup.name} · ${sf.label}`,
+        isAiOnly: (user?.name !== sf.home && user?.name !== sf.away)
+      });
+      sf.homeGoals = res.homeGoals;
+      sf.awayGoals = res.awayGoals;
+      sf.penalties = res.penalties;
+      sf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? sf.home : sf.away);
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      roundResults.push(res);
+    });
+
+    cup.status = 'final';
+    cup.bracket.final = { home: finalPairs[0], away: finalPairs[1], label: 'Grand Cup Final', played: false };
+    addNews(s, `🏆 FA CUP FINAL: ${finalPairs[0]} vs ${finalPairs[1]} square off in the National FA Cup Final!`, 'competition');
+  } else if (cup.status === 'final') {
+    const fn = cup.bracket.final;
+    const res = match(s, fn.home, fn.away, {
+      isCup: true,
+      cupStage: 'National Cup Final',
+      competitionName: `${cup.name} · 🏆 GRAND FINAL`,
+      isAiOnly: (user?.name !== fn.home && user?.name !== fn.away)
+    });
+    fn.homeGoals = res.homeGoals;
+    fn.awayGoals = res.awayGoals;
+    fn.penalties = res.penalties;
+    const champ = res.cupWinner || (res.homeGoals > res.awayGoals ? fn.home : fn.away);
+    const runner = (champ === fn.home) ? fn.away : fn.home;
+    fn.winner = champ;
+    fn.played = true;
+    cup.champion = champ;
+    cup.runnerUp = runner;
+    cup.status = 'completed';
+
+    const cClub = club(s, champ);
+    if (cClub) {
+      cClub.cash = Math.round((cClub.cash + 22.0) * 10) / 10;
+      cClub.reputation = Math.min(99, (cClub.reputation || 60) + 6);
+      cClub.trophyCabinet = cClub.trophyCabinet || [];
+      cClub.trophyCabinet.unshift({ id: `facup_s${s.season}`, type: 'cup', name: `${cup.country} FA Cup`, season: s.season, icon: '🏆' });
+      recordTransaction(cClub, 22.0, 'tournament_prize', `🏆 ${cup.country} FA Cup Winners Silverware!`, s);
+    }
+    const rClub = club(s, runner);
+    if (rClub) {
+      rClub.cash = Math.round((rClub.cash + 10.0) * 10) / 10;
+      recordTransaction(rClub, 10.0, 'tournament_prize', 'FA Cup Finalist Bounty', s);
+    }
+    addNews(s, `🏆 FA CUP HEROES: ${champ} win the ${cup.name} in dramatic fashion, taking ₹22.0M!`, 'competition');
+    roundResults.push(res);
+  }
+
+  persist();
+  return { cup, results: roundResults };
+}
+
+// =============================================================
+// PROMOTION / RELEGATION PLAYOFF BRACKETS ENGINE
+// =============================================================
+function initiatePlayoffs(s) {
+  if (s.playoffs && s.playoffs.season === s.season) return s.playoffs;
+  const user = club(s, s.selectedClub);
+  const country = user ? user.country : 'England';
+
+  const d2Clubs = s.clubs.filter(c => c.country === country && c.division === 2).sort((a,b) => (b.stats?.points || 0) - (a.stats?.points || 0));
+  const d3Clubs = s.clubs.filter(c => c.country === country && c.division === 3).sort((a,b) => (b.stats?.points || 0) - (a.stats?.points || 0));
+
+  const d2Contenders = d2Clubs.slice(2, 6);
+  const d3Contenders = d3Clubs.slice(2, 6);
+
+  const d2Bracket = {
+    division: 2,
+    targetDivision: 1,
+    name: 'Division 2 -> Division 1 Promotion Playoff',
+    status: 'semi_finals',
+    semiFinals: [
+      { home: d2Contenders[0]?.name || 'Division 2 3rd', away: d2Contenders[3]?.name || 'Division 2 6th', label: 'SF 1 (3rd vs 6th)', played: false },
+      { home: d2Contenders[1]?.name || 'Division 2 4th', away: d2Contenders[2]?.name || 'Division 2 5th', label: 'SF 2 (4th vs 5th)', played: false }
+    ],
+    final: null,
+    winner: null
+  };
+
+  const d3Bracket = {
+    division: 3,
+    targetDivision: 2,
+    name: 'Division 3 -> Division 2 Promotion Playoff',
+    status: 'semi_finals',
+    semiFinals: [
+      { home: d3Contenders[0]?.name || 'Division 3 3rd', away: d3Contenders[3]?.name || 'Division 3 6th', label: 'SF 1 (3rd vs 6th)', played: false },
+      { home: d3Contenders[1]?.name || 'Division 3 4th', away: d3Contenders[2]?.name || 'Division 3 5th', label: 'SF 2 (4th vs 5th)', played: false }
+    ],
+    final: null,
+    winner: null
+  };
+
+  s.playoffs = {
+    season: s.season,
+    country,
+    d2: d2Bracket,
+    d3: d3Bracket
+  };
+
+  addNews(s, `⚔️ PLAYOFF BRACKETS: Promotion playoffs locked in! 4 clubs in Division 2 and Division 3 contest the high-stakes promotion finals.`, 'league');
+  persist();
+  return s.playoffs;
+}
+
+function simulatePlayoffsRound(s, targetTier = 2) {
+  if (!s.playoffs || s.playoffs.season !== s.season) initiatePlayoffs(s);
+  const p = targetTier === 2 ? s.playoffs.d2 : s.playoffs.d3;
+  if (!p) return { error: 'Playoff division not found.' };
+  if (p.status === 'completed') return { error: `${p.name} is already finished.` };
+
+  const user = club(s, s.selectedClub);
+  const roundResults = [];
+
+  if (p.status === 'semi_finals') {
+    const finalPairs = [];
+    p.semiFinals.forEach(sf => {
+      const res = match(s, sf.home, sf.away, {
+        isCup: true,
+        cupStage: 'Promotion Playoff Semi-Final',
+        competitionName: `${p.name} · ${sf.label}`,
+        isAiOnly: (user?.name !== sf.home && user?.name !== sf.away)
+      });
+      sf.homeGoals = res.homeGoals;
+      sf.awayGoals = res.awayGoals;
+      sf.penalties = res.penalties;
+      sf.winner = res.cupWinner || (res.homeGoals > res.awayGoals ? sf.home : sf.away);
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      roundResults.push(res);
+    });
+
+    p.status = 'final';
+    p.final = {
+      home: finalPairs[0],
+      away: finalPairs[1],
+      label: '🏆 PLAYOFF FINAL (Promotion Showdown)',
+      played: false
+    };
+    addNews(s, `⚔️ PLAYOFF FINAL: ${finalPairs[0]} vs ${finalPairs[1]} in the ₹100M Promotion Showdown!`, 'league');
+  } else if (p.status === 'final') {
+    const fn = p.final;
+    const res = match(s, fn.home, fn.away, {
+      isCup: true,
+      cupStage: 'Promotion Playoff Final',
+      competitionName: `${p.name} · 🏆 PLAYOFF FINAL`,
+      isAiOnly: (user?.name !== fn.home && user?.name !== fn.away)
+    });
+    fn.homeGoals = res.homeGoals;
+    fn.awayGoals = res.awayGoals;
+    fn.penalties = res.penalties;
+    const promotedClubName = res.cupWinner || (res.homeGoals > res.awayGoals ? fn.home : fn.away);
+    fn.winner = promotedClubName;
+    fn.played = true;
+    p.winner = promotedClubName;
+    p.status = 'completed';
+
+    const pClub = club(s, promotedClubName);
+    if (pClub) {
+      pClub.division = p.targetDivision;
+      pClub.promotions = (pClub.promotions || 0) + 1;
+      const bounty = targetTier === 2 ? 15.0 : 8.0;
+      pClub.cash = Math.round((pClub.cash + bounty) * 10) / 10;
+      pClub.reputation = Math.min(99, (pClub.reputation || 60) + 4);
+      recordTransaction(pClub, bounty, 'promotion_prize', `⬆️ Playoff Final Victory! Promoted to Division ${p.targetDivision}!`, s);
+    }
+    addNews(s, `⬆️ PLAYOFF GLORY: ${promotedClubName} WIN THE PLAYOFF FINAL AND ARE PROMOTED TO DIVISION ${p.targetDivision}!`, 'league');
+    roundResults.push(res);
+  }
+
+  persist();
+  return { playoffs: s.playoffs, results: roundResults };
+}
+
+// =============================================================
+// DEADLINE DAY ENGINE: LIVE COUNTDOWN & BREAKING TICKER
+// =============================================================
+function getDeadlineDayState(s) {
+  if (!s.deadlineDay) {
+    s.deadlineDay = {
+      hoursLeft: 10,
+      active: true,
+      newsTicker: [
+        { time: '14:00', text: '🔥 BREAKING: Rumors swirl that Paris FC submitted a shock ₹80M bid for Madrid CF captain.' },
+        { time: '15:30', text: '🩺 MEDICAL ALERT: South Coast FC agreement reached with star winger; player currently undergoing medical.' },
+        { time: '17:00', text: '⚡ HIJACK ATTEMPT: Manchester Blue trying to gazump Bayern for top continental midfield maestro!' },
+        { time: '18:45', text: '🚨 DEADLINE CLOCK: Less than 6 hours remaining before the official international transfer window closes!' }
+      ]
+    };
+  }
+  return s.deadlineDay;
+}
+
+function executeDeadlineDayAction(s, action, data) {
+  const d = getDeadlineDayState(s);
+  const user = club(s, s.selectedClub);
+
+  if (action === 'advance_hour') {
+    if (d.hoursLeft > 0) d.hoursLeft--;
+    const randomClubs = s.clubs.filter(c => c.name !== user?.name);
+    const c1 = randomClubs[Math.floor(Math.random() * randomClubs.length)]?.name || 'Rival Club';
+    const c2 = randomClubs[Math.floor(Math.random() * randomClubs.length)]?.name || 'Continental Giant';
+    const hourStr = `${24 - d.hoursLeft}:00`;
+
+    const flashAlerts = [
+      `⏰ ${hourStr} FLASH: ${c1} submit urgent ₹45M bid for ${c2} talisman as deadline looms!`,
+      `🚨 ${hourStr} DRAMA: Private jet spotted in London — ${c1} pushing paperwork to beat midnight embargo!`,
+      `📄 ${hourStr} OFFICIAL: Deal sheet submitted with league authorities with seconds to spare!`
+    ];
+    d.newsTicker.unshift({ time: hourStr, text: flashAlerts[Math.floor(Math.random() * flashAlerts.length)] });
+    if (d.newsTicker.length > 15) d.newsTicker.pop();
+
+    if (d.hoursLeft === 0) {
+      d.active = false;
+      addNews(s, `🕛 DEADLINE WINDOW SHUT: The international transfer window has officially closed! All rosters are sealed.`, 'transfer');
+    }
+    persist();
+    return { ok: true, state: d };
+  }
+
+  if (action === 'panic_buy') {
+    const p = s.market.find(x => x.id === data.playerId);
+    if (!p) return { error: 'Player not found on market.' };
+    const fee = Math.round((p.askingPrice || 10) * 1.25 * 10) / 10;
+    if (user.cash < fee) return { error: `Insufficient funds for panic buy (Need ₹${fee}M).` };
+
+    user.cash = Math.round((user.cash - fee) * 10) / 10;
+    p.ownerClub = user.name;
+    p.status = 'contracted';
+    user.players.push(p.id);
+    recordTransaction(user, -fee, 'transfer_fee', `⚡ Deadline Day Panic Buy: ${p.name} from market`, s);
+    addNews(s, `⚡ BUZZER-BEATER SIGNING: ${user.name} beat the clock to capture ${p.name} for ₹${fee}M!`, 'transfer');
+    d.newsTicker.unshift({ time: '23:58', text: `🚨 CONFIRMED DEAL: ${user.name} complete dramatic late deadline transfer for ${p.name}!` });
+    persist();
+    return { ok: true, player: p, fee };
+  }
+
+  return { error: 'Unknown deadline day action.' };
+}
+
+// =============================================================
+// FEATURE A: ADVANCED TRANSFER STRUCTURES (SWAPS & CLAUSES)
+// =============================================================
+function executeSwapTransfer(s, userClubName, offeredPlayerId, targetPlayerId, additionalCash = 0) {
+  const uClub = club(s, userClubName || s.selectedClub);
+  const tPlayer = player(s, targetPlayerId);
+  const oPlayer = player(s, offeredPlayerId);
+
+  if (!uClub || !tPlayer || !oPlayer) return { error: 'Clubs or players not found for swap deal.' };
+  if (oPlayer.ownerClub !== uClub.name) return { error: 'Offered player is not owned by your club.' };
+
+  const sClub = club(s, tPlayer.ownerClub);
+  const cash = Math.max(0, Number(additionalCash) || 0);
+
+  if (cash > uClub.cash) return { error: `Insufficient club funds to include ₹${cash}M cash in the swap deal.` };
+
+  // Execute swap
+  uClub.players = (uClub.players || []).filter(id => id !== oPlayer.id);
+  uClub.players.push(tPlayer.id);
+  tPlayer.ownerClub = uClub.name;
+  tPlayer.status = 'contracted';
+
+  if (sClub) {
+    sClub.players = (sClub.players || []).filter(id => id !== tPlayer.id);
+    sClub.players.push(oPlayer.id);
+    oPlayer.ownerClub = sClub.name;
+    sClub.cash = Math.round((sClub.cash + cash) * 10) / 10;
+  } else {
+    oPlayer.ownerClub = 'Free Market';
+  }
+
+  uClub.cash = Math.round((uClub.cash - cash) * 10) / 10;
+  if (cash > 0) {
+    recordTransaction(uClub, -cash, 'transfer_fee', `🔄 Player Swap: Signed ${tPlayer.name} with ${oPlayer.name} + ₹${cash}M moving in exchange`, s);
+  }
+  addNews(s, `🔄 PLAYER SWAP COMPLETED: ${uClub.name} acquire ${tPlayer.name} (${tPlayer.rating} OVR) with ${oPlayer.name} (${oPlayer.rating} OVR) joining ${sClub ? sClub.name : 'the market'} (+₹${cash}M)!`, 'transfer');
+  persist();
+  return { ok: true, targetPlayer: tPlayer, offeredPlayer: oPlayer, cash };
+}
+
+// =============================================================
+// FEATURE B: DRESSING ROOM REVOLTS & 1-ON-1 SUPERSTAR TALKS
+// =============================================================
+function getDressingRoomStatus(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { hierarchy: {}, rebels: [], harmony: 85 };
+
+  const squad = clubPlayers(s, c);
+  const captains = squad.filter(p => (p.rating || 70) >= 84 || (p.age || 25) >= 29).slice(0, 3);
+  const leaders = squad.filter(p => !captains.find(x => x.id === p.id) && ((p.rating || 70) >= 78 || (p.form || 70) >= 80)).slice(0, 5);
+  const core = squad.filter(p => !captains.find(x => x.id === p.id) && !leaders.find(x => x.id === p.id)).slice(0, 10);
+
+  const rebels = squad.filter(p => 
+    (p.form && p.form < 60) || 
+    (p.promisedStarts && p.promisedStarts > 0) ||
+    ((p.contract && p.contract.years <= 1) && (p.rating || 70) >= 76)
+  ).map(p => ({
+    id: p.id,
+    name: p.name,
+    position: p.position,
+    rating: p.rating,
+    age: p.age,
+    morale: p.form || 65,
+    reason: (p.contract && p.contract.years <= 1) ? 'Demanding lucrative contract renewal or Champions League football' : (p.promisedStarts ? `Awaiting ${p.promisedStarts} guaranteed starting appearances` : 'Frustrated with tactical rotation and lack of regular minutes')
+  }));
+
+  if (rebels.length === 0 && squad.length > 5) {
+    const candidate = squad.find(p => p.rating >= 75) || squad[0];
+    rebels.push({
+      id: candidate.id,
+      name: candidate.name,
+      position: candidate.position,
+      rating: candidate.rating,
+      age: candidate.age,
+      morale: 62,
+      reason: 'Discontent with squad rotation policy; seeks meeting with Head Coach'
+    });
+  }
+
+  const harmony = Math.max(40, Math.min(99, Math.round(c.morale * 0.9 + (rebels.length === 0 ? 10 : -rebels.length * 6))));
+
+  return {
+    hierarchy: { captains, leaders, core },
+    rebels,
+    harmony,
+    clubMorale: c.morale
+  };
+}
+
+function resolveDressingRoomTalk(s, clubName, playerId, action) {
+  const c = club(s, clubName || s.selectedClub);
+  const p = player(s, playerId);
+  if (!c || !p) return { error: 'Club or player not found.' };
+
+  let message = '';
+  if (action === 'promise_starts') {
+    p.promisedStarts = 3;
+    p.form = Math.min(99, (p.form || 70) + 12);
+    c.morale = Math.min(99, c.morale + 4);
+    message = `🤝 Pact Agreed: You promised ${p.name} regular starts in the next 3 fixtures. Player morale restored!`;
+    addNews(s, `🗣️ DRESSING ROOM SUMMIT: ${c.name} manager held 1-on-1 summit with ${p.name}, guaranteeing key starting roles.`, 'board');
+  } else if (action === 'pay_raise') {
+    if (p.contract) {
+      p.contract.salary = Math.round((p.contract.salary * 1.25) * 10) / 10;
+      p.contract.years = (p.contract.years || 2) + 2;
+    }
+    p.form = Math.min(99, (p.form || 70) + 20);
+    c.morale = Math.min(99, c.morale + 5);
+    message = `✍️ Lucrative Terms: Extended ${p.name}'s contract by 2 seasons with a 25% pay bump. Unrest resolved!`;
+    addNews(s, `💰 CONTRACT EXTENSION: ${p.name} committed their future to ${c.name} following private boardroom talks.`, 'transfer');
+  } else if (action === 'fine_wages') {
+    p.form = Math.max(45, (p.form || 70) - 10);
+    c.morale = Math.max(50, c.morale - 2);
+    c.cash = Math.round((c.cash + 0.3) * 10) / 10;
+    message = `⚡ Strict Discipline: Fined ${p.name} 2 weeks' wages for insubordination. Squad discipline reinforced (+₹0.3M).`;
+    addNews(s, `⚠️ DISCIPLINARY SANCTION: ${c.name} management issued a 2-week wage fine to ${p.name} for breach of code.`, 'board');
+  } else if (action === 'armband') {
+    p.form = Math.min(99, (p.form || 70) + 25);
+    c.morale = Math.min(99, c.morale + 6);
+    message = `👑 Vice-Captaincy Appointed: Awarded ${p.name} official leadership status. Loyalty secured!`;
+    addNews(s, `👑 LEADERSHIP APPOINTMENT: ${p.name} named Vice-Captain of ${c.name} during dressing room address.`, 'board');
+  }
+
+  persist();
+  return { ok: true, message, player: p, updatedDressingRoom: getDressingRoomStatus(s, c.name) };
+}
+
+// =============================================================
+// FEATURE C: INTERNATIONAL MANAGEMENT MODE (DUAL ROLE)
+// =============================================================
+function getInternationalStatus(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  const managerRep = c?.reputation || 70;
+
+  if (!s.international) {
+    const nationPool = ['England', 'Brazil', 'France', 'Spain', 'Germany', 'Argentina', 'Portugal', 'Netherlands', 'Italy', 'India'];
+    const offers = [
+      { nation: nationPool[(s.season + 1) % nationPool.length], repRequired: 65, prestige: 'Tier 1 Football Powerhouse' },
+      { nation: nationPool[(s.season + 3) % nationPool.length], repRequired: 70, prestige: 'Continental Heavyweight' },
+      { nation: nationPool[(s.season + 5) % nationPool.length], repRequired: 60, prestige: 'Rising Global Contender' }
+    ];
+
+    s.international = {
+      currentNation: managerRep >= 75 ? (c?.country || 'England') : null,
+      availableOffers: offers,
+      season: s.season,
+      tournament: {
+        name: 'World Nations Championship',
+        status: 'quarter_finals',
+        quarterFinals: [
+          { home: 'England', away: 'Germany', homeGoals: null, awayGoals: null, played: false, winner: null },
+          { home: 'Brazil', away: 'Spain', homeGoals: null, awayGoals: null, played: false, winner: null },
+          { home: 'France', away: 'Portugal', homeGoals: null, awayGoals: null, played: false, winner: null },
+          { home: 'Argentina', away: 'Netherlands', homeGoals: null, awayGoals: null, played: false, winner: null }
+        ],
+        semiFinals: [],
+        final: null,
+        champion: null
+      }
+    };
+  }
+
+  return s.international;
+}
+
+function acceptInternationalRole(s, nation) {
+  const intl = getInternationalStatus(s);
+  intl.currentNation = nation;
+  addNews(s, `🌍 INTERNATIONAL APPOINTMENT: Congratulations! You have officially been appointed Head Manager of the ${nation} National Team!`, 'competition');
+  persist();
+  return { ok: true, nation, international: intl };
+}
+
+function simulateInternationalMatch(s) {
+  const intl = getInternationalStatus(s);
+  const t = intl.tournament;
+  if (!t || t.status === 'completed') return { error: 'International tournament already concluded.' };
+
+  const roundResults = [];
+  if (t.status === 'quarter_finals') {
+    const winners = [];
+    t.quarterFinals.forEach(qf => {
+      const hg = Math.floor(Math.random() * 4);
+      let ag = Math.floor(Math.random() * 3);
+      if (hg === ag) ag++;
+      qf.homeGoals = hg;
+      qf.awayGoals = ag;
+      qf.winner = hg > ag ? qf.home : qf.away;
+      qf.played = true;
+      winners.push(qf.winner);
+      roundResults.push(qf);
+    });
+
+    t.status = 'semi_finals';
+    t.semiFinals = [
+      { home: winners[0], away: winners[1], homeGoals: null, awayGoals: null, played: false, winner: null },
+      { home: winners[2], away: winners[3], homeGoals: null, awayGoals: null, played: false, winner: null }
+    ];
+    addNews(s, `🌍 WORLD NATIONS SEMIS: ${winners.join(', ')} advance to the International Final Four!`, 'competition');
+  } else if (t.status === 'semi_finals') {
+    const finalPairs = [];
+    t.semiFinals.forEach(sf => {
+      const hg = Math.floor(Math.random() * 3) + 1;
+      let ag = Math.floor(Math.random() * 3);
+      if (hg === ag) ag++;
+      sf.homeGoals = hg;
+      sf.awayGoals = ag;
+      sf.winner = hg > ag ? sf.home : sf.away;
+      sf.played = true;
+      finalPairs.push(sf.winner);
+      roundResults.push(sf);
+    });
+
+    t.status = 'final';
+    t.final = { home: finalPairs[0], away: finalPairs[1], homeGoals: null, awayGoals: null, played: false, winner: null };
+    addNews(s, `🌍 WORLD NATIONS FINAL: ${finalPairs[0]} vs ${finalPairs[1]} for the International World Crown!`, 'competition');
+  } else if (t.status === 'final') {
+    const fn = t.final;
+    const hg = Math.floor(Math.random() * 3) + 1;
+    let ag = Math.floor(Math.random() * 2);
+    if (hg === ag) ag++;
+    fn.homeGoals = hg;
+    fn.awayGoals = ag;
+    fn.winner = hg > ag ? fn.home : fn.away;
+    fn.played = true;
+    t.champion = fn.winner;
+    t.status = 'completed';
+
+    addNews(s, `👑 INTERNATIONAL WORLD CHAMPIONS: ${fn.winner} lift the World Nations Championship Trophy!`, 'competition');
+    roundResults.push(fn);
+  }
+
+  persist();
+  return { ok: true, tournament: t, results: roundResults };
+}
+
+// =============================================================
+// FEATURE D: VISUAL STADIUM BUILDER & FAN ULTRAS TIFOS
+// =============================================================
+function getStadiumVisualState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+
+  c.stadiumVisual = c.stadiumVisual || {
+    roofLevel: 1,
+    terraceLevel: 1,
+    skyboxLevel: 1,
+    ledLevel: 1,
+    floodlightLevel: 1,
+    activeTifo: 'rampant_lion'
+  };
+
+  return {
+    club: c.name,
+    capacity: c.stadiumCapacity || 25000,
+    modules: c.stadiumVisual
+  };
+}
+
+function upgradeStadiumModule(s, clubName, moduleType) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+
+  c.stadiumVisual = c.stadiumVisual || { roofLevel: 1, terraceLevel: 1, skyboxLevel: 1, ledLevel: 1, floodlightLevel: 1, activeTifo: 'rampant_lion' };
+
+  const costs = {
+    roofLevel: 8.0,
+    terraceLevel: 5.0,
+    skyboxLevel: 7.0,
+    ledLevel: 3.5,
+    floodlightLevel: 3.0
+  };
+
+  const cost = costs[moduleType] || 5.0;
+  if (c.cash < cost) return { error: `Insufficient club treasury funds (Need ₹${cost}M).` };
+
+  c.cash = Math.round((c.cash - cost) * 10) / 10;
+  c.stadiumVisual[moduleType] = (c.stadiumVisual[moduleType] || 1) + 1;
+  c.reputation = Math.min(99, (c.reputation || 60) + 2);
+  c.stadiumCapacity = (c.stadiumCapacity || 25000) + 2500;
+
+  recordTransaction(c, -cost, 'facility_investment', `🏗️ Stadium Architectural Upgrade: ${moduleType} to Tier ${c.stadiumVisual[moduleType]}`, s);
+  addNews(s, `🏗️ STADIUM EXPANSION: ${c.name} unveiled structural upgrades (${moduleType} Tier ${c.stadiumVisual[moduleType]}). New capacity: ${c.stadiumCapacity} fans!`, 'finance');
+  persist();
+  return { ok: true, state: c.stadiumVisual, capacity: c.stadiumCapacity, cash: c.cash };
+}
+
+function setStadiumTifo(s, clubName, tifo) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+
+  c.stadiumVisual = c.stadiumVisual || { roofLevel: 1, terraceLevel: 1, skyboxLevel: 1, ledLevel: 1, floodlightLevel: 1, activeTifo: 'rampant_lion' };
+  c.stadiumVisual.activeTifo = tifo;
+  addNews(s, `🎨 ULTRAS DISPLAY: ${c.name} supporters unveiled a new stadium-wide choreography: '${tifo.toUpperCase()}'!`, 'fans');
+  persist();
+  return { ok: true, activeTifo: tifo };
+}
+
+// =============================================================
+// FEATURE E: DERBY DAY & HISTORICAL HEAD-TO-HEAD ARCHIVES
+// =============================================================
+function getDerbyHeadToHead(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+
+  const rival = club(s, c.rivalName) || s.clubs.find(x => x.country === c.country && x.division === c.division && x.name !== c.name);
+  const rivalName = rival ? rival.name : 'Arch Rival FC';
+  const derbyTitle = c.derbyName || `${c.name} vs ${rivalName} Classic`;
+
+  const totalPlayed = 14 + (s.season * 2);
+  const wins = Math.round(totalPlayed * 0.45);
+  const draws = Math.round(totalPlayed * 0.25);
+  const losses = totalPlayed - wins - draws;
+
+  return {
+    club: c.name,
+    rival: rivalName,
+    derbyTitle,
+    record: {
+      played: totalPlayed,
+      wins,
+      draws,
+      losses,
+      goalsFor: wins * 2 + draws + 8,
+      goalsAgainst: losses * 2 + draws + 4,
+      biggestWin: `${c.name} 4 - 0 ${rivalName}`,
+      recentResults: [
+        { season: s.season - 1, score: `${c.name} 2 - 1 ${rivalName}`, verdict: 'W' },
+        { season: s.season - 1, score: `${rivalName} 1 - 1 ${c.name}`, verdict: 'D' },
+        { season: s.season - 2, score: `${c.name} 3 - 0 ${rivalName}`, verdict: 'W' },
+        { season: s.season - 2, score: `${rivalName} 2 - 0 ${c.name}`, verdict: 'L' }
+      ]
+    }
+  };
+}
+
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead};

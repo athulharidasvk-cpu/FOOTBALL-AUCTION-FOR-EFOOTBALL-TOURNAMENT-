@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Football World - Ultimate Club Management</title>
+  <title>Football Auction</title>
+  <meta name="description" content="Football club management simulator featuring Head Manager and Club Owner career modes, tactical set-pieces, youth academy, stadium expansion, real-time transfers, and dynamic matchday competition.">
+  <meta property="og:title" content="Football Auction">
+  <meta property="og:description" content="Football club management simulator featuring Head Manager and Club Owner career modes, tactical set-pieces, youth academy, stadium expansion, real-time transfers, and dynamic matchday competition.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1382,6 +1385,53 @@ let activeLiveMatch = null;
 let matchSimulationInProgress = false;
 let clientSelectedMentality = 'balanced';
 let activeYouthRegime = 'finishing';
+let userRole = (session && session.userRole) ? session.userRole : 'manager'; // 'manager' | 'owner' | 'dual'
+
+function getRoleBadgeStyle() {
+  if (userRole === 'manager') return 'background:rgba(42,139,242,0.22);color:#70b5ff;border:1px solid rgba(42,139,242,0.5);';
+  if (userRole === 'owner') return 'background:rgba(255,184,48,0.22);color:var(--accent-gold);border:1px solid rgba(255,184,48,0.5);';
+  return 'background:rgba(0,229,153,0.22);color:var(--accent-neon);border:1px solid rgba(0,229,153,0.5);';
+}
+
+function getRoleBadgeContent() {
+  if (userRole === 'manager') return '👔 ROLE: HEAD MANAGER';
+  if (userRole === 'owner') return '🏛️ ROLE: CLUB OWNER';
+  return '👑 ROLE: OWNER &amp; MANAGER';
+}
+
+function getRoleDescriptionHtml(role) {
+  if (role === 'manager') {
+    return `<span style="color:#70b5ff;font-weight:700;">👔 HEAD MANAGER MODE:</span> You command the dugout, decide team sheets and tactical shapes, shout instructions from the touchline, develop youth prospects, and face the media in press conferences while answering to the Board.`;
+  }
+  if (role === 'owner') {
+    return `<span style="color:var(--accent-gold);font-weight:700;">🏛️ CLUB OWNER MODE:</span> You hold 100% controlling equity. Hire, evaluate or dismiss managers, finance multi-million stadium &amp; VIP box expansions, negotiate sponsor bids, and sanction blockbuster transfers.`;
+  }
+  return `<span style="color:var(--accent-neon);font-weight:700;">👑 DUAL ROLE (OWNER &amp; MANAGER):</span> Absolute club autocracy. Rule the boardroom treasury, sponsor deals and infrastructure, while commanding starting line-ups and matchday tactics on the pitch.`;
+}
+
+function setUserCareerRole(role) {
+  userRole = role;
+  if (!session) session = {};
+  session.userRole = role;
+  save();
+  playSfx('click');
+  const exp = document.getElementById('roleExplainerText');
+  if (exp) exp.innerHTML = getRoleDescriptionHtml(role);
+  ['manager', 'owner', 'dual'].forEach(r => {
+    const btn = document.getElementById('roleBtn_' + r);
+    if (btn) {
+      if (r === role) {
+        btn.className = 'btn btn-sm btn-primary';
+        btn.style.boxShadow = '0 0 14px rgba(42,139,242,0.45)';
+        btn.style.borderColor = 'var(--accent-blue)';
+      } else {
+        btn.className = 'btn btn-sm btn-secondary';
+        btn.style.boxShadow = 'none';
+        btn.style.borderColor = 'var(--border-subtle)';
+      }
+    }
+  });
+}
 
 const esc = s => String(s ?? '').replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 const money = n => Number(n || 0).toLocaleString('en-IN');
@@ -1685,9 +1735,31 @@ function modeScreen() {
         <h1 style="font-family:var(--font-display);font-size:clamp(36px,6vw,68px);font-weight:900;letter-spacing:-0.03em;color:#fff;line-height:1.05;margin-bottom:14px;">
           FOOTBALL WORLD
         </h1>
-        <p style="color:var(--text-muted);font-size:16px;max-width:620px;margin:0 auto 36px;line-height:1.6;">
-          Take control of an authentic football club. Manage elite squads, negotiate blockbuster transfers, expand your stadium, customize team kits, and compete for continental glory.
+        <p style="color:var(--text-muted);font-size:16px;max-width:620px;margin:0 auto 28px;line-height:1.6;">
+          Take control of an authentic football club. Choose to command from the dugout as <b>Head Manager</b> or rule from the boardroom as <b>Club Owner</b>.
         </p>
+
+        <!-- Career Path Selection: Manager vs Club Owner -->
+        <div style="background:rgba(13,23,40,0.85);border:1px solid var(--border-accent);border-radius:18px;padding:20px;margin-bottom:28px;box-shadow:0 8px 32px rgba(0,0,0,0.45);text-align:center;">
+          <div style="font-size:11.5px;font-weight:900;letter-spacing:0.12em;color:var(--accent-gold);margin-bottom:12px;">CHOOSE YOUR ROLE:</div>
+          <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;">
+            <button type="button" id="roleBtn_manager" class="btn btn-sm ${userRole==='manager'?'btn-primary':'btn-secondary'}" onclick="setUserCareerRole('manager')" style="padding:10px 20px;border-radius:12px;font-weight:800;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;${userRole==='manager'?'box-shadow:0 0 14px rgba(42,139,242,0.45);border-color:var(--accent-blue);':''}">
+              👔 <span>BE A MANAGER</span>
+              <span style="font-size:10px;opacity:0.85;background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:6px;">TACTICS &amp; PITCH</span>
+            </button>
+            <button type="button" id="roleBtn_owner" class="btn btn-sm ${userRole==='owner'?'btn-primary':'btn-secondary'}" onclick="setUserCareerRole('owner')" style="padding:10px 20px;border-radius:12px;font-weight:800;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;${userRole==='owner'?'box-shadow:0 0 14px rgba(255,184,48,0.45);border-color:var(--accent-gold);':''}">
+              🏛️ <span>BE A CLUB OWNER</span>
+              <span style="font-size:10px;opacity:0.85;background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:6px;">BOARDROOM &amp; FINANCES</span>
+            </button>
+            <button type="button" id="roleBtn_dual" class="btn btn-sm ${userRole==='dual'?'btn-primary':'btn-secondary'}" onclick="setUserCareerRole('dual')" style="padding:10px 20px;border-radius:12px;font-weight:800;font-size:13.5px;display:inline-flex;align-items:center;gap:8px;${userRole==='dual'?'box-shadow:0 0 14px rgba(0,229,153,0.45);border-color:var(--accent-neon);':''}">
+              👑 <span>OWNER &amp; MANAGER</span>
+              <span style="font-size:10px;opacity:0.85;background:rgba(0,0,0,0.3);padding:2px 7px;border-radius:6px;">TOTAL CLUB POWER</span>
+            </button>
+          </div>
+          <div id="roleExplainerText" style="font-size:12.5px;color:var(--text-muted);margin-top:14px;max-width:640px;margin-left:auto;margin-right:auto;line-height:1.5;">
+            ${getRoleDescriptionHtml(userRole)}
+          </div>
+        </div>
 
         <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:20px;margin-bottom:30px;">
           <div onclick="createSoloWorld()" class="game-card" style="cursor:pointer;text-align:left;border-color:var(--border-accent);transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--accent-blue)'" onmouseleave="this.style.borderColor='var(--border-accent)'">
@@ -1996,25 +2068,54 @@ function renderOwnershipDialogueStep() {
           SIR ALISTAIR STERLING · CHAIRMAN OF THE CONSORTIUM
         </div>
         <div class="cinematic-quote">
-          "Good evening, sir. Forty-seven global investment syndicates submitted bids to take over this historic club... but none possessed your strategic resolve. The supporters are starved of glory; they want a visionary who can conquer continental football. Are you prepared to take 100% controlling ownership?"
+          "Good evening. Forty-seven global football authorities submitted bids... but you stood apart. Before we execute the official documents, tell me plainly: do you intend to stand in the dugout as <b>Head Manager</b>, or govern from the boardroom as <b>Club Owner</b>?"
         </div>
-        <div class="cinematic-choices">
-          <button class="cinematic-btn" onclick="playSfx('deal'); cinematicState.step = 1; renderOwnershipDialogueStep();" style="display:flex;align-items:center;gap:10px;">
-            ${svgIcon('handshake', 20, 'var(--accent-gold)')} <span>"I accept full ownership. We will forge an immortal football dynasty."</span>
+        <div class="cinematic-choices" style="display:grid;grid-template-columns:1fr;gap:10px;">
+          <button class="cinematic-btn" onclick="setUserCareerRole('manager'); playSfx('deal'); cinematicState.step = 1; renderOwnershipDialogueStep();" style="display:flex;align-items:center;gap:12px;text-align:left;border-color:rgba(42,139,242,0.6);">
+            <div style="font-size:24px;">👔</div>
+            <div>
+              <b style="color:#6db4ff;display:block;font-size:15px;">"I will lead as HEAD MANAGER."</b>
+              <span style="font-size:12px;color:var(--text-muted);">Command the pitch, tactical formations, touchline shouts, and player development under the Board.</span>
+            </div>
           </button>
-          <button class="cinematic-btn" onclick="playSfx('deal'); cinematicState.step = 1; renderOwnershipDialogueStep();" style="display:flex;align-items:center;gap:10px;">
-            ${svgIcon('document', 20, 'var(--accent-neon)')} <span>"Hand over the deed. Let's make this club the greatest in the world."</span>
+          <button class="cinematic-btn" onclick="setUserCareerRole('owner'); playSfx('deal'); cinematicState.step = 1; renderOwnershipDialogueStep();" style="display:flex;align-items:center;gap:12px;text-align:left;border-color:rgba(255,184,48,0.6);">
+            <div style="font-size:24px;">🏛️</div>
+            <div>
+              <b style="color:var(--accent-gold);display:block;font-size:15px;">"I am taking charge as CLUB OWNER."</b>
+              <span style="font-size:12px;color:var(--text-muted);">Acquire 100% equity, hire/fire managers, finance stadium expansions, and sign marquee stars.</span>
+            </div>
+          </button>
+          <button class="cinematic-btn" onclick="setUserCareerRole('dual'); playSfx('deal'); cinematicState.step = 1; renderOwnershipDialogueStep();" style="display:flex;align-items:center;gap:12px;text-align:left;border-color:rgba(0,229,153,0.6);">
+            <div style="font-size:24px;">👑</div>
+            <div>
+              <b style="color:var(--accent-neon);display:block;font-size:15px;">"I demand TOTAL AUTOCRACY: Both Owner &amp; Manager."</b>
+              <span style="font-size:12px;color:var(--text-muted);">Complete sovereign power over both boardroom finances and pitchday tactics.</span>
+            </div>
           </button>
         </div>
       </div>
     `;
   } else if (cinematicState.step === 1) {
+    const isMgr = userRole === 'manager';
+    const isOwn = userRole === 'owner';
+    const docTitle = isMgr 
+      ? 'OFFICIAL MANAGERIAL COMMISSION & APPOINTMENT' 
+      : isOwn 
+      ? 'DEED OF CLUB EQUITY & SOVEREIGN OWNERSHIP' 
+      : 'SUPREME CHARTER OF CLUB EQUITY & SPORTING DIRECTIVITY';
+
+    const docText = isMgr
+      ? 'Be it known to all football authorities: By execution of this official sporting commission, the Appointee is hereby officially ratified as <b>Head Manager</b>. Full tactical sovereignty over starting XI, training sessions, matchday decisions, and transfer requests is hereby conferred.'
+      : isOwn
+      ? 'Be it known to all football authorities: By execution of this sovereign indenture, <b>100% controlling equity shares</b>, complete transfer market authority, stadium infrastructure rights, and executive governance are hereby irrevocably conferred upon the Owner.'
+      : 'Be it known to all football authorities: By execution of this supreme charter, both <b>100% controlling ownership</b> and <b>Head Managerial Authority</b> are unified under one leader.';
+
     center.innerHTML = `
       <div class="parchment-doc" style="animation:parchmentSlide 0.6s cubic-bezier(0.16, 1, 0.3, 1);">
         <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #8b6b3e;padding-bottom:12px;margin-bottom:14px;">
           <div>
             <div style="font-size:10px;font-weight:900;letter-spacing:0.18em;color:#8b6b3e;">OFFICIAL CONSORTIUM RATIFICATION</div>
-            <h3 style="font-family:var(--font-serif);font-size:22px;color:#2c1b0c;margin:2px 0 0 0;font-weight:800;">DEED OF CLUB EQUITY & SOVEREIGNTY</h3>
+            <h3 style="font-family:var(--font-serif);font-size:20px;color:#2c1b0c;margin:2px 0 0 0;font-weight:800;">${docTitle}</h3>
           </div>
           <div style="width:42px;height:42px;border-radius:50%;border:2px dashed #8b6b3e;display:flex;align-items:center;justify-content:center;">
             ${svgIcon('scales', 22, '#8b6b3e')}
@@ -2022,7 +2123,7 @@ function renderOwnershipDialogueStep() {
         </div>
 
         <p style="font-family:var(--font-serif);font-size:13.5px;color:#452e18;line-height:1.6;margin-bottom:16px;">
-          Be it known to all football authorities: By execution of this sovereign indenture, <b>100% controlling equity shares</b>, complete transfer market authority, stadium infrastructure rights, and tactical sovereignty are hereby irrevocably conferred upon the Owner.
+          ${docText}
         </p>
 
         <div style="background:rgba(139, 107, 62, 0.08);border:1px dashed #8b6b3e;border-radius:8px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
@@ -2031,15 +2132,15 @@ function renderOwnershipDialogueStep() {
             <div style="font-size:18px;font-weight:900;color:#1e3a8a;">₹8,500,000 (₹8.5M Division 3 Treasury)</div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:10.5px;color:#7a5c32;font-weight:800;">SQUAD ALLOCATION:</div>
-            <div style="font-size:15px;font-weight:800;color:#2c1b0c;">16-Man Professional Roster</div>
+            <div style="font-size:10.5px;color:#7a5c32;font-weight:800;">ROLE STATUS:</div>
+            <div style="font-size:15px;font-weight:800;color:#2c1b0c;">${getRoleBadgeContent()}</div>
           </div>
         </div>
 
         <!-- Signature Stage Container -->
         <div id="signatureStage" style="position:relative;min-height:90px;border-top:1px solid #c9b189;padding-top:10px;display:flex;align-items:center;justify-content:space-between;">
           <div>
-            <div style="font-size:11px;color:#7a5c32;font-style:italic;">Owner's Sovereign Signature:</div>
+            <div style="font-size:11px;color:#7a5c32;font-style:italic;">Signatory Confirmation:</div>
             <!-- SVG Signature Path Animation -->
             <svg width="240" height="50" viewBox="0 0 240 50">
               <path id="sigLine" d="M10,40 Q40,10 70,30 T120,20 T170,35 T220,25" fill="none" stroke="#2c1b0c" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="300" stroke-dashoffset="300"/>
@@ -2048,7 +2149,7 @@ function renderOwnershipDialogueStep() {
 
           <div id="signActionBox">
             <button class="btn btn-warning" onclick="signOwnershipDeed()" style="font-family:var(--font-display);font-weight:800;box-shadow:0 4px 15px rgba(212,175,55,0.4);display:inline-flex;align-items:center;gap:8px;">
-              ${svgIcon('pen', 16, '#2c1b0c')} TAKE GOLDEN PEN & SIGN DEED
+              ${svgIcon('pen', 16, '#2c1b0c')} TAKE GOLDEN PEN &amp; SIGN CONTRACT
             </button>
           </div>
         </div>
@@ -2056,6 +2157,7 @@ function renderOwnershipDialogueStep() {
     `;
   }
 }
+
 
 function signOwnershipDeed() {
   const signActionBox = document.getElementById('signActionBox');
@@ -2332,6 +2434,9 @@ function renderGame() {
             </button>
           </div>
           <div class="club-meta" style="margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <span class="pill" style="cursor:pointer;${getRoleBadgeStyle()}" onclick="openRoleSelectionModal()" title="Click to view or switch your career role (Manager vs Club Owner)">
+              ${getRoleBadgeContent()} ⚙️
+            </span>
             <span class="pill pill-div">Div ${c.division}</span>
             <span class="pill pill-season">Season ${S.season}</span>
             <span class="pill pill-manager">${esc(c.manager ? c.manager.name : 'No Manager')}</span>
@@ -2402,9 +2507,11 @@ function renderGame() {
       <button class="tab-btn ${currentTab==='club'?'active':''}" onclick="switchTab('club')">
         ${svgIcon('stadium', 14)} <span>🏟️ CLUB & FINANCE</span>
       </button>
-      <a href="/" class="tab-btn" style="text-decoration:none;border-color:rgba(56,189,248,0.4);color:#38bdf8;background:rgba(56,189,248,0.12);margin-left:auto;display:inline-flex;align-items:center;gap:6px;">
-        <span>🔨</span> <span>AUCTION ARENA</span>
-      </a>
+      <div style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;">
+        <button class="btn btn-sm" onclick="openRoleSelectionModal()" style="border-radius:20px;padding:6px 14px;font-weight:800;font-size:11.5px;display:inline-flex;align-items:center;gap:6px;${getRoleBadgeStyle()}" title="Toggle between Manager Mode and Club Owner Mode">
+          ${getRoleBadgeContent()} ⚙️
+        </button>
+      </div>
     </nav>
 
     <!-- Main Content Body -->
@@ -2418,12 +2525,12 @@ function switchTab(t, sub = null) {
   if (['pitch', 'squad', 'setpieces', 'chemistry', 'youth', 'roster'].includes(t)) {
     currentTab = 'squad';
     subTabs.squad = t === 'squad' ? 'roster' : t;
-  } else if (['transfers', 'scouting', 'bids', 'market'].includes(t)) {
+  } else if (['transfers', 'scouting', 'bids', 'market', 'deadline'].includes(t)) {
     currentTab = 'transfers';
     subTabs.transfers = t === 'scouting' ? 'scout' : (sub || t);
-  } else if (['league', 'tournament', 'awards', 'competitions'].includes(t)) {
+  } else if (['league', 'tournament', 'awards', 'competitions', 'ucl', 'europa', 'cup', 'playoffs'].includes(t)) {
     currentTab = 'competitions';
-    subTabs.competitions = t === 'tournament' ? 'global_cup' : (t === 'awards' ? 'awards' : 'league');
+    subTabs.competitions = t === 'tournament' ? 'global_cup' : (['ucl', 'europa', 'cup', 'playoffs', 'awards', 'trophies'].includes(t) ? t : (sub || 'ucl'));
   } else if (['stadium', 'facilities', 'sponsors', 'ffp', 'staff', 'managers', 'manager', 'trophies', 'kit', 'club'].includes(t)) {
     currentTab = 'club';
     subTabs.club = t === 'managers' ? 'manager' : (t === 'club' ? 'stadium' : t);
@@ -3528,9 +3635,12 @@ function conductSquadBonding() {
 function renderTransfersSection(container) {
   const pendingCount = (S.incomingOffers || []).filter(o => o.status === 'pending').length;
   container.innerHTML = `
-    <div class="subnav-pills">
+    <div class="subnav-pills" style="overflow-x:auto;white-space:nowrap;padding-bottom:6px;">
       <button class="subnav-pill ${subTabs.transfers === 'bids' ? 'active' : ''}" onclick="subTabs.transfers='bids'; renderTransfersSection(document.getElementById('gameContent'))">
         🔔 RIVAL INQUIRIES ${pendingCount > 0 ? `<span style="background:#ef4444;color:#fff;font-size:9.5px;padding:1px 6px;border-radius:4px;margin-left:4px;">${pendingCount}</span>` : ''}
+      </button>
+      <button class="subnav-pill ${subTabs.transfers === 'deadline' ? 'active' : ''}" onclick="subTabs.transfers='deadline'; renderTransfersSection(document.getElementById('gameContent'))" style="border-color:#ef4444;color:#ff7b92;font-weight:900;">
+        🚨 DEADLINE DAY WAR ROOM &amp; TICKER
       </button>
       <button class="subnav-pill ${subTabs.transfers === 'market' ? 'active' : ''}" onclick="subTabs.transfers='market'; renderTransfersSection(document.getElementById('gameContent'))">
         🔍 GLOBAL TRANSFER MARKET
@@ -3542,7 +3652,9 @@ function renderTransfersSection(container) {
     <div id="transfersSubContent"></div>
   `;
   const subContainer = document.getElementById('transfersSubContent');
-  if (subTabs.transfers === 'bids') {
+  if (subTabs.transfers === 'deadline') {
+    renderDeadlineDayWarRoom(subContainer);
+  } else if (subTabs.transfers === 'bids') {
     renderIncomingOffersInline(subContainer);
   } else if (subTabs.transfers === 'market') {
     renderTransferMarket(subContainer);
@@ -3606,10 +3718,23 @@ function renderIncomingOffersInline(container) {
 
 function renderCompetitionsSection(container) {
   const isGlobalCupLive = (S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed'));
+  const isUclLive = (S.uclTournament && S.uclTournament.status !== 'completed');
   container.innerHTML = `
-    <div class="subnav-pills">
+    <div class="subnav-pills" style="overflow-x:auto;white-space:nowrap;padding-bottom:6px;">
+      <button class="subnav-pill ${subTabs.competitions === 'ucl' ? 'active' : ''}" onclick="subTabs.competitions='ucl'; renderCompetitionsSection(document.getElementById('gameContent'))" style="border-color:#38bdf8;color:#38bdf8;font-weight:900;">
+        ⭐ UCL (CHAMPIONS LEAGUE) ${isUclLive ? '<span style="background:#38bdf8;color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;">LIVE</span>' : ''}
+      </button>
+      <button class="subnav-pill ${subTabs.competitions === 'europa' ? 'active' : ''}" onclick="subTabs.competitions='europa'; renderCompetitionsSection(document.getElementById('gameContent'))">
+        🥈 EUROPA CHALLENGERS
+      </button>
+      <button class="subnav-pill ${subTabs.competitions === 'cup' ? 'active' : ''}" onclick="subTabs.competitions='cup'; renderCompetitionsSection(document.getElementById('gameContent'))">
+        🏆 NATIONAL FA CUP
+      </button>
+      <button class="subnav-pill ${subTabs.competitions === 'playoffs' ? 'active' : ''}" onclick="subTabs.competitions='playoffs'; renderCompetitionsSection(document.getElementById('gameContent'))">
+        ⚔️ PROMOTION PLAYOFFS
+      </button>
       <button class="subnav-pill ${subTabs.competitions === 'league' ? 'active' : ''}" onclick="subTabs.competitions='league'; renderCompetitionsSection(document.getElementById('gameContent'))">
-        🛡️ LEAGUE STANDINGS & PROMOTION
+        🛡️ LEAGUE STANDINGS
       </button>
       <button class="subnav-pill ${subTabs.competitions === 'global_cup' ? 'active' : ''}" onclick="subTabs.competitions='global_cup'; renderCompetitionsSection(document.getElementById('gameContent'))">
         🌍 GLOBAL CLUB WORLD CUP ${isGlobalCupLive ? '<span style="background:var(--accent-gold);color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;">LIVE</span>' : ''}
@@ -3624,14 +3749,22 @@ function renderCompetitionsSection(container) {
     <div id="competitionsSubContent"></div>
   `;
   const subContainer = document.getElementById('competitionsSubContent');
-  if (subTabs.competitions === 'league') {
-    renderLeagueStandings(subContainer);
+  if (subTabs.competitions === 'ucl') {
+    renderUclTournament(subContainer);
+  } else if (subTabs.competitions === 'europa') {
+    renderEuropaTournament(subContainer);
+  } else if (subTabs.competitions === 'cup') {
+    renderDomesticCup(subContainer);
+  } else if (subTabs.competitions === 'playoffs') {
+    renderPlayoffs(subContainer);
   } else if (subTabs.competitions === 'global_cup') {
     renderGlobalTournament(subContainer);
   } else if (subTabs.competitions === 'trophies') {
     renderTrophyCabinetAndCareer(subContainer);
-  } else {
+  } else if (subTabs.competitions === 'awards') {
     renderAwardsGala(subContainer);
+  } else {
+    renderLeagueStandings(subContainer);
   }
 }
 
@@ -4367,6 +4500,988 @@ function negotiateJobOffer(jobId) {
 }
 
 // -------------------------------------------------------------
+// CAREER ROLE SELECTION & ROLE-SPECIFIC ACTIONS
+// -------------------------------------------------------------
+function openRoleSelectionModal() {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'roleSelectionModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:760px;padding:26px;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+        <div>
+          <div class="card-kicker" style="color:var(--accent-gold);">CAREER IDENTITY &amp; GOVERNANCE</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+            Choose Your Role in Club Operations
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('roleSelectionModal').remove()">&times;</button>
+      </div>
+
+      <p style="color:var(--text-muted);font-size:13.5px;line-height:1.5;margin-bottom:20px;">
+        In this football simulation, you can choose to experience the club from the dugout as <b>Head Manager</b>, from the boardroom as <b>Club Owner</b>, or wield supreme authority with a <b>Dual Role</b>. You can switch your active perspective anytime.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:22px;">
+        <!-- Option 1: Head Manager -->
+        <div onclick="setUserCareerRole('manager'); renderGame(); document.getElementById('roleSelectionModal').remove();" class="game-card" style="cursor:pointer;display:flex;align-items:center;gap:18px;padding:18px;border-color:${userRole==='manager'?'var(--accent-blue)':'var(--border-subtle)'};background:${userRole==='manager'?'rgba(42,139,242,0.1)':'var(--bg-card-subtle)'};">
+          <div style="width:52px;height:52px;border-radius:14px;background:rgba(42,139,242,0.18);border:1px solid var(--accent-blue);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+            👔
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0;">HEAD MANAGER</h3>
+              ${userRole==='manager' ? `<span class="pill" style="background:#0284c7;color:#fff;font-weight:900;">ACTIVE ROLE</span>` : ''}
+            </div>
+            <p style="font-size:12.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.4;">
+              Command from the dugout. Select matchday lineups, tweak tactics mid-match, shout instructions from the touchline, develop young talents in the academy, and answer to the Board of Directors.
+            </p>
+          </div>
+          <button class="btn ${userRole==='manager'?'btn-primary':'btn-secondary'} btn-sm" style="white-space:nowrap;">
+            ${userRole==='manager' ? 'SELECTED' : 'SELECT ROLE'}
+          </button>
+        </div>
+
+        <!-- Option 2: Club Owner -->
+        <div onclick="setUserCareerRole('owner'); renderGame(); document.getElementById('roleSelectionModal').remove();" class="game-card" style="cursor:pointer;display:flex;align-items:center;gap:18px;padding:18px;border-color:${userRole==='owner'?'var(--accent-gold)':'var(--border-subtle)'};background:${userRole==='owner'?'rgba(255,184,48,0.1)':'var(--bg-card-subtle)'};">
+          <div style="width:52px;height:52px;border-radius:14px;background:rgba(255,184,48,0.18);border:1px solid var(--accent-gold);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+            🏛️
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0;">CLUB OWNER &amp; CHAIRMAN</h3>
+              ${userRole==='owner' ? `<span class="pill" style="background:var(--accent-gold);color:#0a0f18;font-weight:900;">ACTIVE ROLE</span>` : ''}
+            </div>
+            <p style="font-size:12.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.4;">
+              Rule from the boardroom. 100% controlling equity. Hire, evaluate, or fire managers, expand the stadium capacity &amp; VIP boxes, sign multi-million commercial sponsor deals, and balance the FFP ledger.
+            </p>
+          </div>
+          <button class="btn ${userRole==='owner'?'btn-warning':'btn-secondary'} btn-sm" style="white-space:nowrap;${userRole==='owner'?'color:#0a0f18;font-weight:900;':''}">
+            ${userRole==='owner' ? 'SELECTED' : 'SELECT ROLE'}
+          </button>
+        </div>
+
+        <!-- Option 3: Dual Role -->
+        <div onclick="setUserCareerRole('dual'); renderGame(); document.getElementById('roleSelectionModal').remove();" class="game-card" style="cursor:pointer;display:flex;align-items:center;gap:18px;padding:18px;border-color:${userRole==='dual'?'var(--accent-neon)':'var(--border-subtle)'};background:${userRole==='dual'?'rgba(0,229,153,0.1)':'var(--bg-card-subtle)'};">
+          <div style="width:52px;height:52px;border-radius:14px;background:rgba(0,229,153,0.18);border:1px solid var(--accent-neon);display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">
+            👑
+          </div>
+          <div style="flex:1;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <h3 style="font-family:var(--font-display);font-size:18px;font-weight:800;color:#fff;margin:0;">DUAL SOVEREIGN (OWNER &amp; MANAGER)</h3>
+              ${userRole==='dual' ? `<span class="pill" style="background:var(--accent-neon);color:#0a0f18;font-weight:900;">ACTIVE ROLE</span>` : ''}
+            </div>
+            <p style="font-size:12.5px;color:var(--text-muted);margin:4px 0 0 0;line-height:1.4;">
+              Total unconstrained power. Control both the boardroom treasury and the pitchday dugout without answering to anyone.
+            </p>
+          </div>
+          <button class="btn ${userRole==='dual'?'btn-success':'btn-secondary'} btn-sm" style="white-space:nowrap;${userRole==='dual'?'color:#0a0f18;font-weight:900;':''}">
+            ${userRole==='dual' ? 'SELECTED' : 'SELECT ROLE'}
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('roleSelectionModal').remove()">
+          CLOSE &times;
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function submitBoardPetitionModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'boardPetitionModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:680px;padding:24px;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:16px;">
+        <div>
+          <div class="card-kicker" style="color:#70b5ff;">👔 HEAD MANAGER DIRECTIVE</div>
+          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+            Submit Formal Petition to Club Owner &amp; Board
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('boardPetitionModal').remove()">&times;</button>
+      </div>
+
+      <div style="background:var(--bg-card-subtle);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <span style="font-size:11px;color:var(--text-muted);">Current Board Approval:</span>
+          <b style="color:var(--accent-gold);margin-left:6px;font-size:14px;">${S.boardStatus?.confidence || 82}% Confidence</b>
+        </div>
+        <div>
+          <span style="font-size:11px;color:var(--text-muted);">Club Treasury:</span>
+          <b style="color:var(--accent-neon);margin-left:6px;font-size:14px;">₹${money(c.cash)}M Available</b>
+        </div>
+      </div>
+
+      <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin-bottom:18px;">
+        As Head Manager, you may petition the Chairman and Board of Directors for special budget allocations or infrastructure investments to help you achieve your seasonal goals.
+      </p>
+
+      <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px;">
+        <button class="btn btn-secondary" onclick="executeBoardPetition('transfer_funds')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;text-align:left;">
+          <div>
+            <b style="color:#fff;font-size:14px;display:block;">💰 Request Emergency Transfer Funds (+₹10.0M)</b>
+            <span style="font-size:11.5px;color:var(--text-muted);">Petition for supplementary cash to sign a key target before the window shuts.</span>
+          </div>
+          <span class="btn btn-primary btn-xs">SUBMIT &rarr;</span>
+        </button>
+
+        <button class="btn btn-secondary" onclick="executeBoardPetition('wage_increase')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;text-align:left;">
+          <div>
+            <b style="color:#fff;font-size:14px;display:block;">📈 Request Wage Cap Ceiling Increase (+₹2.0M/yr)</b>
+            <span style="font-size:11.5px;color:var(--text-muted);">Expand payroll allowance to renew expiring superstar contracts.</span>
+          </div>
+          <span class="btn btn-primary btn-xs">SUBMIT &rarr;</span>
+        </button>
+
+        <button class="btn btn-secondary" onclick="executeBoardPetition('training_upgrade')" style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;text-align:left;">
+          <div>
+            <b style="color:#fff;font-size:14px;display:block;">🏟️ Request Training Ground &amp; Pitch Renovation</b>
+            <span style="font-size:11.5px;color:var(--text-muted);">Upgrade facilities to accelerate squad development and reduce muscle fatigue.</span>
+          </div>
+          <span class="btn btn-primary btn-xs">SUBMIT &rarr;</span>
+        </button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('boardPetitionModal').remove()">CANCEL</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function executeBoardPetition(type) {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const confidence = S.boardStatus?.confidence || 82;
+  const modal = document.getElementById('boardPetitionModal');
+
+  if (confidence < 55) {
+    playSfx('whistle');
+    alert('❌ PETITION REJECTED BY THE BOARD\n\nChairman Response: "Given our inconsistent recent results, the Board cannot justify additional capital expenditures at this moment. Win the upcoming matches first."');
+    if (modal) modal.remove();
+    return;
+  }
+
+  if (type === 'transfer_funds') {
+    c.cash = Math.round((c.cash + 10) * 10) / 10;
+    playSfx('deal');
+    playSfx('applause');
+    alert('✅ PETITION APPROVED BY THE CLUB OWNER!\n\nChairman Response: "We have reviewed your request. An extra ₹10.0M has been transferred into the club transfer budget. Deliver results on the pitch."');
+  } else if (type === 'wage_increase') {
+    c.cash = Math.round((c.cash + 5) * 10) / 10;
+    playSfx('deal');
+    alert('✅ PETITION APPROVED BY THE BOARD!\n\nChairman Response: "Wage allocation expanded by ₹2.0M/yr with ₹5.0M immediate buffer capital authorized."');
+  } else if (type === 'training_upgrade') {
+    c.morale = Math.min(100, c.morale + 10);
+    playSfx('applause');
+    alert('✅ PETITION APPROVED BY THE BOARD!\n\nChairman Response: "The executive committee has greenlit the training complex renovation! Squad morale has jumped to ' + c.morale + '%."');
+  }
+
+  if (modal) modal.remove();
+  renderGame();
+}
+
+function ownerManagerReviewModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const m = c.manager || { name: 'Interim Head Coach', style: 'Balanced', winRate: '58%', salary: 1.5, confidence: 80 };
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'ownerManagerModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:720px;padding:26px;position:relative;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:16px;">
+        <div>
+          <div class="card-kicker" style="color:var(--accent-gold);">🏛️ CLUB OWNER GOVERNANCE</div>
+          <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+            Manager Performance Review &amp; Contract Oversight
+          </h2>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ownerManagerModal').remove()">&times;</button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:18px;background:var(--bg-card-subtle);padding:18px;border-radius:14px;border:1px solid var(--border-subtle);margin-bottom:20px;">
+        <div style="width:64px;height:64px;border-radius:14px;background:#183254;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid rgba(255,184,48,0.5);flex-shrink:0;">
+          👔
+        </div>
+        <div style="flex:1;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <h3 style="font-family:var(--font-display);font-size:20px;font-weight:800;color:#fff;margin:0;">
+              ${esc(m.name)}
+            </h3>
+            <span class="pill" style="background:rgba(255,184,48,0.2);color:var(--accent-gold);border:1px solid rgba(255,184,48,0.4);">
+              Salary: ₹${m.salary || 1.5}M/yr
+            </span>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-muted);margin-top:4px;">
+            Tactical Philosophy: <b>${esc(m.style)}</b> · Squad Morale: <b>${c.morale}%</b> · Board Satisfaction: <b>${S.boardStatus?.confidence || 82}%</b>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+        <button class="btn btn-success" onclick="ownerBackManager()" style="padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;">
+          🤝 ISSUE PUBLIC VOTE OF CONFIDENCE
+        </button>
+        <button class="btn btn-warning" onclick="ownerWarnManager()" style="padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;color:#0a0f18;">
+          ⚠️ ISSUE FORMAL INQUIRY WARNING
+        </button>
+        <button class="btn btn-primary" onclick="ownerInjectWarChest()" style="padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;">
+          💰 GRANT ₹15M OWNER WAR-CHEST
+        </button>
+        <button class="btn btn-danger" onclick="ownerSackManager()" style="padding:14px;display:flex;align-items:center;justify-content:center;gap:8px;font-weight:800;">
+          🚪 SACK MANAGER &amp; HIRE NEW COACH
+        </button>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ownerManagerModal').remove()">CLOSE</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function ownerBackManager() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  c.morale = Math.min(100, c.morale + 10);
+  playSfx('applause');
+  alert(`🤝 PUBLIC VOTE OF CONFIDENCE ISSUED!\n\nYou held a press conference declaring your complete support for ${c.manager?.name || 'the Head Coach'}. The squad feels reassured and team morale increased to ${c.morale}%.`);
+  document.getElementById('ownerManagerModal')?.remove();
+  renderGame();
+}
+
+function ownerWarnManager() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  playSfx('whistle');
+  alert(`⚠️ FORMAL BOARD WARNING ISSUED!\n\nYou issued an executive memorandum to ${c.manager?.name || 'the Head Coach'}. Failure to secure positive results in the next fixtures may result in termination.`);
+  document.getElementById('ownerManagerModal')?.remove();
+  renderGame();
+}
+
+function ownerInjectWarChest() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  c.cash = Math.round((c.cash + 15) * 10) / 10;
+  playSfx('deal');
+  playSfx('applause');
+  alert(`💰 OWNER CAPITAL INJECTION!\n\nYou deposited ₹15.0M of personal owner equity into the club treasury. Total available cash: ₹${money(c.cash)}M.`);
+  document.getElementById('ownerManagerModal')?.remove();
+  renderGame();
+}
+
+function ownerSackManager() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!confirm(`Are you sure you want to dismiss ${c.manager?.name || 'the current manager'}? You will need to hire a new head coach from the Manager Market.`)) return;
+  c.manager = null;
+  c.morale = Math.max(40, c.morale - 8);
+  playSfx('whistle');
+  alert(`🚪 MANAGER SACKED!\n\nThe Head Coach has been relieved of his duties. Head to the Managers Market to appoint your next tactical mastermind.`);
+  document.getElementById('ownerManagerModal')?.remove();
+  switchTab('managers');
+}
+
+// -------------------------------------------------------------
+// 13. DEEPENED MANAGER & CLUB OWNER ADVANCED MODALS
+// -------------------------------------------------------------
+
+// A. Opponent Scouting Dossier & Tactical Analysis
+function openOpponentScoutingModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/scout/opponent?club=' + encodeURIComponent(c.name)).then(data => {
+    const opp = data.opponent;
+    const dm = data.dangerMan;
+    const tac = data.tactics;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'scoutDossierModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:780px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-blue);">PRE-MATCH TACTICAL DOSSIER</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Scouting Intelligence vs ${esc(opp.name)}
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('scoutDossierModal').remove()">&times;</button>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px;">
+          <!-- Opponent Profile & System -->
+          <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:14px;padding:16px;">
+            <div style="font-size:11px;font-weight:800;color:var(--text-muted);text-transform:uppercase;margin-bottom:8px;">OPPOSITION TACTICAL PHILOSOPHY</div>
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+              <div class="crest-badge" style="width:48px;height:48px;background:${opp.jersey?.home || '#1b263b'};">
+                ${renderCrest(opp.crest || opp.name, 32)}
+              </div>
+              <div>
+                <b style="color:#fff;font-size:16px;display:block;">${esc(opp.name)}</b>
+                <span class="pill pill-div">Div ${opp.division}</span>
+                <span style="font-size:11px;color:var(--text-dim);margin-left:4px;">${opp.isHome ? '🏠 Host' : '✈️ Visitor'}</span>
+              </div>
+            </div>
+            <div style="background:rgba(255,255,255,0.04);border-radius:8px;padding:10px 12px;font-size:12.5px;line-height:1.5;">
+              <div style="color:var(--accent-neon);font-weight:700;margin-bottom:2px;">Predicted Shape: ${esc(tac.name)}</div>
+              <div style="color:var(--text-muted);">${esc(tac.style)}</div>
+            </div>
+          </div>
+
+          <!-- Danger Man Spotlight -->
+          <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-radius:14px;padding:16px;">
+            <div style="font-size:11px;font-weight:800;color:#fca5a5;text-transform:uppercase;margin-bottom:8px;">⚠️ PRIMARY OPPOSITION DANGER-MAN</div>
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+              <div style="width:48px;height:48px;border-radius:12px;background:#7f1d1d;display:flex;align-items:center;justify-content:center;font-size:24px;border:1px solid #ef4444;">
+                ⚽
+              </div>
+              <div>
+                <b style="color:#fff;font-size:16px;display:block;">${esc(dm.name)}</b>
+                <span style="font-size:12px;color:var(--accent-gold);font-weight:800;">${dm.rating} OVR · ${esc(dm.position)}</span>
+                <span style="font-size:11px;color:#fca5a5;margin-left:6px;">🔥 ${dm.form}% Form</span>
+              </div>
+            </div>
+            <div style="font-size:12px;color:#fecaca;line-height:1.4;">
+              Player Style: <b>${esc(dm.style)}</b>. Primary playmaker responsible for 65% of opposition key passes and shooting volume.
+            </div>
+          </div>
+        </div>
+
+        <!-- Tactical Exploits & Recommendations -->
+        <div style="background:rgba(42,139,242,0.08);border:1px solid rgba(42,139,242,0.3);border-radius:14px;padding:16px;margin-bottom:20px;">
+          <div style="font-size:11.5px;font-weight:900;color:var(--accent-blue);letter-spacing:0.04em;margin-bottom:8px;">TACTICAL EXPLOITATION &amp; WEAKNESS</div>
+          <div style="font-size:13px;color:#fff;margin-bottom:10px;">
+            <b>Identified Flaw:</b> ${esc(tac.weakness)}
+          </div>
+          <div style="font-size:13px;color:var(--accent-neon);">
+            <b>Recommended Counter-Strategy:</b> ${esc(tac.counter)}
+          </div>
+          <div style="margin-top:12px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.1);font-size:12px;color:var(--text-muted);">
+            <b>Key Scout Bulletins:</b>
+            <ul style="margin:4px 0 0 18px;line-height:1.5;">
+              ${(data.scoutTips || []).map(tip => `<li>${esc(tip)}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;">
+          <button class="btn btn-primary" onclick="applyScoutCounterTactic('${esc(tac.name)}'); document.getElementById('scoutDossierModal').remove();" style="display:inline-flex;align-items:center;gap:8px;">
+            ⚡ APPLY RECOMMENDED COUNTER-TACTIC
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('scoutDossierModal').remove()">DISMISS</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert('Failed to load scouting dossier: ' + err.message));
+}
+
+function applyScoutCounterTactic(formationName) {
+  playSfx('whistle');
+  selectStartingMentality('counter');
+  alert(`⚡ COUNTER-TACTIC APPLIED!\n\nYour coaching staff has adjusted the tactical shape to Counter-Attack to exploit ${formationName}. Squad focus +5%.`);
+}
+
+// B. Elite Manager Job Offers Modal
+function openManagerJobOffersModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/manager/elite-offers?club=' + encodeURIComponent(c.name)).then(data => {
+    const offers = data.offers || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'managerOffersModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:820px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">CAREER HEAD-HUNTING PORTAL</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Elite Managerial Job Offers
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('managerOffersModal').remove()">&times;</button>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin-bottom:20px;">
+          Your tactical triumphs at <b>${esc(c.name)}</b> have attracted the attention of continental heavyweights. You can accept a new contract, decline to earn loyalty respect, or leverage these offers for board concessions.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:22px;">
+          ${offers.map(o => `
+            <div class="game-card" style="display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 20px;border-color:rgba(255,184,48,0.3);background:rgba(255,184,48,0.04);">
+              <div style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                  <b style="color:#fff;font-size:18px;">${esc(o.clubName)}</b>
+                  <span class="pill pill-div">${esc(o.country)} · Div ${o.division}</span>
+                  <span class="pill" style="background:rgba(255,184,48,0.2);color:var(--accent-gold);border:1px solid rgba(255,184,48,0.4);">
+                    ⭐ ${o.prestige} Prestige
+                  </span>
+                </div>
+                <div style="font-size:12.5px;color:var(--text-muted);margin-bottom:6px;">
+                  Board Mandate: <i style="color:#fff;">"${esc(o.seasonObjective)}"</i>
+                </div>
+                <div style="display:flex;gap:14px;font-size:12px;">
+                  <span style="color:var(--accent-neon);font-weight:700;">💰 Salary: ₹${o.managerSalary}M/yr</span>
+                  <span style="color:var(--accent-gold);font-weight:700;">💼 Transfer Budget: ₹${o.transferBudget}M</span>
+                </div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:6px;">
+                <button class="btn btn-success btn-sm" onclick="acceptEliteJobOffer('${esc(o.clubName)}')">
+                  ACCEPT APPOINTMENT &rarr;
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="leverageJobOffer('${esc(o.clubName)}')">
+                  LEVERAGE WITH BOARD
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('managerOffersModal').remove()">CLOSE</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+function acceptEliteJobOffer(targetClub) {
+  if (!confirm(`Are you sure you want to resign from your current club and become the Head Manager of ${targetClub}? Your career will continue with this elite squad.`)) return;
+  post('/api/world4/manager/accept-elite', ref({
+    currentClub: S.selectedClub,
+    targetClub: targetClub
+  })).then(res => {
+    if (res.state) S = res.state;
+    playSfx('applause');
+    alert(`⭐ APPOINTMENT OFFICIAL!\n\nYou have taken charge of ${targetClub}! The fans have welcomed you outside the stadium.`);
+    document.getElementById('managerOffersModal')?.remove();
+    refresh();
+  }).catch(err => alert(err.message));
+}
+
+function leverageJobOffer(targetClub) {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  c.cash = Math.round((c.cash + 6.0) * 10) / 10;
+  playSfx('deal');
+  alert(`💼 BOARDROOM LEVERAGE SUCCEEDED!\n\nYou met with the Chairman and leveraged the offer from ${targetClub}. The Board matched their terms and granted an extra ₹6.0M transfer commitment to keep you at ${c.name}!`);
+  document.getElementById('managerOffersModal')?.remove();
+  renderGame();
+}
+
+// C. Stadium & Shirt Naming Rights Modal for Owners
+function openNamingRightsModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/owner/naming-offers?club=' + encodeURIComponent(c.name)).then(data => {
+    const stadiumBids = data.stadiumBids || [];
+    const kitBids = data.kitBids || [];
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'namingRightsModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:840px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">🏛️ COMMERCIAL SPONSORSHIP PORTFOLIO</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Stadium &amp; Shirt Front Naming Rights
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('namingRightsModal').remove()">&times;</button>
+        </div>
+
+        <div style="font-size:12px;font-weight:900;color:var(--accent-gold);margin-bottom:10px;text-transform:uppercase;">STADIUM NAMING RIGHTS BIDS:</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px;">
+          ${stadiumBids.map(b => `
+            <div class="game-card" style="display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg-card-subtle);">
+              <div>
+                <b style="color:#fff;font-size:16px;">${esc(b.proposedName)}</b>
+                <div style="font-size:12px;color:var(--accent-blue);font-weight:700;">Partner: ${esc(b.sponsor)}</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Perk: ${esc(b.perks)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:16px;font-weight:900;color:var(--accent-neon);">+₹${b.upfrontCash}M Upfront</div>
+                <div style="font-size:11px;color:var(--text-dim);">+₹${b.annualRevenue}M/yr (${b.contractYears} Seasons)</div>
+                <button class="btn btn-warning btn-sm" onclick="signNamingDealAction('stadium', '${b.id}')" style="margin-top:6px;color:#0a0f18;font-weight:900;">
+                  ✍️ EXECUTE CONTRACT
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="font-size:12px;font-weight:900;color:var(--accent-gold);margin-bottom:10px;text-transform:uppercase;">FRONT-OF-SHIRT PRIMARY SPONSOR BIDS:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+          ${kitBids.map(k => `
+            <div class="game-card" style="padding:14px;background:var(--bg-card-subtle);">
+              <b style="color:#fff;font-size:15px;">${esc(k.sponsor)}</b>
+              <div style="font-size:11px;color:var(--text-muted);">Slogan: "${esc(k.slogan)}"</div>
+              <div style="margin:8px 0;font-size:14px;font-weight:900;color:var(--accent-gold);">+₹${k.upfrontCash}M Bonus</div>
+              <button class="btn btn-secondary btn-sm" onclick="signNamingDealAction('kit', '${k.id}')" style="width:100%;font-weight:800;">
+                SIGN KIT SPONSOR &rarr;
+              </button>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('namingRightsModal').remove()">CLOSE</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+function signNamingDealAction(type, bidId) {
+  post('/api/world4/owner/sign-naming', ref({
+    club: S.selectedClub,
+    bidType: type,
+    bidId: bidId
+  })).then(res => {
+    playSfx('deal');
+    playSfx('applause');
+    alert(`🤝 CONTRACT EXECUTED!\n\nDeal successfully finalized. Funds have been deposited into your club treasury.`);
+    document.getElementById('namingRightsModal')?.remove();
+    renderGame();
+  }).catch(err => alert(err.message));
+}
+
+// D. Minority Stake Equity Financing Modal
+function openMinorityStakeModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/owner/equity-offers?club=' + encodeURIComponent(c.name)).then(data => {
+    const offers = data.offers || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'equityOffersModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:760px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">🏛️ PRIVATE EQUITY FINANCING</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Minority Stake Equity Sale
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('equityOffersModal').remove()">&times;</button>
+        </div>
+
+        <div style="background:var(--bg-card-subtle);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+          <div>
+            <span style="font-size:11px;color:var(--text-muted);">Chairman Controlling Share:</span>
+            <b style="color:var(--accent-neon);font-size:16px;margin-left:6px;">${100 - (c.minorityEquitySold || 0)}% Equity</b>
+          </div>
+          <div>
+            <span style="font-size:11px;color:var(--text-muted);">Current Club Valuation:</span>
+            <b style="color:var(--accent-gold);font-size:16px;margin-left:6px;">₹${money(Math.round((c.cash||20)*1.4 + (c.stadium?.capacity||20000)*0.002*10)/10)}M</b>
+          </div>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin-bottom:20px;">
+          Raise massive lump-sum capital to fund marquee galactico signings or mega-stadium hospitality expansions without taking on commercial debt or losing controlling voting shares (Owner maintains >51%).
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:20px;">
+          ${offers.map(o => `
+            <div class="game-card" style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-color:rgba(0,229,153,0.3);background:rgba(0,229,153,0.04);">
+              <div>
+                <b style="color:#fff;font-size:17px;">${esc(o.syndicate)}</b>
+                <div style="font-size:12px;color:var(--accent-neon);font-weight:800;margin-top:2px;">
+                  Equity Acquired: ${o.stakePct}% Non-Voting Stake
+                </div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;">${esc(o.terms)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-family:var(--font-display);font-size:20px;font-weight:900;color:var(--accent-gold);">
+                  +₹${o.cashInjection}M Cash
+                </div>
+                <button class="btn btn-success btn-sm" onclick="sellEquityAction('${o.id}')" style="margin-top:8px;font-weight:800;">
+                  ACCEPT CASH INJECTION &rarr;
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('equityOffersModal').remove()">CANCEL</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+function sellEquityAction(offerId) {
+  if (!confirm('Authorize minority stake sale? Lump-sum funds will be immediately credited to treasury.')) return;
+  post('/api/world4/owner/sell-equity', ref({
+    club: S.selectedClub,
+    offerId: offerId
+  })).then(res => {
+    playSfx('deal');
+    playSfx('applause');
+    alert(`🏛️ EQUITY SYNDICATE TRANSACTION COMPLETE!\n\nCash received and deposited into the treasury.`);
+    document.getElementById('equityOffersModal')?.remove();
+    renderGame();
+  }).catch(err => alert(err.message));
+}
+
+// E. Director of Football (DoF) Appointment Modal
+function openDirectorOfFootballModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/owner/dof-candidates').then(data => {
+    const candidates = data.candidates || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'dofModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:760px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-blue);">SPORTING LEADERSHIP</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Appoint Director of Football (DoF)
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dofModal').remove()">&times;</button>
+        </div>
+
+        ${c.directorOfFootball ? `
+          <div style="background:rgba(42,139,242,0.1);border:1px solid var(--accent-blue);padding:14px;border-radius:12px;margin-bottom:18px;">
+            <div style="font-size:11px;font-weight:800;color:var(--accent-blue);">CURRENT APPOINTED DIRECTOR OF FOOTBALL:</div>
+            <b style="color:#fff;font-size:16px;">${esc(c.directorOfFootball.name)}</b>
+            <div style="font-size:12px;color:var(--text-muted);">${esc(c.directorOfFootball.perk)}</div>
+          </div>
+        ` : ''}
+
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px;">
+          ${candidates.map(d => `
+            <div class="game-card" style="display:flex;justify-content:space-between;align-items:center;padding:16px;background:var(--bg-card-subtle);">
+              <div>
+                <b style="color:#fff;font-size:16px;">${esc(d.name)}</b>
+                <span class="pill" style="margin-left:8px;background:rgba(42,139,242,0.2);color:#70b5ff;">⭐ ${d.rating} Rating</span>
+                <div style="font-size:12px;color:var(--accent-gold);font-weight:700;margin-top:2px;">Specialty: ${esc(d.specialty)}</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Active Benefit: ${esc(d.perk)}</div>
+              </div>
+              <div style="text-align:right;">
+                <div style="font-size:12px;color:var(--text-dim);margin-bottom:4px;">₹${d.salary}M/yr</div>
+                <button class="btn btn-primary btn-sm" onclick="hireDoFAction('${d.id}')" style="font-weight:800;">
+                  HIRE AS DoF &rarr;
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('dofModal').remove()">CLOSE</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+function hireDoFAction(dofId) {
+  post('/api/world4/owner/hire-dof', ref({
+    club: S.selectedClub,
+    dofId: dofId
+  })).then(res => {
+    playSfx('applause');
+    alert(`👔 DIRECTOR OF FOOTBALL APPOINTED!\n\nFront office benefits are now permanently active.`);
+    document.getElementById('dofModal')?.remove();
+    renderGame();
+  }).catch(err => alert(err.message));
+}
+
+// F. Seasonal Board Mandates & Target Tracker Modal
+function openSeasonalMandatesModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/mandates?club=' + encodeURIComponent(c.name)).then(data => {
+    const mandates = data.mandates || [];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'mandatesModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:760px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">BOARD MANDATES</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Season ${S.season} Board Objectives &amp; Milestones
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('mandatesModal').remove()">&times;</button>
+        </div>
+
+        <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin-bottom:18px;">
+          Meeting these boardroom mandates secures your managerial job security and triggers significant bonus dividends at the end of the campaign.
+        </p>
+
+        <div style="display:grid;grid-template-columns:1fr;gap:12px;margin-bottom:20px;">
+          ${mandates.map(m => `
+            <div class="game-card" style="padding:16px;background:var(--bg-card-subtle);">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <b style="color:#fff;font-size:15px;">${esc(m.title)}</b>
+                <span class="pill" style="${m.status==='on_track'?'background:rgba(34,197,94,0.18);color:#4ade80;border:1px solid #22c55e;':'background:rgba(234,179,8,0.18);color:#fef08a;border:1px solid #eab308;'}font-size:10px;">
+                  ${m.status==='on_track' ? 'ON TRACK ✅' : 'PENDING ⏳'}
+                </span>
+              </div>
+              <div style="font-size:12px;color:var(--text-muted);">${esc(m.description)}</div>
+              <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-dim);margin-top:8px;">
+                <span>Progress: <b style="color:#fff;">${esc(m.progress)}</b></span>
+                <span style="color:var(--accent-gold);font-weight:700;">Reward: +₹${m.bonusReward}M Treasury Dividend</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('mandatesModal').remove()">CLOSE</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+// G. Dressing Room Meetings & Player Confrontations Modal
+function openPlayerMeetingsModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  get('/api/world4/player/meetings?club=' + encodeURIComponent(c.name)).then(data => {
+    const meetings = data.meetings || [];
+    if (!meetings.length) return alert('No pending player meetings. The dressing room is currently peaceful.');
+
+    const m = meetings[0];
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.id = 'playerMeetingModal';
+    overlay.innerHTML = `
+      <div class="modal-box" style="max-width:700px;padding:26px;position:relative;">
+        <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:16px;">
+          <div>
+            <div class="card-kicker" style="color:var(--danger);">DRESSING ROOM CONFRONTATION</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+              ${esc(m.title)}
+            </h2>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('playerMeetingModal').remove()">&times;</button>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:14px;background:var(--bg-card-subtle);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:16px;">
+          <div style="width:48px;height:48px;border-radius:12px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:24px;">
+            👤
+          </div>
+          <div>
+            <b style="color:#fff;font-size:16px;">${esc(m.player?.name)}</b>
+            <div style="font-size:12px;color:var(--accent-gold);">${m.player?.rating || 80} OVR · ${esc(m.player?.position || 'MF')}</div>
+          </div>
+        </div>
+
+        <div style="background:rgba(255,255,255,0.04);border-left:3px solid var(--accent-gold);padding:14px;border-radius:0 10px 10px 0;font-size:14px;line-height:1.6;color:#e2e8f0;margin-bottom:20px;font-style:italic;">
+          ${esc(m.issue)}
+        </div>
+
+        <div style="font-size:11.5px;font-weight:900;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;">CHOOSE MANAGERIAL RESPONSE:</div>
+        <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-bottom:18px;">
+          ${m.choices.map(ch => `
+            <button class="btn btn-secondary" onclick="resolveMeetingChoice('${m.id}', '${ch.id}')" style="padding:12px 16px;text-align:left;font-weight:700;display:flex;justify-content:space-between;align-items:center;">
+              <span>${esc(ch.text)}</span>
+              <span style="font-size:11px;opacity:0.8;">CHOOSE &rarr;</span>
+            </button>
+          `).join('')}
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('playerMeetingModal').remove()">LEAVE OFFICE</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  }).catch(err => alert(err.message));
+}
+
+function resolveMeetingChoice(meetingId, choiceId) {
+  post('/api/world4/player/resolve-meeting', ref({
+    club: S.selectedClub,
+    meetingId: meetingId,
+    choiceId: choiceId
+  })).then(res => {
+    if (res.result?.moraleDelta > 0) playSfx('applause');
+    else playSfx('whistle');
+    alert(`🗣️ MEETING CONCLUDED\n\n${res.result?.feedback || 'Player meeting resolved.'}`);
+    document.getElementById('playerMeetingModal')?.remove();
+    renderGame();
+  }).catch(err => alert(err.message));
+}
+
+// H. Matchday Director's VIP Box View (for Owners)
+function openDirectorVIPBoxModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'directorVIPModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:820px;padding:26px;position:relative;background:radial-gradient(ellipse at 50% 0%, #152945 0%, #091222 100%);">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:12px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(255,184,48,0.2);border:1px solid var(--accent-gold);display:flex;align-items:center;justify-content:center;font-size:22px;">
+            🥂
+          </div>
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">DIRECTOR'S SUITE · EXECUTIVE LEVEL 4</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+              Presidential VIP Box Matchday View
+            </h2>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('directorVIPModal').remove()">&times;</button>
+      </div>
+
+      <!-- Luxury Suite Panorama Details -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+        <div style="background:rgba(0,0,0,0.3);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);">
+          <div style="font-size:10.5px;color:var(--text-muted);font-weight:800;">VIP HOSPITALITY REVENUE</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent-neon);margin-top:2px;">+₹0.45M / match</div>
+          <div style="font-size:11px;color:var(--text-dim);">All 48 Luxury Boxes Occupied</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);">
+          <div style="font-size:10.5px;color:var(--text-muted);font-weight:800;">STADIUM GATE TICKER</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent-gold);margin-top:2px;">${money(Math.round((c.stadium?.capacity || 20000) * 0.94))} Spectators</div>
+          <div style="font-size:11px;color:#4ade80;">94% Capacity Sold Out</div>
+        </div>
+        <div style="background:rgba(0,0,0,0.3);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);">
+          <div style="font-size:10.5px;color:var(--text-muted);font-weight:800;">DUGOUT TELEPHONE LINK</div>
+          <div style="font-size:14px;font-weight:800;color:#6db4ff;margin-top:4px;">Manager: ${esc(c.manager?.name || 'Head Coach')}</div>
+          <div style="font-size:11px;color:var(--text-dim);">Live Tactical Phone Active</div>
+        </div>
+      </div>
+
+      <!-- Urgent Owner Executive Telegram to the Dugout -->
+      <div style="background:rgba(255,184,48,0.08);border:1px solid rgba(255,184,48,0.35);padding:16px;border-radius:14px;margin-bottom:20px;">
+        <div style="font-size:11.5px;font-weight:900;color:var(--accent-gold);margin-bottom:8px;">DISPATCH EXECUTIVE HALFTIME DIRECTIVE TO HEAD COACH:</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="sendExecutiveTextToDugout('Demand offensive bravery! Attack!')">
+            📱 "Show Offensive Bravery!" (+Attack)
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="sendExecutiveTextToDugout('Protect the lead at all costs!')">
+            🛡️ "Protect the Lead!" (+Defense)
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="sendExecutiveTextToDugout('Sub the tired players immediately!')">
+            🔄 "Rotate the Squad!" (+Stamina)
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('directorVIPModal').remove()">RETURN TO MATCHDAY</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function sendExecutiveTextToDugout(msg) {
+  playSfx('click');
+  alert(`📱 DIRECTIVE DISPATCHED TO DUGOUT!\n\nMessage sent from Director's VIP Box: "${msg}". The Head Coach was seen receiving instructions on the touchline.`);
+}
+
+// I. Touchline Dugout Perspective Modal (for Managers)
+function openTouchlineDugoutModal() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'touchlineDugoutModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:840px;padding:26px;position:relative;background:radial-gradient(circle at 50% 10%, #164024 0%, #0d2315 50%, #040d07 100%);">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(255,255,255,0.15);padding-bottom:12px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(34,197,94,0.2);border:1px solid #22c55e;display:flex;align-items:center;justify-content:center;font-size:22px;">
+            📋
+          </div>
+          <div>
+            <div class="card-kicker" style="color:var(--accent-neon);">TOUCHLINE DUGOUT PERSPECTIVE</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+              Manager's Technical Area
+            </h2>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('touchlineDugoutModal').remove()">&times;</button>
+      </div>
+
+      <!-- Touchline Command Grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px;">
+        <!-- Live Shouts -->
+        <div style="background:rgba(0,0,0,0.4);padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:11px;font-weight:800;color:var(--accent-gold);margin-bottom:10px;">LIVE TOUCHLINE SHOUTS:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-secondary btn-sm" onclick="issueDugoutShout('DEMAND MORE!', 6)" style="text-align:left;">
+              🗣️ "DEMAND MORE!" (+Focus, +Pressing)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="issueDugoutShout('CALM DOWN & PLAY SIMPLE!', 4)" style="text-align:left;">
+              🧘 "CALM DOWN &amp; KEEP POSSESSION!" (+Composure)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="issueDugoutShout('TIGHTEN UP THE DEFENSE!', 5)" style="text-align:left;">
+              🛡️ "TIGHTEN UP AT THE BACK!" (+Discipline)
+            </button>
+          </div>
+        </div>
+
+        <!-- Referee & VAR Interactions -->
+        <div style="background:rgba(0,0,0,0.4);padding:16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);">
+          <div style="font-size:11px;font-weight:800;color:#fca5a5;margin-bottom:10px;">OFFICIALS &amp; VAR DECISIONS:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;">
+            <button class="btn btn-warning btn-sm" onclick="protestFourthOfficial()" style="text-align:left;color:#0a0f18;font-weight:800;">
+              ⚠️ HARANGUE 4TH OFFICIAL (Protest Decision)
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="requestVARCheck()" style="text-align:left;">
+              📺 CALL FOR VAR MONITOR REVIEW
+            </button>
+            <button class="btn btn-secondary btn-sm" onclick="hypeHomeCrowd()" style="text-align:left;">
+              👏 APPLAUD HOME SUPPORTERS (+3% Morale)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('touchlineDugoutModal').remove()">RETURN TO DUGOUT</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function issueDugoutShout(shout, boost) {
+  playSfx('whistle');
+  alert(`🗣️ TOUCHLINE SHOUT ISSUED: "${shout}"\n\nThe players heard you loud and clear from the technical area. In-match focus boosted by +${boost}%.`);
+}
+
+function protestFourthOfficial() {
+  playSfx('whistle');
+  alert(`⚠️ PROTEST LODGED WITH 4TH OFFICIAL!\n\nYou stepped to the edge of the technical area to dispute a referee decision. The referee waved play on and warned you.`);
+}
+
+function requestVARCheck() {
+  playSfx('whistle');
+  alert(`📺 VAR MONITOR REVIEW!\n\nThe match officials inspected the pitchside monitor. Decision confirmed!`);
+}
+
+function hypeHomeCrowd() {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  c.morale = Math.min(100, c.morale + 3);
+  playSfx('applause');
+  alert(`👏 HOME CROWD HYPED!\n\nYou turned to the stands and waved your arms. The fans roared in appreciation! Squad morale +3%.`);
+}
+
+// -------------------------------------------------------------
 // TAB 2: DASHBOARD
 // -------------------------------------------------------------
 function renderDashboard(container) {
@@ -4413,6 +5528,73 @@ function renderDashboard(container) {
         </button>
       </div>
     ` : ''}
+
+    <!-- Active Career Role Command Center Card (Manager vs Club Owner) -->
+    <div style="background:linear-gradient(135deg, rgba(13,23,40,0.95), rgba(7,15,30,0.98));border:1px solid ${userRole==='owner'?'rgba(255,184,48,0.35)':userRole==='manager'?'rgba(42,139,242,0.35)':'rgba(0,229,153,0.35)'};border-radius:16px;padding:20px 24px;margin-bottom:20px;box-shadow:0 8px 30px rgba(0,0,0,0.5);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:18px;">
+      <div style="display:flex;align-items:center;gap:18px;">
+        <div style="width:58px;height:58px;border-radius:16px;background:${userRole==='owner'?'rgba(255,184,48,0.18)':userRole==='manager'?'rgba(42,139,242,0.18)':'rgba(0,229,153,0.18)'};border:1px solid ${userRole==='owner'?'var(--accent-gold)':userRole==='manager'?'var(--accent-blue)':'var(--accent-neon)'};display:flex;align-items:center;justify-content:center;font-size:30px;flex-shrink:0;">
+          ${userRole==='owner' ? '🏛️' : userRole==='manager' ? '👔' : '👑'}
+        </div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <span class="pill" style="${getRoleBadgeStyle()}font-size:11px;padding:3px 10px;">
+              ${getRoleBadgeContent()}
+            </span>
+            <span style="font-size:11.5px;color:var(--text-muted);">
+              ${userRole==='owner' ? '100% Equity · Supreme Board Governance' : userRole==='manager' ? 'Dugout Tactical Sovereign · Pitch Boss' : 'Dual Autocracy · Touchline & Boardroom'}
+            </span>
+          </div>
+          <div style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;">
+            ${userRole==='owner' 
+              ? `Chairman Portfolio: ₹${money(Math.round((c.cash||20)*1.4 + (c.stadium?.capacity||20000)*0.002*10)/10)}M Club Valuation`
+              : userRole==='manager'
+              ? `${esc(c.manager ? c.manager.name : 'Head Coach')} Tactical Command Desk`
+              : `Total Sovereign Control: Boardroom &amp; Dugout Unified`
+            }
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;font-size:12px;color:var(--text-muted);margin-top:4px;flex-wrap:wrap;">
+            ${userRole==='manager' ? `
+              <span>📋 Board Approval: <b style="color:var(--accent-gold);">${S.boardStatus?.confidence || 82}%</b></span>
+              <span>⭐ Reputation: <b style="color:#6db4ff;">${c.manager?.reputation || 78}/100</b></span>
+              <span>🔥 Squad Morale: <b style="color:${c.morale<65?'#ff4757':'var(--accent-neon)'};">${c.morale}%</b></span>
+            ` : `
+              <span>💰 Liquid Treasury: <b style="color:var(--accent-neon);">₹${money(c.cash)}M</b></span>
+              <span>🏟️ Capacity: <b style="color:#fff;">${money(c.stadium?.capacity || 20000)} Seats</b></span>
+              <span>👔 Manager: <b style="color:var(--accent-gold);">${esc(c.manager ? c.manager.name : 'Vacant')}</b></span>
+            `}
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Role-Specific Actions -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        ${userRole==='manager' ? `
+          <button class="btn btn-secondary btn-sm" onclick="submitBoardPetitionModal()" style="border-color:rgba(42,139,242,0.5);color:#70b5ff;font-weight:800;">
+            📝 PETITION BOARD FOR FUNDS
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openPressConferenceModal('pre')" style="font-weight:800;">
+            🎙️ PRESS CONFERENCE
+          </button>
+        ` : userRole==='owner' ? `
+          <button class="btn btn-secondary btn-sm" onclick="ownerManagerReviewModal()" style="border-color:rgba(255,184,48,0.5);color:var(--accent-gold);font-weight:800;">
+            👔 REVIEW HIRED MANAGER
+          </button>
+          <button class="btn btn-warning btn-sm" onclick="switchTab('club', 'stadium')" style="font-weight:800;color:#0a0f18;">
+            🏟️ EXPAND STADIUM / VIP
+          </button>
+        ` : `
+          <button class="btn btn-secondary btn-sm" onclick="ownerManagerReviewModal()" style="border-color:rgba(255,184,48,0.5);color:var(--accent-gold);font-weight:800;">
+            👔 MANAGER REVIEW
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="openPressConferenceModal('pre')" style="font-weight:800;">
+            🎙️ PRESS CONFERENCE
+          </button>
+        `}
+        <button class="btn btn-secondary btn-sm" onclick="openRoleSelectionModal()" style="padding:7px 12px;" title="Switch Career Role">
+          ⚙️ SWITCH ROLE
+        </button>
+      </div>
+    </div>
     <!-- Crisis Alert Banner if Underperforming -->
     ${isUnderperforming ? `
       <div class="crisis-alert-banner" onclick="openBoardroomMeeting()">
@@ -4904,12 +6086,19 @@ function renderSquadRoster(container) {
               <th>Form</th>
               <th>Mentality</th>
               <th>Wage</th>
+              <th>Clauses &amp; Deals</th>
               <th>Market Value</th>
               <th style="text-align:right;">Actions</th>
             </tr>
           </thead>
           <tbody>
-            ${myPlayers.map(p => `
+            ${myPlayers.map(p => {
+              const isLoanToBuy = p.contract?.dealType === 'loan_to_buy';
+              const releaseVal = p.contract?.releaseClause || Math.round((p.askingPrice || 10) * 2.0);
+              const sellOnVal = p.contract?.sellOnPct || 0;
+              const bonusVal = p.contract?.goalBonus ? `₹${p.contract.goalBonus}M/Goal` : p.contract?.cleanSheetBonus ? `₹${p.contract.cleanSheetBonus}M/CS` : null;
+
+              return `
               <tr class="roster-row">
                 <td>
                   <div class="player-cell">
@@ -4917,7 +6106,10 @@ function renderSquadRoster(container) {
                       ${esc(p.position || 'CF')}
                     </div>
                     <div>
-                      <b style="color:#fff;font-size:14px;">${esc(p.name)}</b>
+                      <div style="display:flex;align-items:center;gap:6px;">
+                        <b style="color:#fff;font-size:14px;">${esc(p.name)}</b>
+                        ${isLoanToBuy ? `<span class="pill" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid #f59e0b;font-size:9.5px;font-weight:900;">🔄 LOAN-TO-BUY</span>` : ''}
+                      </div>
                       <div style="font-size:11px;color:var(--text-muted);">${p.personality || 'Balanced'} Style</div>
                     </div>
                   </div>
@@ -4939,14 +6131,26 @@ function renderSquadRoster(container) {
                   </span>
                 </td>
                 <td>₹${money(p.contract?.salary || 2)}M/y</td>
+                <td>
+                  <div style="font-size:11px;line-height:1.4;">
+                    <div><span style="color:var(--accent-gold);font-weight:700;">Release:</span> ₹${releaseVal}M</div>
+                    <div style="color:var(--text-muted);"><span style="color:var(--accent-neon);font-weight:700;">Sell-On:</span> ${sellOnVal}%${bonusVal ? ` · <span style="color:#4ade80;">${bonusVal}</span>` : ''}</div>
+                  </div>
+                </td>
                 <td><b style="color:var(--accent-gold);">₹${money(p.askingPrice)}M</b></td>
                 <td style="text-align:right;white-space:nowrap;">
+                  ${isLoanToBuy ? `
+                    <button class="btn btn-warning btn-sm" onclick="exerciseLoanBuyoutAction('${p.id}')" title="Trigger permanent purchase option" style="background:linear-gradient(90deg,#f59e0b,#d97706);color:#0a0f18;font-weight:900;padding:4px 10px;font-size:11px;margin-right:4px;">
+                      ⭐ BUYOUT (₹${p.contract.purchaseOption}M)
+                    </button>
+                  ` : ''}
                   <button class="btn btn-secondary btn-sm" onclick="openContractRenewalModal('${p.id}')" title="Renegotiate wages, extend contract & review real-time FFP impact" style="border-color:rgba(0,240,255,0.4);color:var(--accent-neon);padding:4px 8px;font-size:11px;font-weight:700;">✍️ WAGE / EXTEND</button>
                   <button class="btn btn-secondary btn-sm" onclick="listForSale('${p.id}', ${p.askingPrice})" style="padding:4px 8px;font-size:11px;">SELL</button>
                   <button class="btn btn-danger btn-sm" onclick="releasePlayerPrompt('${p.id}')" style="padding:4px 8px;font-size:11px;">RELEASE</button>
                 </td>
               </tr>
-            `).join('')}
+              `;
+            }).join('')}
           </tbody>
         </table>
       </div>
@@ -4964,10 +6168,19 @@ function renderTransferMarket(container) {
 
   const marketList = S.market.filter(p => {
     const matchesSearch = !searchInput || p.name.toLowerCase().includes(searchInput) || String(p.ownerClub||'').toLowerCase().includes(searchInput);
-    const matchesPos = posFilter === 'ALL' || (posFilter === 'ATT' && ['CF','LWF','RWF'].includes(p.position))
-      || (posFilter === 'MID' && ['CMF','DMF','AMF'].includes(p.position))
-      || (posFilter === 'DEF' && ['CB','LB','RB'].includes(p.position))
-      || (posFilter === 'GK' && p.position === 'GK');
+    const isExpiring = (p.contract && p.contract.years <= 1) || p.contractExpiring || p.ownerClub === 'Free Agent';
+    let matchesPos = true;
+    if (posFilter === 'EXPIRING') {
+      matchesPos = isExpiring;
+    } else if (posFilter === 'ATT') {
+      matchesPos = ['CF','LWF','RWF'].includes(p.position);
+    } else if (posFilter === 'MID') {
+      matchesPos = ['CMF','DMF','AMF'].includes(p.position);
+    } else if (posFilter === 'DEF') {
+      matchesPos = ['CB','LB','RB'].includes(p.position);
+    } else if (posFilter === 'GK') {
+      matchesPos = p.position === 'GK';
+    }
     return matchesSearch && matchesPos;
   }).slice(0, 100);
 
@@ -5017,8 +6230,9 @@ function renderTransferMarket(container) {
       <!-- Filters & Search -->
       <div style="display:grid;grid-template-columns:1fr auto;gap:12px;margin-bottom:20px;">
         <input id="mktSearch" class="form-control" placeholder="Search superstar name, position, or current club..." value="${esc(searchInput)}" oninput="renderTransferMarket(document.getElementById('gameContent'))">
-        <select id="mktPosFilter" class="form-control" style="width:160px;" onchange="renderTransferMarket(document.getElementById('gameContent'))">
+        <select id="mktPosFilter" class="form-control" style="width:230px;" onchange="renderTransferMarket(document.getElementById('gameContent'))">
           <option value="ALL" ${posFilter==='ALL'?'selected':''}>All Positions</option>
+          <option value="EXPIRING" ${posFilter==='EXPIRING'?'selected':''}>🆓 Expiring / Bosman Free (6 Mos)</option>
           <option value="ATT" ${posFilter==='ATT'?'selected':''}>Attackers (CF/W)</option>
           <option value="MID" ${posFilter==='MID'?'selected':''}>Midfielders</option>
           <option value="DEF" ${posFilter==='DEF'?'selected':''}>Defenders</option>
@@ -5036,7 +6250,7 @@ function renderTransferMarket(container) {
               <th>OVR</th>
               <th>Current Club</th>
               <th>Age</th>
-              <th>Mentality</th>
+              <th>Contract / Clauses</th>
               <th>Asking Price</th>
               <th style="text-align:right;">Actions</th>
             </tr>
@@ -5044,6 +6258,9 @@ function renderTransferMarket(container) {
           <tbody>
             ${marketList.map(p => {
               const isMine = p.ownerClub === c.name;
+              const isExpiring = (p.contract && p.contract.years <= 1) || p.contractExpiring || p.ownerClub === 'Free Agent';
+              const releaseVal = p.contract?.releaseClause || Math.round((p.askingPrice || 10) * 2.0);
+
               return `
                 <tr class="roster-row">
                   <td>
@@ -5054,9 +6271,10 @@ function renderTransferMarket(container) {
                       <div>
                         <div style="display:flex;align-items:center;gap:6px;">
                           <b style="color:#fff;font-size:14px;">${esc(p.name)}</b>
+                          ${isExpiring ? `<span class="pill" style="background:rgba(34,197,94,0.18);border:1px solid #22c55e;color:#4ade80;font-size:9px;font-weight:900;">🆓 6 MOS (BOSMAN FREE)</span>` : ''}
                           ${(p.untouchable || p.rating >= 84) ? `<span class="pill" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);font-size:9px;padding:2px 5px;" title="Selling club has placed this superstar under squad lockdown protection">🔒 UNTOUCHABLE</span>` : ''}
                         </div>
-                        <div style="font-size:11px;color:var(--text-muted);">${p.form}% Form</div>
+                        <div style="font-size:11px;color:var(--text-muted);">${p.form}% Form · ${p.personality || 'Determined'} Style</div>
                       </div>
                     </div>
                   </td>
@@ -5065,15 +6283,23 @@ function renderTransferMarket(container) {
                   <td>${esc(p.ownerClub || 'Free Agent')}</td>
                   <td>${p.age}</td>
                   <td>
-                    <span class="pill" style="background:rgba(255,255,255,0.06);color:#cfdceb;font-size:10px;">
-                      ${esc(p.mentality)}
-                    </span>
+                    <div style="font-size:11px;line-height:1.4;">
+                      <div><span style="color:var(--accent-gold);font-weight:700;">Release:</span> ₹${releaseVal}M</div>
+                      ${p.contract?.sellOnPct ? `<div style="color:var(--text-muted);"><span style="color:var(--accent-neon);font-weight:700;">Sell-On:</span> ${p.contract.sellOnPct}%</div>` : ''}
+                      ${isExpiring ? `<div style="color:#4ade80;font-weight:800;">Bosman Free Eligible</div>` : `<div style="color:var(--text-dim);">${p.contract?.years || 2} Yrs left</div>`}
+                    </div>
                   </td>
-                  <td><b style="color:var(--accent-neon);">₹${money(p.askingPrice)}M</b></td>
-                  <td style="text-align:right;">
+                  <td><b style="color:${isExpiring ? '#4ade80' : 'var(--accent-neon)'};">${isExpiring ? 'FREE (₹0M)' : '₹' + money(p.askingPrice) + 'M'}</b></td>
+                  <td style="text-align:right;white-space:nowrap;">
                     ${!isMine ? `
-                      <button class="btn btn-primary btn-sm" onclick="openPlayerTransferTalks('${p.id}')">⚡ NEGOTIATE (₹${money(p.askingPrice)}M)</button>
-                      <button class="btn btn-secondary btn-sm" onclick="loanPlayer('${p.id}')">LOAN</button>
+                      ${isExpiring ? `
+                        <button class="btn btn-success btn-sm" onclick="openPlayerTransferTalks('${p.id}', true)" style="font-weight:800;padding:5px 12px;background:linear-gradient(90deg,#10b981,#059669);">
+                          🆓 APPROACH (BOSMAN FREE)
+                        </button>
+                      ` : `
+                        <button class="btn btn-primary btn-sm" onclick="openPlayerTransferTalks('${p.id}', false)">⚡ NEGOTIATE</button>
+                        <button class="btn btn-secondary btn-sm" onclick="loanPlayer('${p.id}')">LOAN</button>
+                      `}
                     ` : `
                       <span class="pill pill-season">OWNED</span>
                     `}
@@ -5093,18 +6319,23 @@ function renderTransferMarket(container) {
 // -------------------------------------------------------------
 let activeTalksState = { fee: 10, salary: 2, years: 3 };
 
-function openPlayerTransferTalks(pid) {
+function openPlayerTransferTalks(pid, isFreePreContract = false) {
   const p = S.market.find(x => x.id === pid);
   if (!p) return;
   const c = S.clubs.find(x => x.name === S.selectedClub);
 
+  const isBosman = isFreePreContract || (p.contract && p.contract.years <= 1) || p.contractExpiring || p.ownerClub === 'Free Agent';
+  const isDefensive = ['GK', 'CB', 'LB', 'RB', 'DMF'].includes(p.position);
+
   activeTalksState = {
-    fee: p.askingPrice || 10,
+    fee: isBosman ? 0 : (p.askingPrice || 10),
     salary: Math.max(1, Math.round((p.askingPrice || 10) * 0.18)),
     years: 3,
-    dealType: 'permanent',
+    dealType: isBosman ? 'pre_contract' : 'permanent',
     releaseClause: Math.round((p.askingPrice || 10) * 2.5),
-    sellOnClause: 10,
+    sellOnClause: 15,
+    goalBonus: isDefensive ? 0 : 0.15,
+    cleanSheetBonus: isDefensive ? 0.20 : 0,
     bonusAddons: 1.5
   };
 
@@ -5136,13 +6367,18 @@ function openPlayerTransferTalks(pid) {
       </div>
 
       <!-- Deal Structure Options -->
-      <div style="display:flex;gap:8px;margin-bottom:14px;">
-        <button class="btn btn-sm btn-primary" id="dealTypeBtn_perm" onclick="activeTalksState.dealType='permanent'; document.getElementById('dealTypeBtn_perm').className='btn btn-sm btn-primary'; document.getElementById('dealTypeBtn_loan').className='btn btn-sm btn-secondary'; refreshTalksUI('${p.id}');">
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <button class="btn btn-sm ${activeTalksState.dealType==='permanent'?'btn-primary':'btn-secondary'}" id="dealTypeBtn_perm" onclick="activeTalksState.dealType='permanent'; activeTalksState.fee=${p.askingPrice||10}; document.getElementById('dealTypeBtn_perm').className='btn btn-sm btn-primary'; document.getElementById('dealTypeBtn_loan').className='btn btn-sm btn-secondary'; document.getElementById('dealTypeBtn_pre')?.classList.remove('btn-primary'); document.getElementById('dealTypeBtn_pre')?.classList.add('btn-secondary'); refreshTalksUI('${p.id}');">
           💼 Permanent Transfer
         </button>
-        <button class="btn btn-sm btn-secondary" id="dealTypeBtn_loan" onclick="activeTalksState.dealType='loan_to_buy'; document.getElementById('dealTypeBtn_loan').className='btn btn-sm btn-primary'; document.getElementById('dealTypeBtn_perm').className='btn btn-sm btn-secondary'; refreshTalksUI('${p.id}');">
+        <button class="btn btn-sm ${activeTalksState.dealType==='loan_to_buy'?'btn-primary':'btn-secondary'}" id="dealTypeBtn_loan" onclick="activeTalksState.dealType='loan_to_buy'; activeTalksState.fee=${p.askingPrice||10}; document.getElementById('dealTypeBtn_loan').className='btn btn-sm btn-primary'; document.getElementById('dealTypeBtn_perm').className='btn btn-sm btn-secondary'; document.getElementById('dealTypeBtn_pre')?.classList.remove('btn-primary'); document.getElementById('dealTypeBtn_pre')?.classList.add('btn-secondary'); refreshTalksUI('${p.id}');">
           🔄 Loan-to-Buy Option (1 Season)
         </button>
+        ${isBosman ? `
+          <button class="btn btn-sm ${activeTalksState.dealType==='pre_contract'?'btn-primary':'btn-secondary'}" id="dealTypeBtn_pre" onclick="activeTalksState.dealType='pre_contract'; activeTalksState.fee=0; document.getElementById('dealTypeBtn_pre').className='btn btn-sm btn-primary'; document.getElementById('dealTypeBtn_perm').className='btn btn-sm btn-secondary'; document.getElementById('dealTypeBtn_loan').className='btn btn-sm btn-secondary'; refreshTalksUI('${p.id}');" style="border-color:#22c55e;color:#4ade80;">
+            🆓 Bosman Free Transfer (6 Mos Left · ₹0M Fee)
+          </button>
+        ` : ''}
       </div>
 
       <!-- Live Probability Gauge -->
@@ -5160,12 +6396,16 @@ function openPlayerTransferTalks(pid) {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
         <div style="background:var(--bg-card-subtle);padding:14px;border-radius:12px;border:1px solid var(--border-subtle);">
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-            <label style="font-size:11.5px;color:var(--text-dim);font-weight:700;">TRANSFER BID (₹M)</label>
-            <span id="talksFeeDisplay" style="font-family:var(--font-display);font-size:17px;font-weight:900;color:var(--accent-neon);">₹${money(activeTalksState.fee)}M</span>
+            <label style="font-size:11.5px;color:var(--text-dim);font-weight:700;">
+              ${activeTalksState.dealType === 'pre_contract' ? 'TRANSFER BID (BOSMAN FREE)' : activeTalksState.dealType === 'loan_to_buy' ? 'PURCHASE OPTION (₹M)' : 'TRANSFER BID (₹M)'}
+            </label>
+            <span id="talksFeeDisplay" style="font-family:var(--font-display);font-size:17px;font-weight:900;color:${activeTalksState.dealType==='pre_contract'?'#4ade80':'var(--accent-neon)'};">
+              ${activeTalksState.dealType === 'pre_contract' ? 'FREE (₹0M)' : '₹' + money(activeTalksState.fee) + 'M'}
+            </span>
           </div>
-          <input type="range" min="1" max="${Math.max(120, Math.round(c.cash))}" value="${activeTalksState.fee}" style="width:100%;accent-color:var(--accent-neon);" oninput="activeTalksState.fee=+this.value; refreshTalksUI('${p.id}');">
+          <input type="range" id="talksFeeRange" min="1" max="${Math.max(120, Math.round(c.cash))}" value="${activeTalksState.fee}" style="width:100%;accent-color:var(--accent-neon);${activeTalksState.dealType==='pre_contract'?'opacity:0.3;pointer-events:none;':''}" oninput="activeTalksState.fee=+this.value; refreshTalksUI('${p.id}');">
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:4px;">
-            <span>Asking: ₹${p.askingPrice}M</span>
+            <span>${activeTalksState.dealType === 'pre_contract' ? 'Bosman free signing' : 'Asking: ₹' + p.askingPrice + 'M'}</span>
             <span>Treasury: ₹${money(c.cash)}M</span>
           </div>
         </div>
@@ -5183,8 +6423,8 @@ function openPlayerTransferTalks(pid) {
         </div>
       </div>
 
-      <!-- Contract Clauses & Add-ons -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:var(--bg-card-subtle);padding:12px 14px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:14px;">
+      <!-- Contract Clauses & Add-ons (Release Clause, Sell-on %, Goal/CS Bonus) -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;background:var(--bg-card-subtle);padding:12px 14px;border-radius:12px;border:1px solid var(--border-subtle);margin-bottom:14px;">
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
             <label style="font-size:11px;color:var(--text-dim);font-weight:700;">RELEASE CLAUSE</label>
@@ -5194,10 +6434,26 @@ function openPlayerTransferTalks(pid) {
         </div>
         <div>
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-            <label style="font-size:11px;color:var(--text-dim);font-weight:700;">SELL-ON FEE CLAUSE</label>
+            <label style="font-size:11px;color:var(--text-dim);font-weight:700;">SELL-ON CUT %</label>
             <span id="talksSellOnDisplay" style="font-size:13px;font-weight:800;color:var(--accent-neon);">${activeTalksState.sellOnClause}%</span>
           </div>
           <input type="range" min="0" max="30" step="5" value="${activeTalksState.sellOnClause}" style="width:100%;accent-color:var(--accent-neon);" oninput="activeTalksState.sellOnClause=+this.value; document.getElementById('talksSellOnDisplay').textContent=this.value+'%'; refreshTalksUI('${p.id}');">
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+            <label style="font-size:11px;color:var(--text-dim);font-weight:700;">${isDefensive ? 'CLEAN SHEET BONUS' : 'GOAL BONUS'}</label>
+            <span id="talksBonusDisplay" style="font-size:13px;font-weight:800;color:#4ade80;">₹${isDefensive ? activeTalksState.cleanSheetBonus : activeTalksState.goalBonus}M</span>
+          </div>
+          <input type="range" min="0" max="0.5" step="0.05" value="${isDefensive ? activeTalksState.cleanSheetBonus : activeTalksState.goalBonus}" style="width:100%;accent-color:#4ade80;" oninput="
+            if (['GK','CB','LB','RB','DMF'].includes('${p.position}')) {
+              activeTalksState.cleanSheetBonus = +this.value;
+              document.getElementById('talksBonusDisplay').textContent = '₹' + this.value + 'M';
+            } else {
+              activeTalksState.goalBonus = +this.value;
+              document.getElementById('talksBonusDisplay').textContent = '₹' + this.value + 'M';
+            }
+            refreshTalksUI('${p.id}');
+          ">
         </div>
       </div>
 
@@ -5383,8 +6639,11 @@ function finalizeTransferNegotiation(pid) {
   const c = S.clubs.find(x => x.name === S.selectedClub);
   if (!p || !c) return;
 
-  if (c.cash < activeTalksState.fee) {
-    return alert(`Insufficient treasury funds! Club has ₹${money(c.cash)}M, but transfer fee requires ₹${money(activeTalksState.fee)}M.`);
+  const isPreContract = activeTalksState.dealType === 'pre_contract';
+  const actualFee = isPreContract ? 0 : activeTalksState.fee;
+
+  if (c.cash < actualFee) {
+    return alert(`Insufficient treasury funds! Club has ₹${money(c.cash)}M, but transfer fee requires ₹${money(actualFee)}M.`);
   }
 
   const actionBox = document.getElementById('talksActionBox');
@@ -5400,13 +6659,16 @@ function finalizeTransferNegotiation(pid) {
     club: S.selectedClub,
     playerId: pid,
     offer: {
-      fee: activeTalksState.fee,
+      fee: actualFee,
       salary: activeTalksState.salary,
       years: activeTalksState.years,
       dealType: activeTalksState.dealType,
       releaseClause: activeTalksState.releaseClause,
       sellOnClause: activeTalksState.sellOnClause,
-      bonusAddons: activeTalksState.bonusAddons
+      sellOnPct: activeTalksState.sellOnClause,
+      goalBonus: activeTalksState.goalBonus || 0,
+      cleanSheetBonus: activeTalksState.cleanSheetBonus || 0,
+      isPreContract: isPreContract
     }
   })).then(res => {
     const data = res.result;
@@ -5585,6 +6847,24 @@ function loanPlayer(pid) {
     playSfx('deal');
     triggerLiveBudgetUpdate(`🤝 Loan Deal Active: ${p?.name || 'Player'} (-₹2M fee)`, 'transfer');
     alert('Player successfully signed on a 1-year loan deal!');
+    refresh();
+  }).catch(err => alert(err.message));
+}
+
+function exerciseLoanBuyoutAction(pid) {
+  const p = S.market.find(x => x.id === pid);
+  if (!p) return;
+  const buyoutPrice = p.contract?.purchaseOption || Math.round(p.askingPrice || 10);
+  if (!confirm(`Exercise permanent purchase option for ${p.name} for ₹${buyoutPrice}M? This will permanently secure him on a 3-year contract.`)) return;
+
+  post('/api/world4/transfer/exercise-buyout', ref({
+    club: S.selectedClub,
+    playerId: pid
+  })).then(res => {
+    if (res.state) S = res.state;
+    playSfx('deal');
+    playSfx('applause');
+    alert(`⭐ PERMANENT SIGNING COMPLETED!\n\n${res.result?.message || 'Player buyout exercised.'}`);
     refresh();
   }).catch(err => alert(err.message));
 }
@@ -8530,6 +9810,736 @@ function simulateTournamentRoundUI() {
     playSfx('deal');
     renderGame();
     switchTab('tournament');
+  }).catch(err => alert(err.message));
+}
+
+// =============================================================
+// COMPETITION 1: UEFA CHAMPIONS LEAGUE (UCL)
+// =============================================================
+function renderUclTournament(container) {
+  let u = S.uclTournament;
+  if (!u) {
+    get('/api/world4/ucl').then(data => {
+      if (data.ucl) {
+        S.uclTournament = data.ucl;
+        renderUclTournament(container);
+      }
+    });
+    container.innerHTML = `<div class="game-card" style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:var(--text-muted);margin-top:12px;">Convening UEFA Champions League Draw...</p></div>`;
+    return;
+  }
+
+  const myClub = S.clubs.find(x => x.name === S.selectedClub);
+  const isCompleted = u.status === 'completed';
+  const statusLabel = u.status === 'league_phase' ? `League Phase · Round ${u.currentRound} of ${u.maxRounds}`
+    : u.status === 'quarter_finals' ? 'Quarter-Finals (Round of 8)'
+    : u.status === 'semi_finals' ? 'Semi-Finals (Final 4)'
+    : u.status === 'final' ? '⭐ GRAND FINAL SHOWDOWN'
+    : '👑 TOURNAMENT COMPLETED';
+
+  container.innerHTML = `
+    <div class="game-card" style="background:linear-gradient(180deg, rgba(10,25,50,0.95) 0%, rgba(5,12,25,0.98) 100%);border:1px solid rgba(56, 189, 248, 0.4);box-shadow:0 12px 40px rgba(10,25,50,0.5);">
+      <!-- UCL Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:14px;border-bottom:1px solid rgba(56,189,248,0.2);padding-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:52px;height:52px;border-radius:50%;background:radial-gradient(circle, #38bdf8 0%, #0369a1 70%, #082f49 100%);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 25px rgba(56,189,248,0.5);border:2px solid #fff;">
+            ⭐
+          </div>
+          <div>
+            <div class="card-kicker" style="color:#38bdf8;letter-spacing:2px;font-size:11px;">OFFICIAL EUROPEAN PRESTIGE · SEASON ${u.season}</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:10px;">
+              UEFA Champions League
+              <span class="pill" style="background:${isCompleted ? '#22c55e' : '#38bdf8'};color:#0a0f18;font-weight:900;font-size:11px;">
+                ${statusLabel}
+              </span>
+            </h2>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          ${!isCompleted ? `
+            <button class="btn btn-primary" id="btnSimUcl" onclick="simulateUclRoundUI()" style="background:linear-gradient(90deg, #38bdf8, #2563eb);font-weight:900;padding:10px 22px;border:none;box-shadow:0 0 20px rgba(56,189,248,0.4);">
+              ⚡ SIMULATE ${u.status === 'league_phase' ? `LEAGUE MATCHDAY ${u.currentRound}` : 'KNOCKOUT ROUND'}
+            </button>
+          ` : `
+            <span class="pill" style="background:rgba(34,197,94,0.2);color:#4ade80;font-weight:900;padding:8px 16px;border:1px solid #22c55e;">
+              🏆 WINNER: ${esc(u.champion)} (₹85.0M)
+            </span>
+          `}
+        </div>
+      </div>
+
+      <!-- Champion Announcement if completed -->
+      ${u.champion ? `
+        <div style="background:radial-gradient(ellipse at center, rgba(56,189,248,0.25) 0%, rgba(10,25,50,0.9) 75%);border:2px solid #38bdf8;border-radius:16px;padding:22px;margin-bottom:24px;text-align:center;box-shadow:0 0 35px rgba(56,189,248,0.3);">
+          <div style="font-size:48px;margin-bottom:6px;">⭐ 🏆 ⭐</div>
+          <div style="font-size:12px;font-weight:900;color:#38bdf8;letter-spacing:2px;text-transform:uppercase;">
+            UEFA CHAMPIONS LEAGUE WINNERS
+          </div>
+          <h3 style="font-family:var(--font-display);font-size:32px;font-weight:900;color:#fff;margin:6px 0;">
+            ${esc(u.champion)}
+          </h3>
+          <p style="font-size:14px;color:var(--accent-gold);font-weight:700;margin:0;">
+            Lifted the European Cup + ₹85.0M Grand Prize Purse! Runner-up: ${esc(u.runnerUp)} (+₹40.0M).
+          </p>
+        </div>
+      ` : ''}
+
+      <!-- 1. SEPARATE UCL STANDINGS TABLE -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(56,189,248,0.25);border-radius:14px;padding:16px;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <b style="color:#38bdf8;font-size:14px;font-family:var(--font-display);letter-spacing:1px;">
+              ⭐ UCL LEAGUE PHASE STANDINGS (16 CLUBS)
+            </b>
+            <div style="font-size:12px;color:var(--text-muted);">
+              Top 8 advance to the UCL Knockout Quarter-Finals · Bottom 8 are eliminated
+            </div>
+          </div>
+          <span class="pill" style="background:rgba(56,189,248,0.15);color:#38bdf8;border:1px solid rgba(56,189,248,0.3);font-size:11px;">
+            Matchday ${Math.min(u.maxRounds, u.currentRound)} of ${u.maxRounds}
+          </span>
+        </div>
+
+        <div style="overflow-x:auto;">
+          <table class="roster-table" style="font-size:12.5px;">
+            <thead>
+              <tr>
+                <th style="width:36px;">#</th>
+                <th>Club &amp; Nation</th>
+                <th style="width:36px;">P</th>
+                <th style="width:36px;">W</th>
+                <th style="width:36px;">D</th>
+                <th style="width:36px;">L</th>
+                <th style="width:40px;">GF</th>
+                <th style="width:40px;">GA</th>
+                <th style="width:40px;">GD</th>
+                <th>Form</th>
+                <th style="width:44px;color:#38bdf8;font-size:13px;">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${(u.standings || []).map((row, idx) => {
+                const isUser = row.clubName === myClub?.name;
+                const isQualified = idx < 8;
+                return `
+                  <tr style="${isUser ? 'background:rgba(56,189,248,0.18);border:1px solid #38bdf8;' : ''}${idx === 7 ? 'border-bottom:2px dashed rgba(56,189,248,0.5);' : ''}">
+                    <td>
+                      <b style="color:${isQualified ? '#38bdf8' : 'var(--text-dim)'};">${idx + 1}</b>
+                    </td>
+                    <td>
+                      <div style="display:flex;align-items:center;gap:8px;">
+                        <span style="font-size:11px;color:${isQualified ? '#22c55e' : '#ef4444'};">
+                          ${isQualified ? '⭐' : '•'}
+                        </span>
+                        <b style="color:${isUser ? '#38bdf8' : '#fff'};font-size:13px;">${esc(row.clubName)}</b>
+                        <span style="font-size:10.5px;color:var(--text-dim);">${esc(row.country || '')}</span>
+                        ${isUser ? '<span class="pill pill-season" style="font-size:9px;padding:1px 5px;">YOU</span>' : ''}
+                      </div>
+                    </td>
+                    <td>${row.played}</td>
+                    <td>${row.won}</td>
+                    <td>${row.drawn}</td>
+                    <td>${row.lost}</td>
+                    <td>${row.gf}</td>
+                    <td>${row.ga}</td>
+                    <td style="color:${row.gd > 0 ? '#22c55e' : row.gd < 0 ? '#ef4444' : 'inherit'};font-weight:700;">
+                      ${row.gd > 0 ? '+' : ''}${row.gd}
+                    </td>
+                    <td>
+                      <div style="display:flex;gap:3px;">
+                        ${(row.form || []).map(f => `
+                          <span style="width:16px;height:16px;border-radius:3px;font-size:9px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;background:${f === 'W' ? '#22c55e' : f === 'D' ? '#eab308' : '#ef4444'};color:#000;">
+                            ${f}
+                          </span>
+                        `).join('')}
+                      </div>
+                    </td>
+                    <td><b style="font-family:var(--font-display);font-size:15px;color:#38bdf8;">${row.points}</b></td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 2. SEPARATE UCL KNOCKOUT BRACKET -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(56,189,248,0.25);border-radius:14px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <b style="color:#38bdf8;font-size:14px;font-family:var(--font-display);letter-spacing:1px;">
+            ⭐ UCL KNOCKOUT TOURNAMENT BRACKET
+          </b>
+          <span style="font-size:11px;color:var(--text-muted);">Quarter-Finals &rarr; Semi-Finals &rarr; Grand Final</span>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px;">
+          <!-- Quarter Finals -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#38bdf8;margin-bottom:8px;">QUARTER-FINALS</div>
+            <div style="display:flex;flex-direction:column;gap:8px;">
+              ${(u.knockout?.quarterFinals || []).length ? u.knockout.quarterFinals.map(qf => `
+                <div style="background:rgba(10,25,50,0.7);border:1px solid ${qf.played ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.06)'};border-radius:8px;padding:8px 10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;color:${qf.winner === qf.home ? '#38bdf8' : '#fff'};font-weight:${qf.winner === qf.home ? '800' : '500'};">
+                    <span>${esc(qf.home)}</span>
+                    <b>${qf.played ? qf.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${qf.winner === qf.away ? '#38bdf8' : '#fff'};font-weight:${qf.winner === qf.away ? '800' : '500'};margin-top:4px;">
+                    <span>${esc(qf.away)}</span>
+                    <b>${qf.played ? qf.awayGoals : '-'}</b>
+                  </div>
+                  ${qf.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:2px;">(${qf.penalties.home}-${qf.penalties.away} pens)</div>` : ''}
+                </div>
+              `).join('') : '<div style="color:var(--text-dim);font-size:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;">Awaiting League Phase completion (MD4)...</div>'}
+            </div>
+          </div>
+
+          <!-- Semi Finals -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:#38bdf8;margin-bottom:8px;">SEMI-FINALS</div>
+            <div style="display:flex;flex-direction:column;gap:14px;justify-content:center;height:85%;">
+              ${(u.knockout?.semiFinals || []).length ? u.knockout.semiFinals.map(sf => `
+                <div style="background:rgba(10,25,50,0.7);border:1px solid ${sf.played ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.06)'};border-radius:8px;padding:10px;font-size:12px;">
+                  <div style="display:flex;justify-content:space-between;color:${sf.winner === sf.home ? '#38bdf8' : '#fff'};font-weight:${sf.winner === sf.home ? '800' : '500'};">
+                    <span>${esc(sf.home)}</span>
+                    <b>${sf.played ? sf.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${sf.winner === sf.away ? '#38bdf8' : '#fff'};font-weight:${sf.winner === sf.away ? '800' : '500'};margin-top:6px;">
+                    <span>${esc(sf.away)}</span>
+                    <b>${sf.played ? sf.awayGoals : '-'}</b>
+                  </div>
+                  ${sf.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:2px;">(${sf.penalties.home}-${sf.penalties.away} pens)</div>` : ''}
+                </div>
+              `).join('') : '<div style="color:var(--text-dim);font-size:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;">Awaiting QF winners...</div>'}
+            </div>
+          </div>
+
+          <!-- Grand Final -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--accent-gold);margin-bottom:8px;">⭐ UCL GRAND FINAL</div>
+            <div style="display:flex;align-items:center;height:85%;">
+              ${u.knockout?.final ? `
+                <div style="background:radial-gradient(ellipse at top, rgba(56,189,248,0.2), rgba(0,0,0,0.7));border:2px solid #38bdf8;border-radius:10px;padding:14px;font-size:12.5px;width:100%;box-shadow:0 0 25px rgba(56,189,248,0.3);">
+                  <div style="display:flex;justify-content:space-between;color:${u.knockout.final.winner === u.knockout.final.home ? 'var(--accent-gold)' : '#fff'};font-weight:${u.knockout.final.winner === u.knockout.final.home ? '900' : '600'};">
+                    <span>${esc(u.knockout.final.home)}</span>
+                    <b>${u.knockout.final.played ? u.knockout.final.homeGoals : '-'}</b>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;color:${u.knockout.final.winner === u.knockout.final.away ? 'var(--accent-gold)' : '#fff'};font-weight:${u.knockout.final.winner === u.knockout.final.away ? '900' : '600'};margin-top:8px;">
+                    <span>${esc(u.knockout.final.away)}</span>
+                    <b>${u.knockout.final.played ? u.knockout.final.awayGoals : '-'}</b>
+                  </div>
+                  ${u.knockout.final.penalties ? `<div style="font-size:10px;color:var(--accent-gold);text-align:right;margin-top:4px;">(${u.knockout.final.penalties.home}-${u.knockout.final.penalties.away} pens)</div>` : ''}
+                  ${u.champion ? `<div style="text-align:center;margin-top:10px;color:var(--accent-gold);font-weight:900;font-size:12px;">👑 ${esc(u.champion)} CHAMPIONS!</div>` : ''}
+                </div>
+              ` : '<div style="color:var(--text-dim);font-size:12px;padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;">Awaiting Semi-Final winners...</div>'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function simulateUclRoundUI() {
+  const btn = document.getElementById('btnSimUcl');
+  if (btn) btn.disabled = true;
+  post('/api/world4/ucl/simulate', ref({})).then(data => {
+    if (btn) btn.disabled = false;
+    if (data.error) return alert(data.error);
+    if (data.ucl) S.uclTournament = data.ucl;
+    playSfx('deal');
+    renderCompetitionsSection(document.getElementById('gameContent'));
+  }).catch(err => {
+    if (btn) btn.disabled = false;
+    alert(err.message);
+  });
+}
+
+// =============================================================
+// COMPETITION 2: EUROPA CHALLENGERS LEAGUE
+// =============================================================
+function renderEuropaTournament(container) {
+  let e = S.europaTournament;
+  if (!e) {
+    get('/api/world4/europa').then(data => {
+      if (data.europa) {
+        S.europaTournament = data.europa;
+        renderEuropaTournament(container);
+      }
+    });
+    container.innerHTML = `<div class="game-card" style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:var(--text-muted);margin-top:12px;">Drawing Europa Challengers League...</p></div>`;
+    return;
+  }
+
+  const myClub = S.clubs.find(x => x.name === S.selectedClub);
+  const isCompleted = e.status === 'completed';
+
+  container.innerHTML = `
+    <div class="game-card" style="background:linear-gradient(180deg, rgba(40,25,10,0.95) 0%, rgba(15,10,5,0.98) 100%);border:1px solid rgba(245,158,11,0.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:14px;border-bottom:1px solid rgba(245,158,11,0.2);padding-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg, #f59e0b, #d97706);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 25px rgba(245,158,11,0.4);">
+            🥈
+          </div>
+          <div>
+            <div class="card-kicker" style="color:var(--accent-gold);">CONTINENTAL SILVERWARE · SEASON ${e.season}</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:10px;">
+              Europa Challengers League
+              <span class="pill" style="background:${isCompleted ? '#22c55e' : 'var(--accent-gold)'};color:#0a0f18;font-weight:900;font-size:11px;">
+                ${e.status.toUpperCase()}
+              </span>
+            </h2>
+          </div>
+        </div>
+
+        <div>
+          ${!isCompleted ? `
+            <button class="btn btn-primary" onclick="simulateEuropaRoundUI()" style="background:linear-gradient(90deg, #f59e0b, #ea580c);font-weight:900;padding:10px 22px;border:none;">
+              ⚡ SIMULATE ${e.status === 'groups' ? `GROUP MATCHDAY ${e.currentRound}` : 'KNOCKOUT ROUND'}
+            </button>
+          ` : `
+            <span class="pill" style="background:rgba(34,197,94,0.2);color:#4ade80;font-weight:900;padding:8px 16px;">
+              🏆 WINNER: ${esc(e.champion)} (₹35.0M)
+            </span>
+          `}
+        </div>
+      </div>
+
+      <!-- Group Tables: Group A & B -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;">
+        ${['A', 'B'].map(gKey => {
+          const g = e.groups?.[gKey] || [];
+          return `
+            <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:14px;">
+              <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                <b style="color:var(--accent-gold);font-family:var(--font-display);">GROUP ${gKey}</b>
+                <span style="font-size:11px;color:var(--text-muted);">Top 2 Advance</span>
+              </div>
+              <table class="roster-table" style="font-size:12px;">
+                <thead>
+                  <tr>
+                    <th>Club</th>
+                    <th style="width:30px;">P</th>
+                    <th style="width:30px;">W</th>
+                    <th style="width:30px;">D</th>
+                    <th style="width:30px;">L</th>
+                    <th style="width:35px;">GD</th>
+                    <th style="width:35px;color:var(--accent-gold);">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${g.map((row, idx) => `
+                    <tr style="${row.clubName === myClub?.name ? 'background:rgba(245,158,11,0.15);' : ''}">
+                      <td>
+                        <span style="color:${idx < 2 ? '#22c55e' : 'var(--text-dim)'};font-weight:800;margin-right:4px;">${idx + 1}</span>
+                        <b style="color:${row.clubName === myClub?.name ? 'var(--accent-gold)' : '#fff'};">${esc(row.clubName)}</b>
+                      </td>
+                      <td>${row.played}</td>
+                      <td>${row.won}</td>
+                      <td>${row.drawn}</td>
+                      <td>${row.lost}</td>
+                      <td>${row.gd}</td>
+                      <td><b style="color:var(--accent-gold);">${row.points}</b></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <!-- Knockout Section -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(245,158,11,0.25);border-radius:12px;padding:16px;">
+        <div style="font-size:12px;font-weight:800;color:var(--accent-gold);margin-bottom:12px;">EUROPA KNOCKOUT FINALS</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div>
+            <div style="font-size:11px;color:var(--text-muted);font-weight:800;margin-bottom:6px;">SEMI-FINALS</div>
+            ${(e.knockout?.semiFinals || []).map(sf => `
+              <div style="background:rgba(0,0,0,0.4);padding:8px 10px;border-radius:8px;font-size:12px;margin-bottom:6px;border:1px solid rgba(255,255,255,0.06);">
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.home?'var(--accent-gold)':'#fff'};">
+                  <span>${esc(sf.home)}</span><b>${sf.played?sf.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.away?'var(--accent-gold)':'#fff'};margin-top:3px;">
+                  <span>${esc(sf.away)}</span><b>${sf.played?sf.awayGoals:'-'}</b>
+                </div>
+              </div>
+            `).join('') || '<div style="font-size:11.5px;color:var(--text-dim);">Awaiting group stage completion...</div>'}
+          </div>
+
+          <div>
+            <div style="font-size:11px;color:var(--accent-gold);font-weight:800;margin-bottom:6px;">🥈 EUROPA GRAND FINAL</div>
+            ${e.knockout?.final ? `
+              <div style="background:rgba(0,0,0,0.4);padding:12px;border-radius:8px;font-size:12.5px;border:1px solid var(--accent-gold);">
+                <div style="display:flex;justify-content:space-between;color:${e.knockout.final.winner===e.knockout.final.home?'var(--accent-gold)':'#fff'};font-weight:700;">
+                  <span>${esc(e.knockout.final.home)}</span><b>${e.knockout.final.played?e.knockout.final.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${e.knockout.final.winner===e.knockout.final.away?'var(--accent-gold)':'#fff'};margin-top:6px;font-weight:700;">
+                  <span>${esc(e.knockout.final.away)}</span><b>${e.knockout.final.played?e.knockout.final.awayGoals:'-'}</b>
+                </div>
+                ${e.champion ? `<div style="text-align:center;color:var(--accent-gold);font-weight:900;margin-top:8px;">👑 ${esc(e.champion)} EUROPA CHAMPIONS!</div>` : ''}
+              </div>
+            ` : '<div style="font-size:11.5px;color:var(--text-dim);">Awaiting Semi-Final winners...</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function simulateEuropaRoundUI() {
+  post('/api/world4/europa/simulate', ref({})).then(data => {
+    if (data.error) return alert(data.error);
+    if (data.europa) S.europaTournament = data.europa;
+    playSfx('deal');
+    renderCompetitionsSection(document.getElementById('gameContent'));
+  }).catch(err => alert(err.message));
+}
+
+// =============================================================
+// COMPETITION 3: DOMESTIC NATIONAL FA CUP
+// =============================================================
+function renderDomesticCup(container) {
+  let cup = S.domesticCup;
+  if (!cup) {
+    get('/api/world4/cup').then(data => {
+      if (data.cup) {
+        S.domesticCup = data.cup;
+        renderDomesticCup(container);
+      }
+    });
+    container.innerHTML = `<div class="game-card" style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:var(--text-muted);margin-top:12px;">Conducting National FA Cup Draw...</p></div>`;
+    return;
+  }
+
+  const isCompleted = cup.status === 'completed';
+
+  container.innerHTML = `
+    <div class="game-card" style="background:linear-gradient(180deg, rgba(20,35,25,0.95) 0%, rgba(10,20,15,0.98) 100%);border:1px solid rgba(34,197,94,0.4);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:14px;border-bottom:1px solid rgba(34,197,94,0.2);padding-bottom:16px;">
+        <div style="display:flex;align-items:center;gap:14px;">
+          <div style="width:50px;height:50px;border-radius:14px;background:linear-gradient(135deg, #22c55e, #15803d);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 25px rgba(34,197,94,0.4);">
+            🏆
+          </div>
+          <div>
+            <div class="card-kicker" style="color:#4ade80;">OPEN DOMESTIC KNOCKOUT · ALL 4 TIERS</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:10px;">
+              ${esc(cup.name)}
+              <span class="pill" style="background:${isCompleted ? '#22c55e' : '#4ade80'};color:#0a0f18;font-weight:900;font-size:11px;">
+                ${cup.status.toUpperCase()}
+              </span>
+            </h2>
+          </div>
+        </div>
+
+        <div>
+          ${!isCompleted ? `
+            <button class="btn btn-primary" onclick="simulateDomesticCupRoundUI()" style="background:linear-gradient(90deg, #22c55e, #16a34a);font-weight:900;padding:10px 22px;border:none;">
+              ⚽ PLAY ${cup.status.toUpperCase()} FIXTURES
+            </button>
+          ` : `
+            <span class="pill" style="background:rgba(34,197,94,0.2);color:#4ade80;font-weight:900;padding:8px 16px;">
+              🏆 WINNER: ${esc(cup.champion)} (₹22.0M)
+            </span>
+          `}
+        </div>
+      </div>
+
+      <!-- Full 16-Team Bracket View -->
+      <div style="display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:14px;">
+        <!-- Round of 16 -->
+        <div>
+          <div style="font-size:11px;font-weight:800;color:#4ade80;margin-bottom:8px;">ROUND OF 16 (8 TIES)</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            ${(cup.bracket?.roundOf16 || []).map(tie => `
+              <div style="background:rgba(0,0,0,0.4);border:1px solid ${tie.played ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)'};border-radius:6px;padding:6px 8px;font-size:11px;">
+                <div style="display:flex;justify-content:space-between;color:${tie.winner===tie.home?'#4ade80':'#fff'};font-weight:${tie.winner===tie.home?'800':'500'};">
+                  <span>${esc(tie.home)} <small style="color:var(--text-dim);">(D${tie.homeDiv})</small></span>
+                  <b>${tie.played?tie.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${tie.winner===tie.away?'#4ade80':'#fff'};font-weight:${tie.winner===tie.away?'800':'500'};margin-top:2px;">
+                  <span>${esc(tie.away)} <small style="color:var(--text-dim);">(D${tie.awayDiv})</small></span>
+                  <b>${tie.played?tie.awayGoals:'-'}</b>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Quarter Finals -->
+        <div>
+          <div style="font-size:11px;font-weight:800;color:#4ade80;margin-bottom:8px;">QUARTER-FINALS</div>
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            ${(cup.bracket?.quarterFinals || []).map(qf => `
+              <div style="background:rgba(0,0,0,0.4);border:1px solid ${qf.played ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)'};border-radius:6px;padding:8px;font-size:11.5px;">
+                <div style="display:flex;justify-content:space-between;color:${qf.winner===qf.home?'#4ade80':'#fff'};">
+                  <span>${esc(qf.home)}</span><b>${qf.played?qf.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${qf.winner===qf.away?'#4ade80':'#fff'};margin-top:3px;">
+                  <span>${esc(qf.away)}</span><b>${qf.played?qf.awayGoals:'-'}</b>
+                </div>
+              </div>
+            `).join('') || '<div style="font-size:11px;color:var(--text-dim);">Awaiting R16...</div>'}
+          </div>
+        </div>
+
+        <!-- Semi Finals -->
+        <div>
+          <div style="font-size:11px;font-weight:800;color:#4ade80;margin-bottom:8px;">SEMI-FINALS</div>
+          <div style="display:flex;flex-direction:column;gap:14px;justify-content:center;height:85%;">
+            ${(cup.bracket?.semiFinals || []).map(sf => `
+              <div style="background:rgba(0,0,0,0.4);border:1px solid ${sf.played ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.06)'};border-radius:6px;padding:10px;font-size:12px;">
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.home?'#4ade80':'#fff'};">
+                  <span>${esc(sf.home)}</span><b>${sf.played?sf.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.away?'#4ade80':'#fff'};margin-top:4px;">
+                  <span>${esc(sf.away)}</span><b>${sf.played?sf.awayGoals:'-'}</b>
+                </div>
+              </div>
+            `).join('') || '<div style="font-size:11px;color:var(--text-dim);">Awaiting QF...</div>'}
+          </div>
+        </div>
+
+        <!-- Cup Final -->
+        <div>
+          <div style="font-size:11px;font-weight:800;color:var(--accent-gold);margin-bottom:8px;">🏆 GRAND FA CUP FINAL</div>
+          <div style="display:flex;align-items:center;height:85%;">
+            ${cup.bracket?.final ? `
+              <div style="background:radial-gradient(ellipse at top, rgba(34,197,94,0.25), rgba(0,0,0,0.7));border:2px solid var(--accent-gold);border-radius:10px;padding:14px;font-size:12.5px;width:100%;">
+                <div style="display:flex;justify-content:space-between;color:${cup.bracket.final.winner===cup.bracket.final.home?'var(--accent-gold)':'#fff'};font-weight:800;">
+                  <span>${esc(cup.bracket.final.home)}</span><b>${cup.bracket.final.played?cup.bracket.final.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${cup.bracket.final.winner===cup.bracket.final.away?'var(--accent-gold)':'#fff'};margin-top:8px;font-weight:800;">
+                  <span>${esc(cup.bracket.final.away)}</span><b>${cup.bracket.final.played?cup.bracket.final.awayGoals:'-'}</b>
+                </div>
+                ${cup.champion ? `<div style="text-align:center;color:var(--accent-gold);font-weight:900;margin-top:10px;">👑 ${esc(cup.champion)} FA CUP CHAMPIONS!</div>` : ''}
+              </div>
+            ` : '<div style="font-size:11px;color:var(--text-dim);">Awaiting Semi-Final winners...</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function simulateDomesticCupRoundUI() {
+  post('/api/world4/cup/simulate', ref({})).then(data => {
+    if (data.error) return alert(data.error);
+    if (data.cup) S.domesticCup = data.cup;
+    playSfx('deal');
+    renderCompetitionsSection(document.getElementById('gameContent'));
+  }).catch(err => alert(err.message));
+}
+
+// =============================================================
+// COMPETITION 4: PROMOTION / RELEGATION PLAYOFF BRACKETS
+// =============================================================
+let activePlayoffTier = 2; // 2 for Div 2 promotion, 3 for Div 3 promotion
+
+function renderPlayoffs(container) {
+  let p = S.playoffs;
+  if (!p) {
+    get('/api/world4/playoffs').then(data => {
+      if (data.playoffs) {
+        S.playoffs = data.playoffs;
+        renderPlayoffs(container);
+      }
+    });
+    container.innerHTML = `<div class="game-card" style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:var(--text-muted);margin-top:12px;">Seeding Promotion Playoff Brackets...</p></div>`;
+    return;
+  }
+
+  const activeBracket = activePlayoffTier === 2 ? p.d2 : p.d3;
+  const isFinished = activeBracket.status === 'completed';
+
+  container.innerHTML = `
+    <div class="game-card" style="background:linear-gradient(180deg, rgba(30,20,40,0.95) 0%, rgba(10,5,15,0.98) 100%);border:1px solid rgba(168,85,247,0.4);">
+      <!-- Tier Selector Pills -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px;">
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm ${activePlayoffTier === 2 ? 'btn-primary' : 'btn-secondary'}" onclick="activePlayoffTier=2; renderPlayoffs(document.getElementById('gameContent'))">
+            ⚔️ DIVISION 2 &rarr; DIV 1 PROMOTION PLAYOFF (₹15M)
+          </button>
+          <button class="btn btn-sm ${activePlayoffTier === 3 ? 'btn-primary' : 'btn-secondary'}" onclick="activePlayoffTier=3; renderPlayoffs(document.getElementById('gameContent'))">
+            ⚔️ DIVISION 3 &rarr; DIV 2 PROMOTION PLAYOFF (₹8M)
+          </button>
+        </div>
+
+        <div>
+          ${!isFinished ? `
+            <button class="btn btn-primary btn-sm" onclick="simulatePlayoffsRoundUI(${activePlayoffTier})" style="background:linear-gradient(90deg, #a855f7, #ec4899);font-weight:900;padding:8px 18px;">
+              ⚡ SIMULATE ${activeBracket.status.toUpperCase()}
+            </button>
+          ` : `
+            <span class="pill" style="background:#22c55e25;color:#4ade80;font-weight:900;border:1px solid #22c55e;">
+              ⬆️ PROMOTED: ${esc(activeBracket.winner)}
+            </span>
+          `}
+        </div>
+      </div>
+
+      <!-- Bracket Details -->
+      <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:16px;border:1px solid rgba(168,85,247,0.25);">
+        <div style="font-size:12px;font-weight:800;color:#c084fc;margin-bottom:12px;">
+          ${esc(activeBracket.name)} · 4 CONTENDERS (3rd, 4th, 5th, 6th)
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+          <!-- Semi-Finals -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--text-muted);margin-bottom:8px;">SEMI-FINALS (2 TIES)</div>
+            ${(activeBracket.semiFinals || []).map(sf => `
+              <div style="background:rgba(0,0,0,0.4);border:1px solid ${sf.played ? 'rgba(168,85,247,0.4)' : 'rgba(255,255,255,0.06)'};border-radius:8px;padding:10px;margin-bottom:8px;">
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.home?'#c084fc':'#fff'};font-weight:${sf.winner===sf.home?'800':'500'};">
+                  <span>${esc(sf.home)}</span><b>${sf.played?sf.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${sf.winner===sf.away?'#c084fc':'#fff'};font-weight:${sf.winner===sf.away?'800':'500'};margin-top:4px;">
+                  <span>${esc(sf.away)}</span><b>${sf.played?sf.awayGoals:'-'}</b>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+
+          <!-- Final -->
+          <div>
+            <div style="font-size:11px;font-weight:800;color:var(--accent-gold);margin-bottom:8px;">🏆 THE ₹100M PROMOTION FINAL</div>
+            ${activeBracket.final ? `
+              <div style="background:radial-gradient(ellipse at top, rgba(168,85,247,0.25), rgba(0,0,0,0.7));border:2px solid #a855f7;border-radius:10px;padding:14px;">
+                <div style="display:flex;justify-content:space-between;color:${activeBracket.final.winner===activeBracket.final.home?'var(--accent-gold)':'#fff'};font-weight:800;">
+                  <span>${esc(activeBracket.final.home)}</span><b>${activeBracket.final.played?activeBracket.final.homeGoals:'-'}</b>
+                </div>
+                <div style="display:flex;justify-content:space-between;color:${activeBracket.final.winner===activeBracket.final.away?'var(--accent-gold)':'#fff'};margin-top:6px;font-weight:800;">
+                  <span>${esc(activeBracket.final.away)}</span><b>${activeBracket.final.played?activeBracket.final.awayGoals:'-'}</b>
+                </div>
+                ${activeBracket.winner ? `
+                  <div style="margin-top:12px;padding:10px;background:rgba(34,197,94,0.15);border:1px solid #22c55e;border-radius:6px;text-align:center;color:#4ade80;font-weight:900;">
+                    🎉 ${esc(activeBracket.winner)} ARE PROMOTED TO DIVISION ${activeBracket.targetDivision}!
+                  </div>
+                ` : ''}
+              </div>
+            ` : '<div style="font-size:12px;color:var(--text-dim);padding:14px;background:rgba(0,0,0,0.2);border-radius:8px;">Awaiting Semi-Final winners...</div>'}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function simulatePlayoffsRoundUI(tier) {
+  post('/api/world4/playoffs/simulate', ref({ targetTier: tier })).then(data => {
+    if (data.error) return alert(data.error);
+    if (data.playoffs) S.playoffs = data.playoffs;
+    playSfx('deal');
+    renderCompetitionsSection(document.getElementById('gameContent'));
+  }).catch(err => alert(err.message));
+}
+
+// =============================================================
+// FEATURE: DEADLINE DAY LIVE TRANSFER CLOCK & TICKER
+// =============================================================
+function renderDeadlineDayWarRoom(container) {
+  let dd = S.deadlineDay;
+  if (!dd) {
+    get('/api/world4/deadline-day').then(data => {
+      S.deadlineDay = data;
+      renderDeadlineDayWarRoom(container);
+    });
+    container.innerHTML = `<div class="game-card" style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="color:var(--text-muted);margin-top:12px;">Syncing Transfer Deadline Clock...</p></div>`;
+    return;
+  }
+
+  const hoursRemaining = dd.hoursLeft;
+  const timeStr = `${String(hoursRemaining).padStart(2, '0')}:00:00`;
+
+  container.innerHTML = `
+    <div class="game-card" style="background:linear-gradient(180deg, rgba(40,10,15,0.95) 0%, rgba(15,5,8,0.98) 100%);border:2px solid #ef4444;box-shadow:0 0 35px rgba(239,68,68,0.3);">
+      <!-- Countdown Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:14px;">
+        <div>
+          <div class="card-kicker" style="color:#ef4444;font-size:11px;letter-spacing:2px;">LIVE INTERNATIONAL DEADLINE DAY</div>
+          <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+            Transfer Window Countdown War Room
+          </h2>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:12px;">
+          <!-- Digital Clock Display -->
+          <div style="font-family:'Courier New', monospace;font-size:28px;font-weight:900;color:#ef4444;background:#000;padding:6px 16px;border-radius:8px;border:1px solid #ef4444;text-shadow:0 0 10px #ef4444;letter-spacing:2px;">
+            ${timeStr}
+          </div>
+          <button class="btn btn-primary" onclick="advanceDeadlineHourUI()" style="background:linear-gradient(90deg, #ef4444, #f97316);font-weight:900;padding:10px 18px;border:none;">
+            ⏩ ADVANCE 1 HOUR
+          </button>
+        </div>
+      </div>
+
+      <!-- Live Rumor Mill Ticker -->
+      <div style="background:rgba(0,0,0,0.4);border:1px solid rgba(239,68,68,0.3);border-radius:12px;padding:16px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;box-shadow:0 0 8px #ef4444;animation:pulse 1.2s infinite;"></span>
+          <b style="font-size:12px;color:#fca5a5;text-transform:uppercase;letter-spacing:1px;">LIVE DEADLINE DAY BREAKING WIRE</b>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;max-height:160px;overflow-y:auto;">
+          ${(dd.newsTicker || []).map(item => `
+            <div style="font-size:13px;color:#fff;display:flex;gap:10px;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+              <b style="color:#ef4444;font-family:monospace;">${esc(item.time)}</b>
+              <span>${esc(item.text)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Panic Buy Market Quick Access -->
+      <div style="background:rgba(0,0,0,0.3);border-radius:12px;padding:16px;border:1px solid rgba(255,255,255,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div>
+            <b style="color:#fff;font-size:14px;">⚡ Emergency Buzzer-Beater Signings</b>
+            <div style="font-size:11.5px;color:var(--text-muted);">
+              Instant deadline signings (+25% buyout fee premium guarantees agreement before midnight)
+            </div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fill, minmax(260px, 1fr));gap:12px;">
+          ${(S.market || []).filter(p => p.status === 'available' || !p.ownerClub || p.ownerClub === 'Free Agent').slice(0, 6).map(p => {
+            const buyout = Math.round((p.askingPrice || 8) * 1.25 * 10) / 10;
+            return `
+              <div style="background:rgba(0,0,0,0.35);padding:12px;border-radius:8px;border:1px solid rgba(239,68,68,0.25);display:flex;flex-direction:column;justify-content:space-between;">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <span class="pos-badge ${p.position === 'GK' ? 'gk' : ['CB','LB','RB'].includes(p.position) ? 'def' : ['CMF','DMF','AMF'].includes(p.position) ? 'mid' : 'att'}">${p.position}</span>
+                    <b style="color:var(--accent-gold);">${p.rating} OVR</b>
+                  </div>
+                  <h4 style="font-family:var(--font-display);font-size:15px;color:#fff;margin:6px 0 2px;">${esc(p.name)}</h4>
+                  <div style="font-size:11px;color:var(--text-muted);">${esc(p.ownerClub || 'Free Agent')}</div>
+                </div>
+                <button class="btn btn-danger btn-sm" onclick="executePanicBuyUI('${p.id}')" style="width:100%;margin-top:10px;font-weight:800;font-size:11px;">
+                  ⚡ PANIC SIGN (₹${buyout}M)
+                </button>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function advanceDeadlineHourUI() {
+  post('/api/world4/deadline-day/action', ref({ action: 'advance_hour' })).then(res => {
+    if (res.state) S.deadlineDay = res.state;
+    playSfx('whistle');
+    renderTransfersSection(document.getElementById('gameContent'));
+  }).catch(err => alert(err.message));
+}
+
+function executePanicBuyUI(playerId) {
+  post('/api/world4/deadline-day/action', ref({ action: 'panic_buy', playerId })).then(res => {
+    if (res.error) return alert(res.error);
+    playSfx('stamp');
+    playSfx('applause');
+    alert(`🚨 OFFICIAL DEADLINE SIGNING!\n\n${res.player?.name} signed for ₹${res.fee}M before the window shut!`);
+    refresh();
   }).catch(err => alert(err.message));
 }
 

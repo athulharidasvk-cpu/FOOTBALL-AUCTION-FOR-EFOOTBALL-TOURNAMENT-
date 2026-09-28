@@ -214,7 +214,7 @@ world.trainYouthAcademy = function(w, clubName, regime = 'balanced') {
 };
 
 // -------------------------------------------------------------
-// 3. TRANSFER NEGOTIATIONS WITH CLAUSES & LOAN-TO-BUY
+// 3. TRANSFER NEGOTIATIONS WITH CLAUSES, SELL-ON CUTS & LOAN-TO-BUY
 // -------------------------------------------------------------
 const baseNegotiate = world.negotiateTransfer;
 world.negotiateTransfer = function(w, buyerName, playerId, offer = {}) {
@@ -223,17 +223,38 @@ world.negotiateTransfer = function(w, buyerName, playerId, offer = {}) {
   if (!buyer || !p) return { error: 'Club or player not found.' };
 
   const dealType = offer.dealType || 'buy';
-  const releaseClause = Number(offer.releaseClause) || Math.round((offer.fee || p.askingPrice || 10) * 1.8);
-  const goalBonus = Number(offer.goalBonus) || 0;
-  const sellOnPct = Number(offer.sellOnPct) || 0;
+  const releaseClause = Number(offer.releaseClause) || Math.round((offer.fee || p.askingPrice || 10) * 2.0);
+  const goalBonus = Number(offer.goalBonus ?? offer.bonusAddons) || 0;
+  const cleanSheetBonus = Number(offer.cleanSheetBonus ?? offer.bonusAddons) || 0;
+  const sellOnPct = Math.min(50, Math.max(0, Number(offer.sellOnPct ?? offer.sellOnClause) || 0));
+  const seller = p.ownerClub ? w.clubs.find(x => x.name === p.ownerClub) : null;
 
-  // Loan to Buy handling: 20% upfront loan fee, player joins squad immediately
-  if (dealType === 'loan_to_buy') {
-    const loanFee = Math.max(0.5, Math.round((Number(offer.fee) || p.askingPrice || 5) * 0.2 * 10) / 10);
-    if (buyer.cash < loanFee) {
-      return { error: `Insufficient funds for loan fee! Required: ₹${loanFee}M. Club has ₹${Math.round(buyer.cash)}M.` };
+  // Helper to remit sell-on fee to original seller club if one exists
+  const processSellOnFee = (transferredFee) => {
+    if (p.contract && p.contract.sellOnPct > 0 && p.contract.originalSellerClub && seller) {
+      const sellOnCut = Math.round(transferredFee * (p.contract.sellOnPct / 100) * 10) / 10;
+      const origClub = w.clubs.find(c => c.name === p.contract.originalSellerClub);
+      if (origClub && sellOnCut > 0) {
+        origClub.cash = Math.round((origClub.cash + sellOnCut) * 10) / 10;
+        seller.cash = Math.max(0, Math.round((seller.cash - sellOnCut) * 10) / 10);
+        w.news.unshift({
+          id: `sellon_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+          season: w.season,
+          type: 'finance',
+          text: `💸 SELL-ON CUT: ${origClub.name} received a ₹${sellOnCut}M windfall (${p.contract.sellOnPct}%) from ${p.name}'s transfer to ${buyer.name}!`,
+          at: new Date().toISOString()
+        });
+      }
     }
-    const seller = p.ownerClub ? w.clubs.find(x => x.name === p.ownerClub) : null;
+  };
+
+  // Loan to Buy handling: 20% upfront loan fee, player joins squad immediately with option to buy
+  if (dealType === 'loan_to_buy') {
+    const purchaseOption = Number(offer.fee) || p.askingPrice || 10;
+    const loanFee = Math.max(0.5, Math.round(purchaseOption * 0.2 * 10) / 10);
+    if (buyer.cash < loanFee) {
+      return { error: `Insufficient funds for loan fee! Required: ₹${loanFee}M upfront. Club has ₹${Math.round(buyer.cash)}M.` };
+    }
     if (seller) {
       seller.players = seller.players.filter(x => x !== p.id);
       seller.cash = Math.round((seller.cash + loanFee) * 10) / 10;
@@ -247,70 +268,170 @@ world.negotiateTransfer = function(w, buyerName, playerId, offer = {}) {
       years: 1,
       salary: Number(offer.salary) || 1.5,
       loanFee,
-      purchaseOption: Number(offer.fee) || p.askingPrice || 10,
+      purchaseOption,
       releaseClause,
       goalBonus,
-      sellOnPct
+      cleanSheetBonus,
+      sellOnPct,
+      originalSellerClub: seller?.name || null,
+      loanParentClub: seller?.name || null
     };
     w.news.unshift({
       id: `loan_${Date.now()}`,
       season: w.season,
       type: 'transfer',
-      text: `🤝 LOAN-TO-BUY: ${p.name} joined ${buyer.name} on loan with a ₹${p.contract.purchaseOption}M permanent purchase option!`,
+      text: `🤝 LOAN-TO-BUY: ${p.name} joined ${buyer.name} on loan (₹${loanFee}M loan fee) with an agreed ₹${purchaseOption}M permanent purchase option!`,
       at: new Date().toISOString()
     });
     world.persist();
     return {
       status: 'accepted',
       player: p,
-      message: `Agreement reached! ${p.name} joins ${buyer.name} on loan with an option to buy for ₹${p.contract.purchaseOption}M!`
+      message: `Agreement reached! ${p.name} joins ${buyer.name} on loan with a ₹${purchaseOption}M buyout clause exercisable at any time!`
     };
   }
 
-  // Pre-Contract Expiration Free Signing
-  if (offer.isPreContract || p.contractExpiring) {
+  // Pre-Contract Expiration Free Signing (Bosman Ruling in January / 6 months left)
+  const isExpiring = offer.isPreContract || p.contractExpiring || (p.contract && p.contract.years <= 1) || p.ownerClub === 'Free Agent';
+  if (isExpiring && (dealType === 'pre_contract' || offer.fee === 0 || offer.isPreContract)) {
     const signingBonus = Number(offer.salary) || 1.0;
     if (buyer.cash < signingBonus) return { error: `Need ₹${signingBonus}M for free-agent signing bonus.` };
-    const seller = p.ownerClub ? w.clubs.find(x => x.name === p.ownerClub) : null;
     if (seller) seller.players = seller.players.filter(x => x !== p.id);
     buyer.players.push(p.id);
     buyer.cash = Math.max(0, Math.round((buyer.cash - signingBonus) * 10) / 10);
     p.ownerClub = buyer.name;
     p.status = 'contracted';
     p.contract = {
+      dealType: 'permanent',
       years: Number(offer.years) || 3,
       salary: Number(offer.salary) || 1.5,
       releaseClause,
       goalBonus,
-      sellOnPct
+      cleanSheetBonus,
+      sellOnPct,
+      originalSellerClub: seller?.name || null
     };
     w.news.unshift({
       id: `pre_${Date.now()}`,
       season: w.season,
       type: 'transfer',
-      text: `🆓 FREE AGENT SIGNING: ${p.name} signed for ${buyer.name} on a Bosman free transfer!`,
+      text: `🆓 BOSMAN FREE TRANSFER: ${p.name} signed for ${buyer.name} with 6 months left on contract without paying a transfer fee!`,
       at: new Date().toISOString()
     });
     world.persist();
     return {
       status: 'accepted',
       player: p,
-      message: `Bosman free transfer completed! ${p.name} signed with ${buyer.name} without paying any transfer fee!`
+      message: `Bosman free transfer completed! ${p.name} signed with ${buyer.name} with 6 months remaining, avoiding any transfer fee!`
+    };
+  }
+
+  // Check if Release Clause is triggered (if fee meets release clause, transfer is guaranteed)
+  const isReleaseClauseTriggered = p.contract?.releaseClause && (offer.fee >= p.contract.releaseClause);
+  if (isReleaseClauseTriggered) {
+    if (buyer.cash < offer.fee) {
+      return { error: `Cannot trigger release clause! Requires ₹${p.contract.releaseClause}M. Club has ₹${Math.round(buyer.cash)}M.` };
+    }
+    const feePaid = offer.fee;
+    if (seller) {
+      seller.players = seller.players.filter(x => x !== p.id);
+      seller.cash = Math.round((seller.cash + feePaid) * 10) / 10;
+    }
+    buyer.players.push(p.id);
+    buyer.cash = Math.max(0, Math.round((buyer.cash - feePaid) * 10) / 10);
+    processSellOnFee(feePaid);
+
+    p.ownerClub = buyer.name;
+    p.status = 'contracted';
+    p.contract = {
+      dealType: 'permanent',
+      years: Number(offer.years) || 3,
+      salary: Number(offer.salary) || 2.5,
+      releaseClause,
+      goalBonus,
+      cleanSheetBonus,
+      sellOnPct,
+      originalSellerClub: seller?.name || null
+    };
+    w.news.unshift({
+      id: `release_${Date.now()}`,
+      season: w.season,
+      type: 'transfer',
+      text: `🔓 RELEASE CLAUSE TRIGGERED: ${buyer.name} activated ${p.name}'s ₹${p.contract.releaseClause}M buyout clause!`,
+      at: new Date().toISOString()
+    });
+    world.persist();
+    return {
+      status: 'accepted',
+      player: p,
+      message: `Release clause of ₹${feePaid}M activated! Selling club was legally bound to accept terms.`
     };
   }
 
   // Default negotiation with clauses attached
   const res = baseNegotiate.call(world, w, buyerName, playerId, offer);
   if (res && res.status === 'accepted' && res.player) {
+    processSellOnFee(offer.fee || p.askingPrice || 10);
     res.player.contract = {
       ...(res.player.contract || {}),
+      dealType: 'permanent',
       releaseClause,
       goalBonus,
-      sellOnPct
+      cleanSheetBonus,
+      sellOnPct,
+      originalSellerClub: seller?.name || null
     };
     world.persist();
   }
   return res;
+};
+
+// Exercise Loan-to-Buy Option
+world.exerciseLoanBuyout = function(w, buyerName, playerId) {
+  const buyer = w.clubs.find(x => x.name === buyerName);
+  const p = w.market.find(x => x.id === playerId);
+  if (!buyer || !p) return { error: 'Club or player not found.' };
+  if (p.ownerClub !== buyer.name) return { error: 'Player is not registered to your squad.' };
+  if (p.contract?.dealType !== 'loan_to_buy') return { error: 'Player does not have an active loan buyout clause.' };
+
+  const buyoutPrice = Number(p.contract.purchaseOption) || Math.round(p.askingPrice || 10);
+  if (buyer.cash < buyoutPrice) {
+    return { error: `Insufficient funds to exercise buyout option! Required: ₹${buyoutPrice}M. Club has ₹${Math.round(buyer.cash)}M.` };
+  }
+
+  buyer.cash = Math.max(0, Math.round((buyer.cash - buyoutPrice) * 10) / 10);
+  const parentClub = p.contract.loanParentClub ? w.clubs.find(x => x.name === p.contract.loanParentClub) : null;
+  if (parentClub) {
+    parentClub.cash = Math.round((parentClub.cash + buyoutPrice) * 10) / 10;
+  }
+
+  p.status = 'contracted';
+  p.contract.dealType = 'permanent';
+  p.contract.years = 3;
+  p.contract.purchaseOption = null;
+
+  w.news.unshift({
+    id: `buyout_${Date.now()}`,
+    season: w.season,
+    type: 'transfer',
+    text: `⭐ PERMANENT SIGNING: ${buyer.name} officially exercised their ₹${buyoutPrice}M purchase option for ${p.name}!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return {
+    success: true,
+    player: p,
+    buyoutPrice,
+    message: `Buyout option exercised! ${p.name} has officially joined ${buyer.name} on a permanent 3-year contract.`
+  };
+};
+
+// Helper: Get Expiring Contracts (Bosman eligible / 6 months left)
+world.getExpiringContracts = function(w) {
+  return (w.market || []).filter(p => {
+    return (p.contract && p.contract.years <= 1) || p.contractExpiring || p.ownerClub === 'Free Agent';
+  });
 };
 
 // -------------------------------------------------------------
@@ -1792,42 +1913,458 @@ world.saveSetPieceTactics = function(w, clubName, newTactics = {}) {
   return { success: true, tactics: c.setPieceTactics };
 };
 
-world.simulatePenaltyShootout = function(w, clubName, opponentName, userShot = 'top_left', userDive = 'left') {
-  const user = w.clubs.find(x => x.name === clubName);
+// -------------------------------------------------------------
+// 12. ADVANCED MANAGER & CLUB OWNER ECOSYSTEM
+// -------------------------------------------------------------
+
+// 1. Opponent Scouting Report & Pre-Match Tactical Dossier
+world.getOpponentScoutingReport = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const fixture = world.getNextFixture(w);
+  let opponentName = null;
+  let isHome = true;
+
+  if (fixture && fixture.fixture) {
+    if (fixture.fixture.home === c.name) {
+      opponentName = fixture.fixture.away;
+      isHome = true;
+    } else if (fixture.fixture.away === c.name) {
+      opponentName = fixture.fixture.home;
+      isHome = false;
+    }
+  }
+
+  if (!opponentName) {
+    const rival = c.rivals?.same?.name || c.rivalName || w.clubs.find(x => x.name !== c.name)?.name || 'FC Barcelona';
+    opponentName = rival;
+  }
+
   const opp = w.clubs.find(x => x.name === opponentName) || w.clubs[0];
+  const oppPlayers = (opp.players || []).map(id => w.market.find(p => p.id === id)).filter(Boolean);
 
-  const directions = ['left', 'center', 'right'];
-  const oppDive = directions[Math.floor(Math.random() * directions.length)];
-  const oppShotDir = directions[Math.floor(Math.random() * directions.length)];
+  // Identify Danger Man
+  const dangerMan = oppPlayers.slice().sort((a, b) => (b.rating || 0) - (a.rating || 0))[0] || {
+    name: 'Opposition Playmaker',
+    position: 'CF',
+    rating: 86,
+    form: 92,
+    goals: 14
+  };
 
-  // User Shot evaluation
-  let userScored = true;
-  if (userShot.includes(oppDive)) {
-    userScored = Math.random() > 0.65; // Keeper dived right way, still 35% chance to sneak in
-  } else if (userShot === 'panenka') {
-    userScored = oppDive !== 'center';
-  }
+  const formations = [
+    { name: '4-3-3 Gegenpress', style: 'High pressing & suffocating counter-press', weakness: 'Space left behind aggressive full-backs', counter: 'Direct counter-attacks down the flanks with pacey wingers' },
+    { name: '3-5-2 Wingbacks Overload', style: 'Midfield numerical superiority & wingback crosses', weakness: 'Vulnerable in wide defensive transitions when wingbacks push up', counter: 'Quick diagonals into the channels' },
+    { name: '4-2-3-1 Fluid Possession', style: 'Patient build-up through central attacking midfielders', weakness: 'Over-reliance on the central pivot playmaker', counter: 'Aggressive man-marking on their central midfield pivot' },
+    { name: '5-4-1 Deep Low Block', style: 'Resolute defensive bunker waiting for set-pieces', weakness: 'Low shot volume & lack of forward passing outlets', counter: 'Overloading the half-spaces and taking long-range efforts' }
+  ];
 
-  // Opponent Shot evaluation
-  let oppScored = true;
-  if (userDive === oppShotDir) {
-    oppScored = Math.random() > 0.70; // User dived the right way!
-  }
+  const tacticInfo = formations[Math.abs((opp.name.length + (w.season || 1)) % formations.length)];
 
   return {
-    round: 1,
-    userScored,
-    oppScored,
-    userShotChoice: userShot,
-    oppDiveChoice: oppDive,
-    oppShotChoice: oppShotDir,
-    userDiveChoice: userDive,
-    commentaryUser: userScored
-      ? `⚽ GOAL! You drilled it into the corner beyond the keeper's reach!`
-      : `❌ SAVED! The opposition keeper anticipates the trajectory and parries it away!`,
-    commentaryOpp: !oppScored
-      ? `🧤 MAGNIFICENT SAVE! You read the shooter's eyes and kept it out!`
-      : `⚽ GOAL. Opponent strikes with venom into the side netting.`
+    opponent: {
+      name: opp.name,
+      division: opp.division,
+      reputation: opp.reputation || 75,
+      jersey: opp.jersey,
+      crest: opp.crest,
+      isHome
+    },
+    dangerMan: {
+      name: dangerMan.name,
+      position: dangerMan.position || 'CF',
+      rating: dangerMan.rating || 85,
+      form: dangerMan.form || 88,
+      style: dangerMan.personality || 'Clinical Finisher'
+    },
+    tactics: tacticInfo,
+    scoutTips: [
+      `Double-mark ${dangerMan.name} to cut off their primary final-third pass outlet.`,
+      `Opponent transitions slowly into defensive shape; instruct wingers to attack space immediately upon winning possession.`,
+      `Their goalkeeper struggles with aerial deliveries; instruct corner-takers to whip in near-post crosses.`
+    ]
+  };
+};
+
+// 2. Elite Manager Job Offers from Global Heavyweights
+world.getManagerJobOffers = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { offers: [] };
+
+  const rep = c.manager?.reputation || 75;
+  const wins = c.stats?.wins || 0;
+
+  const candidateClubs = [
+    { name: 'Real Madrid', country: 'Spain', division: 1, prestige: 98, budget: 120, salary: 8.5, objective: 'Conquer the Continental Champions League' },
+    { name: 'Manchester City', country: 'England', division: 1, prestige: 96, budget: 140, salary: 9.0, objective: 'Execute flawless tactical domination & Domestic Double' },
+    { name: 'Bayern Munich', country: 'Germany', division: 1, prestige: 94, budget: 95, salary: 7.5, objective: 'Undefeated League Title & Super Cup' },
+    { name: 'Paris Saint-Germain', country: 'France', division: 1, prestige: 92, budget: 110, salary: 8.0, objective: 'Deliver European silverware with world-class galacticos' },
+    { name: 'Kerala Blasters FC', country: 'India', division: 1, prestige: 85, budget: 45, salary: 3.5, objective: 'National Championship & AFC Champions League qualification' },
+    { name: 'Inter Milan', country: 'Italy', division: 1, prestige: 91, budget: 70, salary: 6.0, objective: 'Scudetto Triumph & Tactical Perfection' }
+  ].filter(x => x.name !== c.name);
+
+  // Generate 2-3 tailored offers based on club success
+  const offers = candidateClubs.slice(0, 3).map((item, idx) => ({
+    id: `offer_${item.name.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}_${idx}`,
+    clubName: item.name,
+    country: item.country,
+    division: item.division,
+    prestige: item.prestige,
+    transferBudget: item.budget,
+    managerSalary: item.salary,
+    seasonObjective: item.objective,
+    expiryWeeks: 2
+  }));
+
+  return { offers, currentClub: c.name };
+};
+
+world.acceptManagerJobOffer = function(w, currentClubName, targetClubName) {
+  const curr = w.clubs.find(x => x.name === currentClubName);
+  const target = w.clubs.find(x => x.name === targetClubName);
+  if (!target) return { error: 'Target club not found.' };
+
+  const mgrName = curr?.manager?.name || 'Head Coach';
+  target.manager = {
+    name: mgrName,
+    style: curr?.manager?.style || 'Gegenpress',
+    salary: 8.0,
+    reputation: Math.min(99, (curr?.manager?.reputation || 75) + 8)
+  };
+
+  w.selectedClub = target.name;
+  w.news.unshift({
+    id: `hire_${Date.now()}`,
+    season: w.season,
+    type: 'manager',
+    text: `🚨 BLOCKBUSTER APPOINTMENT: ${mgrName} has officially left ${currentClubName} to become the new Head Manager of ${target.name}!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, newClub: target };
+};
+
+// 3. Stadium & Kit Naming Rights Deals for Owners
+world.getNamingRightsOffers = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { stadiumBids: [], kitBids: [] };
+
+  const stadiumBids = [
+    {
+      id: 'stadium_emirates',
+      sponsor: 'Emirates Global Airways',
+      proposedName: 'Fly Emirates Arena',
+      upfrontCash: 35.0,
+      annualRevenue: 12.0,
+      contractYears: 3,
+      perks: '+15% Global International Fan Engagement'
+    },
+    {
+      id: 'stadium_telecom',
+      sponsor: 'Apex Ultra Telecom 5G',
+      proposedName: 'Apex 5G Superdome',
+      upfrontCash: 28.0,
+      annualRevenue: 10.5,
+      contractYears: 4,
+      perks: 'Free High-Density Wi-Fi for 60,000 Spectators'
+    },
+    {
+      id: 'stadium_redbull',
+      sponsor: 'Red Bull Energy World',
+      proposedName: 'Red Bull Sports Complex',
+      upfrontCash: 42.0,
+      annualRevenue: 15.0,
+      contractYears: 3,
+      perks: '+8% Extra Squad Stamina Regrowth at Home matches'
+    }
+  ];
+
+  const kitBids = [
+    {
+      id: 'kit_spotify',
+      sponsor: 'Spotify Worldwide',
+      slogan: 'Music Meets Football',
+      upfrontCash: 22.0,
+      annualRevenue: 8.5,
+      contractYears: 3
+    },
+    {
+      id: 'kit_samsung',
+      sponsor: 'Samsung Electronics',
+      slogan: 'Inspire the World',
+      upfrontCash: 25.0,
+      annualRevenue: 9.5,
+      contractYears: 3
+    }
+  ];
+
+  return { stadiumBids, kitBids, activeNaming: c.stadiumNamingDeal || null };
+};
+
+world.signNamingRightsDeal = function(w, clubName, bidType, bidId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const data = world.getNamingRightsOffers(w, clubName);
+  let deal = null;
+
+  if (bidType === 'stadium') {
+    deal = data.stadiumBids.find(b => b.id === bidId);
+    if (!deal) return { error: 'Stadium bid not found' };
+    c.cash = Math.round((c.cash + deal.upfrontCash) * 10) / 10;
+    c.stadium.name = deal.proposedName;
+    c.stadiumNamingDeal = deal;
+  } else {
+    deal = data.kitBids.find(b => b.id === bidId);
+    if (!deal) return { error: 'Kit bid not found' };
+    c.cash = Math.round((c.cash + deal.upfrontCash) * 10) / 10;
+    c.shirtSponsorDeal = deal;
+  }
+
+  w.news.unshift({
+    id: `naming_${Date.now()}`,
+    season: w.season,
+    type: 'finance',
+    text: `🤝 COMMERCIAL TRIUMPH: ${c.name} signed a landmark ₹${deal.upfrontCash}M sponsorship agreement with ${deal.sponsor}!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, deal, cash: c.cash };
+};
+
+// 4. Minority Stake Equity Financing
+world.getMinorityStakeOffers = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { offers: [] };
+
+  const equitySold = c.minorityEquitySold || 0;
+  const remainingSellable = Math.max(0, 49 - equitySold); // Owner retains absolute >51% control
+
+  const offers = [
+    {
+      id: 'equity_apex_pe',
+      syndicate: 'Apex Private Equity Syndicate',
+      stakePct: 15,
+      valuation: Math.round((c.cash + 100) * 1.6),
+      cashInjection: 32.0,
+      terms: 'Non-voting minority partnership. Chairman retains 100% sporting and tactical control.'
+    },
+    {
+      id: 'equity_sovereign',
+      syndicate: 'Sovereign Heritage Sports Fund',
+      stakePct: 20,
+      valuation: Math.round((c.cash + 120) * 1.8),
+      cashInjection: 50.0,
+      terms: 'Capital designated for state-of-the-art youth academy and stadium hospitality tier.'
+    }
+  ];
+
+  return { offers, equitySold, remainingSellable };
+};
+
+world.sellMinorityStake = function(w, clubName, offerId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const data = world.getMinorityStakeOffers(w, clubName);
+  const offer = data.offers.find(o => o.id === offerId);
+  if (!offer) return { error: 'Offer not found' };
+
+  if ((c.minorityEquitySold || 0) + offer.stakePct > 49) {
+    return { error: 'Cannot sell more than 49% equity. Owner must retain controlling 51% stake.' };
+  }
+
+  c.minorityEquitySold = (c.minorityEquitySold || 0) + offer.stakePct;
+  c.cash = Math.round((c.cash + offer.cashInjection) * 10) / 10;
+
+  w.news.unshift({
+    id: `equity_${Date.now()}`,
+    season: w.season,
+    type: 'finance',
+    text: `🏛️ EQUITY FINANCING: ${c.name} received a ₹${offer.cashInjection}M capital injection from ${offer.syndicate} for a ${offer.stakePct}% minority stake.`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, cash: c.cash, remainingEquity: 100 - c.minorityEquitySold };
+};
+
+// 5. Director of Football (DoF) Appointments
+world.getDoFCandidates = function(w) {
+  return [
+    {
+      id: 'dof_sabermetrics',
+      name: 'Marco "Sabermetrics" Silva',
+      specialty: 'Data Analytics & Transfer Value Optimization',
+      perk: '15% Discount on all transfer negotiations & automatic bargain scout alerts',
+      salary: 1.8,
+      rating: 92
+    },
+    {
+      id: 'dof_galactico',
+      name: 'Sir Reginald Vance',
+      specialty: 'Marquee Superstar Negotiation & VIP Network',
+      perk: 'Convinces 85+ OVR superstars to accept 20% lower wage demands',
+      salary: 2.5,
+      rating: 95
+    },
+    {
+      id: 'dof_academy',
+      name: 'Jean-Luc Fontaine',
+      specialty: 'Youth Scouting & Academy Nurturing',
+      perk: '+5 OVR Rating boost to all regenerated youth academy graduates',
+      salary: 1.5,
+      rating: 90
+    }
+  ];
+};
+
+world.hireDirectorOfFootball = function(w, clubName, dofId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  const candidates = world.getDoFCandidates(w);
+  const dof = candidates.find(x => x.id === dofId);
+  if (!dof) return { error: 'Candidate not found' };
+
+  c.directorOfFootball = dof;
+  w.news.unshift({
+    id: `dof_${Date.now()}`,
+    season: w.season,
+    type: 'manager',
+    text: `👔 FRONT OFFICE APPOINTMENT: ${c.name} appointed ${dof.name} as Director of Football (${dof.specialty})!`,
+    at: new Date().toISOString()
+  });
+
+  world.persist();
+  return { success: true, dof: c.directorOfFootball };
+};
+
+// 6. Seasonal Board Mandates & Target Tracker
+world.getSeasonalMandates = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { mandates: [] };
+
+  const isDiv1 = c.division === 1;
+  const mandates = [
+    {
+      id: 'target_league',
+      title: isDiv1 ? 'Crown Champions / Continental Qualification' : 'Earn Promotion to Higher Division',
+      description: isDiv1 ? 'Finish in the Top 3 to secure continental elite glory.' : 'Finish 1st or 2nd in the division standings.',
+      progress: `${c.stats?.wins || 0} Wins logged`,
+      status: (c.stats?.wins || 0) >= 3 ? 'on_track' : 'pending',
+      bonusReward: 15.0
+    },
+    {
+      id: 'target_financial',
+      title: 'Maintain Prudent Financial Fair Play (FFP)',
+      description: 'Keep the annual wage bill below the 70% threshold and avoid negative cash balance.',
+      progress: `Current Treasury: ₹${Math.round(c.cash)}M`,
+      status: c.cash > 5 ? 'on_track' : 'at_risk',
+      bonusReward: 10.0
+    },
+    {
+      id: 'target_youth',
+      title: 'Academy Integration Pathway',
+      description: 'Promote at least one youth prospect and maintain academy training regimes.',
+      progress: 'Academy Active',
+      status: 'on_track',
+      bonusReward: 8.0
+    },
+    {
+      id: 'target_derby',
+      title: `Dominate Regional Derby Showdown`,
+      description: `Defeat primary rival (${c.rivals?.same?.name || c.rivalName || 'Local Rival'}) in direct clashes.`,
+      progress: 'Fixture pending',
+      status: 'pending',
+      bonusReward: 12.0
+    }
+  ];
+
+  return { mandates };
+};
+
+// 7. Dressing Room Hierarchies & Player Private Meetings
+world.getPlayerMeetings = function(w, clubName) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { meetings: [] };
+
+  const squad = (c.players || []).map(id => w.market.find(p => p.id === id)).filter(Boolean);
+  if (!squad.length) return { meetings: [] };
+
+  const veteran = squad.find(p => p.age >= 30) || squad[0];
+  const underpaid = squad.slice().sort((a, b) => (a.contract?.salary || 1) - (b.contract?.salary || 1))[0];
+  const youngGun = squad.find(p => p.age <= 21) || squad[squad.length - 1];
+
+  const meetings = [
+    {
+      id: 'meeting_minutes',
+      player: veteran,
+      type: 'playing_time',
+      title: 'Veteran Playing Time Confrontation',
+      issue: `"Boss, I've noticed I haven't been in the starting XI lately. As a squad leader, I need regular minutes on the pitch, or I will have to explore other options."`,
+      choices: [
+        { id: 'promise_start', text: '🤝 Promise to start in next fixture (+8 Morale)', outcome: 'player_pleased' },
+        { id: 'stand_ground', text: '🛑 "No player is bigger than the team" (-6 Morale)', outcome: 'player_disgruntled' },
+        { id: 'rotation_role', text: '🔄 Explain rotation strategy (+4 Morale)', outcome: 'player_understanding' }
+      ]
+    },
+    {
+      id: 'meeting_wages',
+      player: underpaid,
+      type: 'wage_demand',
+      title: 'Wage Equity & Performance Demands',
+      issue: `"Coach, my performances have outstripped my current wage. The squad knows I'm underpaid compared to recent signings. We need an immediate wage adjustment."`,
+      choices: [
+        { id: 'grant_bonus', text: '💰 Grant ₹0.5M signing bonus and wage review (+10 Morale)', outcome: 'player_elated' },
+        { id: 'postpone_summer', text: '⏳ Promise to renegotiate in the summer window (Neutral)', outcome: 'player_neutral' },
+        { id: 'reject_demand', text: '❌ Reject request firmly (-10 Morale, Transfer Request risk)', outcome: 'player_furious' }
+      ]
+    }
+  ];
+
+  return { meetings };
+};
+
+world.resolvePlayerMeeting = function(w, clubName, meetingId, choiceId) {
+  const c = w.clubs.find(x => x.name === clubName);
+  if (!c) return { error: 'Club not found' };
+
+  let moraleDelta = 0;
+  let feedback = '';
+
+  if (choiceId === 'promise_start') {
+    moraleDelta = 8;
+    feedback = 'The player accepted your personal commitment and returned to training energized.';
+  } else if (choiceId === 'stand_ground') {
+    moraleDelta = -6;
+    feedback = 'The player accepted your decision grudgingly, but some dressing room tension remains.';
+  } else if (choiceId === 'rotation_role') {
+    moraleDelta = 4;
+    feedback = 'The player appreciated your honest tactical explanation and committed to his squad role.';
+  } else if (choiceId === 'grant_bonus') {
+    moraleDelta = 10;
+    c.cash = Math.max(0, Math.round((c.cash - 0.5) * 10) / 10);
+    feedback = 'Bonus approved! The player is thrilled and pledged his long-term loyalty to the badge.';
+  } else if (choiceId === 'postpone_summer') {
+    moraleDelta = 0;
+    feedback = 'The player agreed to wait until the summer transfer window opens.';
+  } else if (choiceId === 'reject_demand') {
+    moraleDelta = -10;
+    feedback = 'The player walked out of your office furious and has reportedly contacted his agent.';
+  }
+
+  c.morale = Math.max(30, Math.min(100, c.morale + moraleDelta));
+  world.persist();
+
+  return {
+    success: true,
+    moraleDelta,
+    currentMorale: c.morale,
+    feedback
   };
 };
 

@@ -2031,9 +2031,14 @@ async function renderManagerAppointmentScreen() {
                 </div>
               </div>
 
-              <button class="btn btn-primary" onclick="confirmManagerAppointment('${esc(c.name)}')" style="width:100%;font-weight:800;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;">
-                ✍️ SIGN MANAGERIAL CONTRACT &rarr;
-              </button>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                <button class="btn btn-secondary" onclick="openManagerRoleNegotiationModal('${esc(c.name)}', true)" style="font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px;border-color:rgba(56,189,248,0.5);color:#7dd3fc;" title="Negotiate starting salary, injected war chest and expectations">
+                  💼 NEGOTIATE ROLE
+                </button>
+                <button class="btn btn-primary" onclick="confirmManagerAppointment('${esc(c.name)}')" style="font-weight:800;font-size:12px;display:flex;align-items:center;justify-content:center;gap:4px;padding:10px;">
+                  ✍️ SIGN CONTRACT &rarr;
+                </button>
+              </div>
             </div>
           `).join('')}
         </div>
@@ -2318,25 +2323,120 @@ async function openManagerOfficeModal() {
 
       </div>
 
-      <!-- HIGHER DIVISION JOB OFFERS SECTION -->
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-          <div>
-            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;">
-              💼 Higher Division Job Inquiries &amp; Offers
-            </h3>
-            <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0 0;">
-              Climb the ranks! As your reputation rises, bigger clubs in higher divisions send offers to poach you.
-            </p>
+      <!-- MODULE 3: ROLE & CONTRACT GOVERNANCE -->
+      <div style="background:linear-gradient(135deg, rgba(168,85,247,0.12), rgba(59,130,246,0.06));border:1px solid rgba(168,85,247,0.35);border-radius:14px;padding:18px;margin-bottom:24px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:20px;">📜</span>
+            <h4 style="font-family:var(--font-display);font-size:17px;font-weight:900;color:#fff;margin:0;">
+              Managerial Contract &amp; Role Terms
+            </h4>
           </div>
-          <span class="pill" style="background:${(mc.jobOffers && mc.jobOffers.length > 0) ? 'var(--accent-neon)' : 'rgba(255,255,255,0.1)'};color:#0a0f18;font-weight:900;">
-            ${(mc.jobOffers && mc.jobOffers.length > 0) ? `${mc.jobOffers.length} OFFERS ACTIVE` : '0 OFFERS'}
+          <span class="pill" style="background:#9333ea;color:#fff;font-weight:800;font-size:10px;">
+            BOARDROOM PACT
           </span>
         </div>
+        <p style="font-size:12.5px;color:var(--text-muted);line-height:1.5;margin:0 0 14px 0;">
+          Review and renegotiate your employment terms with the Board Chairman. Request an <b>injected transfer war chest</b> for the upcoming window, an upgraded <b>annual salary</b>, longer job security, and squad veto power.
+        </p>
+        <div style="background:rgba(0,0,0,0.3);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:8px;">
+          <div>
+            <span style="color:var(--text-muted);display:block;font-size:10px;">ANNUAL SALARY</span>
+            <b style="color:var(--accent-gold);font-size:13px;">${mc.contract?.salaryFormatted || (currentClub.division === 4 ? '₹0.35M / yr' : currentClub.division === 3 ? '₹0.65M / yr' : '₹2.5M / yr')}</b>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);display:block;font-size:10px;">CONTRACT TERM</span>
+            <b style="color:#fff;font-size:13px;">${mc.contract?.yearsRemaining || 2} Seasons Remaining</b>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);display:block;font-size:10px;">BOARDROOM MANDATE</span>
+            <b style="color:var(--accent-neon);font-size:13px;text-transform:capitalize;">${(mc.contract?.expectations || 'promotion').replace('_', ' ')}</b>
+          </div>
+          <div>
+            <span style="color:var(--text-muted);display:block;font-size:10px;">TERMINATION BUYOUT</span>
+            <b style="color:#7dd3fc;font-size:13px;">₹${mc.contract?.releaseClause || 25}M</b>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="openManagerRoleNegotiationModal('${esc(currentClub.name)}', false)" style="font-weight:800;background:linear-gradient(90deg, #9333ea, #3b82f6);padding:11px;display:flex;align-items:center;justify-content:center;gap:6px;width:100%;">
+          💼 NEGOTIATE ROLE, CONTRACT &amp; SQUAD WAR CHEST WITH BOARD &rarr;
+        </button>
+      </div>
 
-        ${(mc.jobOffers && mc.jobOffers.length > 0) ? `
+      <!-- ACTIVE CLUB APPROACHES & HEADHUNTING INQUIRIES SECTION -->
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+          <div>
+            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;display:flex;align-items:center;gap:8px;">
+              <span>🚨 Other Clubs Approaching You</span>
+              <span class="pill" style="background:${((mc.approaches && mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) || (mc.jobOffers && mc.jobOffers.length > 0)) ? 'linear-gradient(90deg, #ef4444, #f59e0b)' : 'rgba(255,255,255,0.1)'};color:#fff;font-weight:900;font-size:11px;">
+                ${(mc.approaches && mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) ? `${mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length} CLUBS APPROACHING` : ((mc.jobOffers && mc.jobOffers.length > 0) ? `${mc.jobOffers.length} OFFERS` : '0 ACTIVE')}
+              </span>
+            </h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:2px 0 0 0;">
+              Other clubs actively seek to hire you as their Head Coach. You can accept, negotiate custom role demands, leak to the press for leverage, or decline!
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <button class="btn btn-warning btn-xs" onclick="solicitAgentApproaches()" style="font-weight:800;color:#0a0f18;padding:4px 10px;box-shadow:0 2px 8px rgba(245,158,11,0.3);">
+              📡 SOUND OUT MARKET
+            </button>
+            <button class="btn btn-secondary btn-xs" onclick="openManagerApproachesModal()" style="font-weight:700;padding:4px 10px;">
+              🔍 FULL VIEW
+            </button>
+          </div>
+        </div>
+
+        ${((mc.approaches && mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) || (mc.jobOffers && mc.jobOffers.length > 0)) ? `
           <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));gap:14px;">
-            ${mc.jobOffers.map(offer => `
+            ${(mc.approaches && mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) ? mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').map(app => `
+              <div style="background:rgba(13,23,40,0.85);border:1px solid rgba(239,68,68,0.4);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:0 4px 16px rgba(0,0,0,0.4);">
+                <div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                      ${renderCrest(app.crest, 28)}
+                      <div>
+                        <b style="font-size:16px;color:#fff;">${esc(app.club)}</b>
+                        <div style="font-size:10.5px;color:var(--text-muted);">${esc(app.country || 'Europe')}</div>
+                      </div>
+                    </div>
+                    <span class="pill" style="background:#0284c7;color:#fff;font-size:10px;font-weight:800;">DIV ${app.division}</span>
+                  </div>
+                  <div style="font-size:11px;color:#f87171;font-weight:800;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px;">
+                    ${esc(app.approachTitle || '🚨 FORMAL CLUB APPROACH')}
+                  </div>
+                  <div style="background:rgba(0,0,0,0.25);border-left:2px solid var(--accent-neon);padding:6px 10px;font-size:11.5px;color:#cbd5e1;font-style:italic;margin-bottom:10px;border-radius:0 6px 6px 0;line-height:1.4;">
+                    "${esc(app.letter ? (app.letter.length > 130 ? app.letter.substring(0, 130) + '...' : app.letter) : 'Club boardroom has formally inquired for your appointment.')}"
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);background:rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;margin-bottom:12px;line-height:1.45;">
+                    <div>💰 Transfer War Chest: <b style="color:var(--accent-neon);">₹${money(app.offeredBudget)}M</b></div>
+                    <div>💵 Offered Salary: <b style="color:var(--accent-gold);">₹${app.offeredSalary}M / yr</b></div>
+                    <div>⏳ Contract: <b style="color:#fff;">${app.contractYears || 3} Years</b></div>
+                    <div style="margin-top:3px;color:#cbd5e1;font-size:11.5px;">🎯 Board Target: <i>${esc(app.objective)}</i></div>
+                  </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                    <button class="btn btn-primary btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'accept')" style="font-weight:800;box-shadow:0 2px 10px rgba(42,139,242,0.4);">
+                      ✍️ ACCEPT DEAL
+                    </button>
+                    <button class="btn btn-warning btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'negotiate')" style="font-weight:800;color:#0a0f18;box-shadow:0 2px 10px rgba(245,158,11,0.3);">
+                      💼 NEGOTIATE
+                    </button>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;">
+                    <button class="btn btn-secondary btn-xs" onclick="respondToClubApproach('${esc(app.id)}', 'leak')" title="Leak to media to force current board to match terms" style="font-size:10px;color:#f472b6;font-weight:700;">
+                      💣 LEAK
+                    </button>
+                    <button class="btn btn-secondary btn-xs" onclick="respondToClubApproach('${esc(app.id)}', 'stall')" title="Stall for 1 match" style="font-size:10px;color:#fde047;font-weight:700;">
+                      ⏳ STALL
+                    </button>
+                    <button class="btn btn-secondary btn-xs" onclick="respondToClubApproach('${esc(app.id)}', 'decline')" title="Decline offer" style="font-size:10px;color:#fca5a5;font-weight:700;">
+                      ❌ DECLINE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            `).join('') : mc.jobOffers.map(offer => `
               <div style="background:rgba(13,23,40,0.85);border:1px solid rgba(42,139,242,0.4);border-radius:12px;padding:16px;display:flex;flex-direction:column;justify-content:space-between;">
                 <div>
                   <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
@@ -2355,19 +2455,27 @@ async function openManagerOfficeModal() {
                     <div style="margin-top:4px;color:#cbd5e1;">🎯 Board Goal: <i>${esc(offer.objective)}</i></div>
                   </div>
                 </div>
-                <button class="btn btn-primary btn-sm" onclick="acceptHigherJobOffer('${esc(offer.club)}')" style="font-weight:800;width:100%;box-shadow:0 4px 14px rgba(42,139,242,0.4);">
-                  ✍️ ACCEPT JOB &amp; MOVE TO THIS CLUB &rarr;
-                </button>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <button class="btn btn-warning btn-sm" onclick="openManagerRoleNegotiationModal('${esc(offer.club)}', true, '${esc(offer.id)}')" style="font-weight:800;color:#0a0f18;box-shadow:0 4px 14px rgba(245,158,11,0.3);">
+                    💼 NEGOTIATE ROLE
+                  </button>
+                  <button class="btn btn-primary btn-sm" onclick="acceptHigherJobOffer('${esc(offer.club)}')" style="font-weight:800;box-shadow:0 4px 14px rgba(42,139,242,0.4);">
+                    ✍️ ACCEPT DEAL &rarr;
+                  </button>
+                </div>
               </div>
             `).join('')}
           </div>
         ` : `
           <div style="background:rgba(255,255,255,0.03);border:1px dashed var(--border-subtle);border-radius:12px;padding:20px;text-align:center;">
             <div style="font-size:24px;margin-bottom:6px;">📈</div>
-            <b style="color:#fff;font-size:14px;display:block;">No Higher Division Job Offers Yet</b>
-            <p style="color:var(--text-muted);font-size:12.5px;max-width:520px;margin:6px auto 0;line-height:1.5;">
-              Higher division clubs are tracking your results. Keep winning league fixtures, pull off domestic cup upsets, or earn promotion to unlock inquiries from <b>Division 2 clubs (36+ Rep)</b> and <b>Top-Flight Division 1 Giants (58+ Rep)</b>!
+            <b style="color:#fff;font-size:14px;display:block;">No Active Approaches At This Instant</b>
+            <p style="color:var(--text-muted);font-size:12.5px;max-width:520px;margin:6px auto 12px;line-height:1.5;">
+              Other clubs monitor your results after every match! You can also tell your representative to actively query clubs across the leagues right now.
             </p>
+            <button class="btn btn-warning btn-sm" onclick="solicitAgentApproaches()" style="font-weight:800;color:#0a0f18;">
+              📡 INSTRUCT AGENT TO SOUND OUT CLUBS &rarr;
+            </button>
           </div>
         `}
       </div>
@@ -2404,9 +2512,618 @@ function acceptHigherJobOffer(targetClub) {
     playSfx('deal');
     S = res.state || res;
     document.getElementById('managerOfficeModal')?.remove();
+    document.getElementById('managerApproachesModal')?.remove();
     alert(`🎉 CONTRACT RATIFIED! You are now the official Head Coach of ${targetClub}!`);
     renderGame();
   }).catch(err => alert(err.message || 'Error accepting offer.'));
+}
+
+async function respondToClubApproach(approachId, action) {
+  const mc = S?.managerCareer;
+  const app = (mc?.approaches || []).find(a => a.id === approachId);
+  if (!app) return;
+
+  if (action === 'negotiate') {
+    document.getElementById('managerOfficeModal')?.remove();
+    document.getElementById('managerApproachesModal')?.remove();
+    openManagerRoleNegotiationModal(app.club, true, app.id);
+    return;
+  }
+
+  if (action === 'accept') {
+    if (!confirm(`Are you sure you want to accept the Head Coach appointment at ${app.club}?\n\n💰 Transfer War Chest: ₹${money(app.offeredBudget)}M\n💵 Salary: ₹${app.offeredSalary}M/yr\n⏳ Duration: ${app.contractYears || 3} Years\n\nYou will take charge of ${app.club} immediately!`)) return;
+  }
+
+  try {
+    const res = await post('/api/world4/manager/approaches/respond', ref({
+      approachId,
+      action
+    }));
+    playSfx('deal');
+    S = res.state || res;
+
+    if (action === 'accept') {
+      document.getElementById('managerOfficeModal')?.remove();
+      document.getElementById('managerApproachesModal')?.remove();
+      alert(`🎉 APPOINTMENT RATIFIED!\n\nYou have officially taken over as Head Coach of ${app.club}!\nAn extra ₹${money(app.offeredBudget)}M war chest has been deposited into your club treasury.`);
+      renderGame();
+      return;
+    }
+
+    if (action === 'leak') {
+      alert(`💣 BOMBSHELL LEAKED TO PRESS!\n\nYour agent leaked ${app.club}'s approach to Sky Sports and Fabrizio Romano!\n\nIn a state of panic, your current board committed loyalty funds of ₹${res.result?.retentionFunds || 6}M into your squad war chest and boosted your contract salary by 15% to keep you!`);
+    } else if (action === 'stall') {
+      alert(`⏳ APPROACH POSTPONED!\n\n${app.club} has been informed you need time to focus on upcoming fixtures. They have agreed to hold their formal offer open.`);
+    } else if (action === 'decline') {
+      alert(`❌ APPROACH REJECTED!\n\nYou formally declined ${app.club}'s approach. Your current board and supporters are overjoyed at your loyalty (+5% Board Confidence)!`);
+    }
+
+    if (document.getElementById('managerApproachesModal')) {
+      openManagerApproachesModal();
+    } else if (document.getElementById('managerOfficeModal')) {
+      openManagerOfficeModal();
+    }
+    renderGame();
+  } catch (err) {
+    alert(err.message || 'Error responding to approach.');
+  }
+}
+
+async function solicitAgentApproaches() {
+  try {
+    const res = await post('/api/world4/manager/approaches/solicit', ref({}));
+    playSfx('click');
+    S = res.state || res;
+    alert(`📡 AGENT DISPATCHED!\n\nYour representative sounded out interested clubs across the leagues.\n${res.result?.createdCount || 2} new clubs have submitted formal approaches to hire you as their Head Coach!`);
+    if (document.getElementById('managerApproachesModal')) {
+      openManagerApproachesModal();
+    } else if (document.getElementById('managerOfficeModal')) {
+      openManagerOfficeModal();
+    }
+    renderGame();
+  } catch (err) {
+    alert(err.message || 'Error contacting agent.');
+  }
+}
+
+async function openManagerApproachesModal(selectedId = null) {
+  let careerData = null;
+  try {
+    const q = session?.roomCode ? `?room=${encodeURIComponent(session.roomCode)}` : (session?.soloId ? `?soloId=${encodeURIComponent(session.soloId)}` : '');
+    const res = await fetch('/api/world4/manager/career' + q);
+    careerData = await res.json();
+  } catch (e) {}
+
+  const mc = careerData?.managerCareer || S?.managerCareer || {};
+  const currentClub = careerData?.currentClub || S?.clubs?.find(x => x.name === S.selectedClub) || { name: 'Your Club', division: 3 };
+  const approaches = mc.approaches || [];
+  const pendingApproaches = approaches.filter(a => a.status === 'pending' || a.status === 'stalled');
+
+  document.getElementById('managerApproachesModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'managerApproachesModal';
+  overlay.className = 'modal-overlay';
+  overlay.style.zIndex = '9999';
+
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:880px;width:95%;max-height:90vh;overflow-y:auto;background:radial-gradient(circle at 50% 0%, #152238 0%, #0a0f18 100%);border:1px solid rgba(239,68,68,0.4);border-radius:18px;padding:26px;box-shadow:0 24px 60px rgba(0,0,0,0.85);color:#e2e8f0;">
+      <!-- Header -->
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:16px;">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:26px;">🚨</span>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;letter-spacing:-0.5px;">
+              Other Clubs Approaching You
+            </h2>
+            <span class="pill" style="background:linear-gradient(90deg, #ef4444, #f59e0b);color:#fff;font-weight:900;font-size:11px;">
+              ${pendingApproaches.length} ACTIVE INQUIRIES
+            </span>
+          </div>
+          <p style="font-size:13px;color:var(--text-muted);margin:6px 0 0 0;line-height:1.4;">
+            Clubs across the football pyramid are monitoring your tactical results at <b>${esc(currentClub.name)}</b>. Review their formal letters, negotiated packages, and chairman pitches below.
+          </p>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <button class="btn btn-warning btn-sm" onclick="solicitAgentApproaches()" style="font-weight:800;color:#0a0f18;box-shadow:0 4px 14px rgba(245,158,11,0.3);display:inline-flex;align-items:center;gap:6px;">
+            📡 <span>SOUND OUT MARKET</span>
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('managerApproachesModal').remove()" style="font-size:16px;line-height:1;padding:6px 12px;">✕</button>
+        </div>
+      </div>
+
+      <!-- Content -->
+      ${pendingApproaches.length > 0 ? `
+        <div style="display:flex;flex-direction:column;gap:18px;">
+          ${pendingApproaches.map(app => `
+            <div style="background:rgba(15,23,42,0.9);border:1px solid rgba(42,139,242,0.4);border-radius:14px;padding:20px;box-shadow:0 8px 24px rgba(0,0,0,0.4);position:relative;">
+              <!-- Card Header -->
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:12px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                  ${renderCrest(app.crest, 36)}
+                  <div>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                      <b style="font-size:18px;color:#fff;">${esc(app.club)}</b>
+                      <span class="pill" style="background:#0284c7;color:#fff;font-size:10px;font-weight:800;">DIV ${app.division}</span>
+                      <span class="pill" style="background:rgba(255,255,255,0.08);color:var(--text-muted);font-size:10px;">${esc(app.country || 'Europe')}</span>
+                    </div>
+                    <div style="font-size:11.5px;color:var(--accent-blue);font-weight:700;margin-top:2px;">
+                      ${esc(app.approachTitle || '🚨 FORMAL CLUB APPROACH')} · ${esc(app.tierBadge || 'HEADHUNT')}
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  ${app.status === 'stalled' ? `
+                    <span class="pill" style="background:#f59e0b;color:#0a0f18;font-weight:800;font-size:11px;">⏳ STALLED (1 MATCH EXTENSION)</span>
+                  ` : `
+                    <span class="pill" style="background:rgba(239,68,68,0.2);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);font-weight:800;font-size:11px;">🔥 URGENT INQUIRY</span>
+                  `}
+                </div>
+              </div>
+
+              <!-- Chairman Pitch Letter -->
+              <div style="background:rgba(0,0,0,0.35);border-left:3px solid var(--accent-neon);border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:16px;font-size:12.5px;line-height:1.55;color:#cbd5e1;font-style:italic;">
+                <div style="font-weight:800;color:var(--accent-neon);font-style:normal;margin-bottom:6px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.5px;">
+                  📜 Message from ${esc(app.chairmanName || 'The Chairman')}:
+                </div>
+                "${esc(app.letter)}"
+              </div>
+
+              <!-- Offer Terms Grid -->
+              <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(160px, 1fr));gap:10px;background:rgba(255,255,255,0.02);border:1px solid rgba(255,255,255,0.05);border-radius:10px;padding:12px 14px;margin-bottom:16px;">
+                <div>
+                  <span style="color:var(--text-muted);display:block;font-size:10.5px;font-weight:700;">💰 TRANSFER WAR CHEST</span>
+                  <b style="color:var(--accent-neon);font-size:15px;">₹${money(app.offeredBudget)}M</b>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted);display:block;font-size:10.5px;font-weight:700;">💵 PERSONAL SALARY</span>
+                  <b style="color:var(--accent-gold);font-size:15px;">₹${app.offeredSalary}M / yr</b>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted);display:block;font-size:10.5px;font-weight:700;">⏳ CONTRACT LENGTH</span>
+                  <b style="color:#fff;font-size:15px;">${app.contractYears || 3} Years</b>
+                </div>
+                <div>
+                  <span style="color:var(--text-muted);display:block;font-size:10.5px;font-weight:700;">🎯 BOARD EXPECTATION</span>
+                  <b style="color:#7dd3fc;font-size:12px;display:block;margin-top:2px;">${esc(app.objective)}</b>
+                </div>
+              </div>
+
+              <!-- Special Perks -->
+              ${(app.perks && app.perks.length > 0) ? `
+                <div style="margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span style="font-size:11px;color:var(--text-muted);font-weight:700;">EXECUTIVE PERKS:</span>
+                  ${app.perks.map(p => `
+                    <span class="pill" style="background:rgba(34,197,94,0.15);color:#86efac;border:1px solid rgba(34,197,94,0.3);font-size:10.5px;font-weight:700;">
+                      ✓ ${esc(p)}
+                    </span>
+                  `).join('')}
+                </div>
+              ` : ''}
+
+              <!-- 5 Interactive Tactical Actions -->
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid rgba(255,255,255,0.06);padding-top:14px;">
+                <button class="btn btn-primary btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'accept')" style="font-weight:800;background:linear-gradient(90deg, #0284c7, #38bdf8);box-shadow:0 4px 14px rgba(2,132,199,0.4);display:inline-flex;align-items:center;gap:6px;">
+                  ✍️ <span>ACCEPT APPOINTMENT</span>
+                </button>
+                <button class="btn btn-warning btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'negotiate')" style="font-weight:800;color:#0a0f18;box-shadow:0 4px 14px rgba(245,158,11,0.3);display:inline-flex;align-items:center;gap:6px;">
+                  💼 <span>NEGOTIATE ROLE TERMS</span>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'leak')" title="Leak to media to demand retention funding from current board" style="font-weight:700;color:#f472b6;border-color:rgba(244,114,182,0.4);display:inline-flex;align-items:center;gap:6px;">
+                  💣 <span>LEAK TO PRESS</span>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'stall')" title="Ask approaching club to hold offer for 1 match" style="font-weight:700;color:#fde047;border-color:rgba(253,224,71,0.4);display:inline-flex;align-items:center;gap:6px;">
+                  ⏳ <span>STALL (1 MATCH)</span>
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="respondToClubApproach('${esc(app.id)}', 'decline')" title="Decline offer and reaffirm loyalty" style="font-weight:700;color:#fca5a5;border-color:rgba(239,68,68,0.4);display:inline-flex;align-items:center;gap:6px;">
+                  ❌ <span>DECLINE</span>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      ` : `
+        <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:14px;padding:36px 20px;text-align:center;">
+          <div style="font-size:36px;margin-bottom:10px;">📈</div>
+          <b style="color:#fff;font-size:16px;display:block;margin-bottom:6px;">No Active Approaches Right Now</b>
+          <p style="color:var(--text-muted);font-size:13px;max-width:540px;margin:0 auto 16px;line-height:1.5;">
+            Other clubs are scouting your progress. Keep winning league fixtures, win high-stake derbies, or instruct your agent to sound out the market right now to solicit instant formal headhunting inquiries!
+          </p>
+          <button class="btn btn-warning" onclick="solicitAgentApproaches()" style="font-weight:800;color:#0a0f18;box-shadow:0 4px 14px rgba(245,158,11,0.3);">
+            📡 INSTRUCT AGENT TO SOUND OUT MARKET NOW &rarr;
+          </button>
+        </div>
+      `}
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+// -------------------------------------------------------------
+// MANAGER ROLE & CONTRACT NEGOTIATION SUITE
+// -------------------------------------------------------------
+let currentNegotiatingRoleData = null;
+
+async function openManagerRoleNegotiationModal(clubName, isNewJob = false, offerId = null) {
+  const targetName = clubName || S?.selectedClub;
+  const c = S?.clubs?.find(x => x.name === targetName) || {};
+  let contractData = null;
+  try {
+    const q = session?.roomCode ? `&room=${encodeURIComponent(session.roomCode)}` : (session?.soloId ? `&soloId=${encodeURIComponent(session.soloId)}` : '');
+    const res = await fetch('/api/world4/manager/contract?club=' + encodeURIComponent(targetName) + q);
+    contractData = await res.json();
+  } catch (e) {}
+
+  const nameInput = document.getElementById('mgrInputName');
+  const mgrName = (nameInput && nameInput.value.trim()) ? nameInput.value.trim() : ((session && session.managerName) ? session.managerName : 'Head Coach');
+
+  const mc = contractData?.managerCareer || S?.managerCareer || {
+    name: mgrName,
+    reputation: c.division === 4 ? 22 : c.division === 3 ? 28 : 50,
+    tier: 'Tactician',
+    boardConfidence: 85
+  };
+
+  const existingContract = contractData?.contract || mc.contract || {
+    salary: c.division === 4 ? 0.35 : c.division === 3 ? 0.65 : c.division === 2 ? 2.5 : 8.0,
+    yearsRemaining: 2,
+    expectations: c.division === 4 ? 'avoid_relegation' : 'promotion',
+    releaseClause: c.division === 4 ? 12 : 25,
+    extraWarChestGranted: 0,
+    vetoPower: false,
+    youthFunding: false
+  };
+
+  const div = c.division || 3;
+  const approachOffer = (mc.approaches || []).find(a => a.club === targetName || a.id === offerId) || (mc.jobOffers || []).find(o => o.club === targetName || o.id === offerId);
+  const defaultWarChest = approachOffer ? (approachOffer.offeredBudget || approachOffer.budget || 10) : (isNewJob ? (div === 4 ? 5 : div === 3 ? 10 : 25) : 8);
+  const defaultSalary = approachOffer ? (approachOffer.offeredSalary || (parseFloat(String(approachOffer.salary || '').replace(/[^0-9.]/g, '')) || 1.2)) : (existingContract.salary || (div === 4 ? 0.45 : div === 3 ? 0.8 : 3.0));
+
+  currentNegotiatingRoleData = {
+    clubName: targetName,
+    isNewJob,
+    offerId,
+    candidateName: mc.name || mgrName || 'Head Coach',
+    demands: {
+      salary: defaultSalary,
+      transferWarChest: defaultWarChest,
+      contractYears: 2,
+      expectations: existingContract.expectations || 'balanced',
+      releaseClause: existingContract.releaseClause || (div === 4 ? 15 : 30),
+      vetoPower: existingContract.vetoPower || false,
+      youthFunding: existingContract.youthFunding || false
+    }
+  };
+
+  renderManagerRoleNegotiationModalUI(c, mc);
+}
+
+function calculateRoleNegotiationAcceptanceChance(c, mc, demands) {
+  const div = c.division || 3;
+  const rep = mc.reputation || 25;
+  const maxReasonableWarChest = div === 4 ? 15 : div === 3 ? 28 : div === 2 ? 55 : 95;
+  const baseSalaryCap = div === 4 ? 0.9 : div === 3 ? 1.8 : div === 2 ? 4.5 : 16.0;
+  const repFactor = Math.max(0.6, rep / 45);
+
+  let score = 75;
+  score += (rep - 25) * 0.7;
+
+  const chestDiff = (demands.transferWarChest || 0) - (maxReasonableWarChest * repFactor * 0.5);
+  if (chestDiff > 0) score -= chestDiff * 2.8;
+
+  const salDiff = (demands.salary || 0.5) - (baseSalaryCap * repFactor * 0.5);
+  if (salDiff > 0) score -= salDiff * 18;
+
+  if (demands.vetoPower && rep < 35) score -= 12;
+  if (demands.youthFunding) score -= 5;
+
+  return Math.min(99, Math.max(8, Math.round(score)));
+}
+
+function renderManagerRoleNegotiationModalUI(c, mc) {
+  document.getElementById('managerRoleNegotiationModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'managerRoleNegotiationModal';
+  const d = currentNegotiatingRoleData.demands;
+  const isNew = currentNegotiatingRoleData.isNewJob;
+  const div = c.division || 3;
+  const maxWarChestSlider = div === 4 ? 35 : div === 3 ? 60 : div === 2 ? 100 : 180;
+  const maxSalarySlider = div === 4 ? 3.0 : div === 3 ? 5.0 : div === 2 ? 10.0 : 25.0;
+
+  const chance = calculateRoleNegotiationAcceptanceChance(c, mc, d);
+  const chanceColor = chance >= 75 ? 'var(--accent-neon)' : chance >= 50 ? 'var(--accent-gold)' : '#ff4757';
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:820px;padding:26px;position:relative;max-height:88vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border-subtle);padding-bottom:14px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:48px;height:48px;border-radius:14px;background:rgba(168,85,247,0.2);border:1px solid #c084fc;display:flex;align-items:center;justify-content:center;font-size:24px;">
+            👔
+          </div>
+          <div>
+            <div class="card-kicker" style="color:#d8b4fe;">BOARDROOM NEGOTIATION SUITE</div>
+            <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:0;">
+              ${isNew ? 'Contract & Role Negotiations' : 'Contract Extension & Budget Negotiations'}
+            </h2>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('managerRoleNegotiationModal').remove()">
+          ✕ CLOSE
+        </button>
+      </div>
+
+      <!-- Club and Manager Banner -->
+      <div style="display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg, rgba(13,23,40,0.9), rgba(20,15,35,0.85));border:1px solid rgba(168,85,247,0.4);border-radius:12px;padding:14px 18px;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${renderCrest(c.crest || 'crest_shield', 32)}
+          <div>
+            <b style="font-size:16px;color:#fff;">${esc(c.name || 'Club')}</b>
+            <div style="font-size:11.5px;color:var(--text-muted);">
+              Division ${c.division || 3} · Current Treasury: <b style="color:var(--accent-neon);">₹${money(c.cash)}M</b>
+            </div>
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--text-muted);font-weight:800;">HEAD COACH / CANDIDATE:</div>
+          <div style="font-family:var(--font-display);font-size:15px;color:var(--accent-gold);font-weight:800;">
+            ${esc(currentNegotiatingRoleData.candidateName)} · ⭐ Rep: ${mc.reputation || 25}/100
+          </div>
+        </div>
+      </div>
+
+      <!-- Dialogue Bubble from Chairman -->
+      <div id="roleDialogueBox" style="background:rgba(11,26,45,0.85);border:1px solid rgba(168,85,247,0.3);border-radius:10px;padding:12px 16px;margin-bottom:18px;font-size:13px;color:#e2e8f0;line-height:1.5;">
+        <b style="color:#c084fc;">Chairman of the Board:</b> "Welcome to the boardroom. We have high expectations for this squad. Table your demands for personal wages, transfer budget injection, and contract duration, and we will evaluate the feasibility."
+      </div>
+
+      <!-- Real-time Acceptance Probability Gauge -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 18px;margin-bottom:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:11.5px;font-weight:800;color:var(--text-muted);letter-spacing:0.04em;">BOARDROOM APPROVAL PROBABILITY:</span>
+          <span id="roleChancePct" style="font-family:var(--font-display);font-size:17px;font-weight:900;color:${chanceColor};">${chance}%</span>
+        </div>
+        <div style="width:100%;height:10px;background:rgba(255,255,255,0.08);border-radius:6px;overflow:hidden;">
+          <div id="roleChanceBar" style="width:${chance}%;height:100%;background:${chanceColor};transition:width 0.25s, background 0.25s;"></div>
+        </div>
+      </div>
+
+      <!-- Interactive Inputs Grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;">
+        
+        <!-- Input 1: Transfer War Chest Injection -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label style="font-size:11.5px;font-weight:800;color:#93c5fd;">💰 INJECTED TRANSFER WAR CHEST</label>
+            <span id="roleWarChestDisplay" style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--accent-neon);">+₹${d.transferWarChest}M</span>
+          </div>
+          <input type="range" min="0" max="${maxWarChestSlider}" step="1" value="${d.transferWarChest}" style="width:100%;accent-color:var(--accent-neon);" oninput="currentNegotiatingRoleData.demands.transferWarChest=+this.value; document.getElementById('roleWarChestDisplay').textContent='+₹'+this.value+'M'; updateRoleNegotiationGauge(c, mc);">
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+            Extra cash demanded directly from boardroom reserves into club transfer budget.
+          </div>
+        </div>
+
+        <!-- Input 2: Manager Annual Salary -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <label style="font-size:11.5px;font-weight:800;color:#fcd34d;">💵 PERSONAL SALARY (₹M / YR)</label>
+            <span id="roleSalaryDisplay" style="font-family:var(--font-display);font-size:18px;font-weight:900;color:var(--accent-gold);">₹${d.salary}M / yr</span>
+          </div>
+          <input type="range" min="0.2" max="${maxSalarySlider}" step="0.1" value="${d.salary}" style="width:100%;accent-color:var(--accent-gold);" oninput="currentNegotiatingRoleData.demands.salary=+this.value; document.getElementById('roleSalaryDisplay').textContent='₹'+this.value+'M / yr'; updateRoleNegotiationGauge(c, mc);">
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px;">
+            Personal executive salary. Reflects your prestige, rep growth, and contract standing.
+          </div>
+        </div>
+
+        <!-- Input 3: Contract Length -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+          <label style="font-size:11.5px;font-weight:800;color:#d8b4fe;display:block;margin-bottom:8px;">⏳ CONTRACT DURATION (SEASONS)</label>
+          <div style="display:flex;gap:6px;">
+            ${[1, 2, 3, 4, 5].map(yrs => `
+              <button class="btn btn-sm ${d.contractYears === yrs ? 'btn-primary' : 'btn-secondary'}" id="btnYrs_${yrs}" onclick="setRoleContractYears(${yrs}, ${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-weight:800;font-size:11.5px;padding:6px 0;">
+                ${yrs} YR
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Input 4: Board Tactical Ambition -->
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:14px;">
+          <label style="font-size:11.5px;font-weight:800;color:#7dd3fc;display:block;margin-bottom:8px;">🎯 BOARDROOM PHILOSOPHY &amp; MANDATE</label>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sm ${d.expectations === 'rebuild' ? 'btn-primary' : 'btn-secondary'}" id="mandate_rebuild" onclick="setRoleMandate('rebuild', ${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-size:11px;font-weight:800;padding:6px 4px;">
+              🌱 Rebuild
+            </button>
+            <button class="btn btn-sm ${d.expectations === 'balanced' ? 'btn-primary' : 'btn-secondary'}" id="mandate_balanced" onclick="setRoleMandate('balanced', ${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-size:11px;font-weight:800;padding:6px 4px;">
+              ⚖️ Balanced
+            </button>
+            <button class="btn btn-sm ${d.expectations === 'title_charge' ? 'btn-primary' : 'btn-secondary'}" id="mandate_title" onclick="setRoleMandate('title_charge', ${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-size:11px;font-weight:800;padding:6px 4px;">
+              👑 Title Charge
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Special Executive Governance Clauses -->
+      <div style="background:rgba(0,0,0,0.25);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-size:11.5px;font-weight:800;color:var(--text-dim);margin-bottom:10px;letter-spacing:0.04em;">EXECUTIVE POWER CLAUSES:</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+            <input type="checkbox" id="chkRoleVeto" ${d.vetoPower ? 'checked' : ''} onchange="currentNegotiatingRoleData.demands.vetoPower=this.checked; updateRoleNegotiationGauge(${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')});" style="accent-color:var(--accent-blue);">
+            <div style="font-size:12px;color:#fff;">
+              <b>🛡️ Manager Veto Authority</b>
+              <div style="font-size:10.5px;color:var(--text-muted);">Board cannot sell key players without manager sign-off</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:rgba(255,255,255,0.03);padding:10px 12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);">
+            <input type="checkbox" id="chkRoleYouth" ${d.youthFunding ? 'checked' : ''} onchange="currentNegotiatingRoleData.demands.youthFunding=this.checked; updateRoleNegotiationGauge(${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')});" style="accent-color:var(--accent-neon);">
+            <div style="font-size:12px;color:#fff;">
+              <b>🌟 Academy Funding Injection</b>
+              <div style="font-size:10.5px;color:var(--text-muted);">Upgrade youth training facilities by +1 tier</div>
+            </div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div id="roleNegotiationActionRow" style="display:flex;gap:10px;">
+        <button class="btn btn-primary" onclick="submitRoleNegotiationDemands(${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-weight:900;font-size:14px;padding:13px;background:linear-gradient(90deg, #9333ea, #3b82f6);box-shadow:0 4px 20px rgba(147,51,234,0.4);">
+          ✍️ SUBMIT CONTRACT DEMANDS TO BOARD &rarr;
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('managerRoleNegotiationModal').remove()">
+          WALK AWAY
+        </button>
+      </div>
+
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function setRoleContractYears(yrs, c, mc) {
+  if (!currentNegotiatingRoleData) return;
+  currentNegotiatingRoleData.demands.contractYears = yrs;
+  [1, 2, 3, 4, 5].forEach(y => {
+    const btn = document.getElementById(`btnYrs_${y}`);
+    if (btn) btn.className = `btn btn-sm ${y === yrs ? 'btn-primary' : 'btn-secondary'}`;
+  });
+  updateRoleNegotiationGauge(c, mc);
+}
+
+function setRoleMandate(mandate, c, mc) {
+  if (!currentNegotiatingRoleData) return;
+  currentNegotiatingRoleData.demands.expectations = mandate;
+  ['rebuild', 'balanced', 'title_charge'].forEach(m => {
+    const btn = document.getElementById(m === 'rebuild' ? 'mandate_rebuild' : m === 'balanced' ? 'mandate_balanced' : 'mandate_title');
+    if (btn) btn.className = `btn btn-sm ${m === mandate ? 'btn-primary' : 'btn-secondary'}`;
+  });
+  updateRoleNegotiationGauge(c, mc);
+}
+
+function updateRoleNegotiationGauge(c, mc) {
+  if (!currentNegotiatingRoleData) return;
+  const chance = calculateRoleNegotiationAcceptanceChance(c, mc, currentNegotiatingRoleData.demands);
+  const color = chance >= 75 ? 'var(--accent-neon)' : chance >= 50 ? 'var(--accent-gold)' : '#ff4757';
+  const pctEl = document.getElementById('roleChancePct');
+  const barEl = document.getElementById('roleChanceBar');
+  if (pctEl) {
+    pctEl.textContent = chance + '%';
+    pctEl.style.color = color;
+  }
+  if (barEl) {
+    barEl.style.width = chance + '%';
+    barEl.style.background = color;
+  }
+}
+
+function submitRoleNegotiationDemands(c, mc) {
+  const data = currentNegotiatingRoleData;
+  if (!data) return;
+
+  const btnRow = document.getElementById('roleNegotiationActionRow');
+  if (btnRow) {
+    btnRow.innerHTML = `<div style="text-align:center;width:100%;color:var(--accent-gold);font-weight:800;padding:12px;">⏳ Boardroom is reviewing contract terms with club ownership...</div>`;
+  }
+
+  post('/api/world4/manager/negotiate-role', ref({
+    club: data.clubName,
+    isNewJob: data.isNewJob,
+    offerId: data.offerId,
+    demands: data.demands,
+    managerName: data.candidateName
+  })).then(res => {
+    if (res.error) return alert(res.error);
+    const r = res.result || res;
+
+    if (r.status === 'accepted') {
+      playSfx('deal');
+      playSfx('applause');
+      S = res.state || S;
+      if (data.isNewJob) {
+        if (!session) session = {};
+        session.managerName = data.candidateName;
+        session.userRole = 'manager';
+        save();
+      }
+      document.getElementById('managerRoleNegotiationModal')?.remove();
+      document.getElementById('managerOfficeModal')?.remove();
+      alert(`🎉 CONTRACT RATIFIED BY BOARDROOM!\n\n${r.message}`);
+      renderGame();
+      return;
+    }
+
+    if (r.status === 'counter') {
+      playSfx('deal');
+      const cp = r.counterProposal;
+      const dlg = document.getElementById('roleDialogueBox');
+      if (dlg) {
+        dlg.innerHTML = `
+          <b style="color:var(--accent-gold);">Chairman of the Board (Counter-Proposal):</b><br>
+          "${r.message}"<br><br>
+          <div style="background:rgba(0,0,0,0.3);border-radius:6px;padding:8px 12px;font-size:12px;">
+            Offered War Chest: <b style="color:var(--accent-neon);">+₹${cp.transferWarChest}M</b> · Offered Salary: <b style="color:var(--accent-gold);">₹${cp.salary}M/yr</b> · Duration: <b>${cp.contractYears} Seasons</b>
+          </div>
+        `;
+      }
+      if (btnRow) {
+        btnRow.innerHTML = `
+          <button class="btn btn-success" onclick="acceptRoleCounterProposal('${esc(data.clubName)}', ${JSON.stringify(cp).replace(/"/g, '&quot;')})" style="flex:1;font-weight:900;padding:12px;">
+            🤝 ACCEPT BOARD COMPROMISE &amp; RATIFY PACT
+          </button>
+          <button class="btn btn-secondary" onclick="renderManagerRoleNegotiationModalUI(${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;">
+            🔄 ADJUST DEMANDS &amp; RE-SUBMIT
+          </button>
+        `;
+      }
+      return;
+    }
+
+    playSfx('kick');
+    const dlg = document.getElementById('roleDialogueBox');
+    if (dlg) {
+      dlg.innerHTML = `<b style="color:#ff4757;">Board Chairman:</b> "${r.message}"`;
+    }
+    if (btnRow) {
+      btnRow.innerHTML = `
+        <button class="btn btn-warning" onclick="renderManagerRoleNegotiationModalUI(${JSON.stringify(c).replace(/"/g, '&quot;')}, ${JSON.stringify(mc).replace(/"/g, '&quot;')})" style="flex:1;font-weight:800;color:#0a0f18;">
+          ✏️ SOFTEN DEMANDS &amp; TRY AGAIN
+        </button>
+        <button class="btn btn-secondary" onclick="document.getElementById('managerRoleNegotiationModal').remove()">
+          WALK AWAY
+        </button>
+      `;
+    }
+  }).catch(err => {
+    alert(err.message || 'Negotiation failed.');
+    renderManagerRoleNegotiationModalUI(c, mc);
+  });
+}
+
+function acceptRoleCounterProposal(clubName, counterDemands) {
+  const data = currentNegotiatingRoleData;
+  if (!data) return;
+
+  post('/api/world4/manager/negotiate-role', ref({
+    club: clubName,
+    isNewJob: data.isNewJob,
+    offerId: data.offerId,
+    demands: counterDemands,
+    managerName: data.candidateName
+  })).then(res => {
+    playSfx('deal');
+    playSfx('applause');
+    S = res.state || S;
+    if (data.isNewJob) {
+      if (!session) session = {};
+      session.managerName = data.candidateName;
+      session.userRole = 'manager';
+      save();
+    }
+    document.getElementById('managerRoleNegotiationModal')?.remove();
+    document.getElementById('managerOfficeModal')?.remove();
+    alert(`🎉 CONTRACT RATIFIED ON COMPROMISE TERMS!\n\n${res.result?.message || 'New contract signed!'}`);
+    renderGame();
+  }).catch(err => alert(err.message || 'Error ratifying compromise.'));
 }
 
 function resumeSession() {
@@ -3012,11 +3729,15 @@ function renderGame() {
               <span class="pill" style="background:rgba(34,197,94,0.18);color:#86efac;border:1px solid rgba(34,197,94,0.4);" title="Board of Directors Confidence">
                 🟢 Board: ${(S.managerCareer && S.managerCareer.boardConfidence) ? S.managerCareer.boardConfidence : (S.boardStatus?.confidence || 85)}%
               </span>
-              ${(S.managerCareer && S.managerCareer.jobOffers && S.managerCareer.jobOffers.length > 0) ? `
-                <span class="pill" style="background:linear-gradient(90deg, #f59e0b, #ec4899);color:#0a0f18;font-weight:900;cursor:pointer;animation:pulseBorder 2s infinite;" onclick="openManagerOfficeModal()" title="Higher division clubs want to hire you!">
+              ${(S.managerCareer && S.managerCareer.approaches && S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) ? `
+                <span class="pill" style="background:linear-gradient(90deg, #ef4444, #f59e0b);color:#fff;font-weight:900;cursor:pointer;animation:pulseBorder 2s infinite;box-shadow:0 0 10px rgba(239,68,68,0.6);" onclick="openManagerApproachesModal()" title="Other clubs are trying to hire you as their manager! Click to review approaches.">
+                  🚨 ${S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length} CLUBS APPROACHING YOU!
+                </span>
+              ` : ((S.managerCareer && S.managerCareer.jobOffers && S.managerCareer.jobOffers.length > 0) ? `
+                <span class="pill" style="background:linear-gradient(90deg, #f59e0b, #ec4899);color:#0a0f18;font-weight:900;cursor:pointer;animation:pulseBorder 2s infinite;" onclick="openManagerApproachesModal()" title="Review club inquiries & job offers">
                   💼 ${S.managerCareer.jobOffers.length} JOB OFFERS
                 </span>
-              ` : ''}
+              ` : '')}
             ` : ''}
             ${c.rivals?.same ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal('same')" title="${esc(c.rivals.same.derbyName || 'Rivalry')}">⚔️ Div ${c.division} Rival: ${esc(c.rivals.same.name)}</span>` : (c.rivalName ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal()">⚔️ Rival: ${esc(c.rivalName)}</span>` : '')}
             ${c.rivals?.higher ? `<span class="pill" style="background:rgba(234,179,8,0.18);color:#fef08a;border:1px solid rgba(234,179,8,0.4);cursor:pointer;" onclick="openRivalryDossierModal('higher')" title="Top-flight Goliath to shock in FA Cup!">👑 Div ${c.rivals.higher.division} Goliath: ${esc(c.rivals.higher.name)}</span>` : ''}
@@ -3055,6 +3776,9 @@ function renderGame() {
         ${userRole === 'manager' ? `
           <button class="btn btn-sm" onclick="openPressConferenceModal('general')" style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.5);color:#7dd3fc;font-weight:800;" title="Call an Official Press Meeting / Media Briefing">
             🎙️ <span>PRESS MEETING</span>
+          </button>
+          <button class="btn btn-sm" onclick="openManagerRoleNegotiationModal('${esc(c.name)}', false)" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.5);color:#d8b4fe;font-weight:800;" title="Negotiate your manager role, contract salary, and squad war chest with the Board">
+            💼 <span>ROLE NEGOTIATION</span>
           </button>
         ` : ''}
         <button id="hudIncomingBidsBtn" class="btn btn-sm" onclick="openIncomingOffersModal()" style="display:inline-flex;align-items:center;gap:6px;${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? 'background:rgba(239,68,68,0.25);border:1px solid #ef4444;color:#fca5a5;font-weight:800;animation:pulseBorder 2s infinite;' : 'background:rgba(255,255,255,0.06);border:1px solid var(--border-subtle);color:var(--text-muted);'}" title="Review & negotiate incoming transfer inquiries from AI clubs">
@@ -4249,6 +4973,26 @@ function conductSquadBonding() {
 function renderTransfersSection(container) {
   const pendingCount = (S.incomingOffers || []).filter(o => o.status === 'pending').length;
   container.innerHTML = `
+    ${userRole === 'manager' ? `
+      <div style="background:linear-gradient(135deg, rgba(42,139,242,0.12), rgba(168,85,247,0.06));border:1px solid rgba(42,139,242,0.35);border-radius:12px;padding:12px 18px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:22px;">👔</span>
+          <div>
+            <div style="font-size:10.5px;font-weight:800;color:#70b5ff;text-transform:uppercase;">HEAD MANAGER TRANSFER AUTHORITY</div>
+            <div style="font-size:13px;color:#fff;font-weight:700;">Command Squad Negotiations, Inquiries &amp; Target Dealings</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm btn-primary" onclick="openIncomingOffersModal()" style="font-weight:800;background:linear-gradient(90deg, #ef4444, #f59e0b);">
+            💼 NEGOTIATE INCOMING BIDS (${pendingCount})
+          </button>
+          <button class="btn btn-sm btn-secondary" onclick="openPressConferenceModal('transfer')" style="border-color:rgba(56,189,248,0.5);color:#7dd3fc;font-weight:800;">
+            🎙️ TRANSFER WINDOW PRESS MEETING
+          </button>
+        </div>
+      </div>
+    ` : ''}
+
     <div class="subnav-pills" style="overflow-x:auto;white-space:nowrap;padding-bottom:6px;">
       <button class="subnav-pill ${subTabs.transfers === 'bids' ? 'active' : ''}" onclick="subTabs.transfers='bids'; renderTransfersSection(document.getElementById('gameContent'))">
         🔔 RIVAL INQUIRIES ${pendingCount > 0 ? `<span style="background:#ef4444;color:#fff;font-size:9.5px;padding:1px 6px;border-radius:4px;margin-left:4px;">${pendingCount}</span>` : ''}
@@ -6209,7 +6953,10 @@ function renderDashboard(container) {
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         ${userRole==='manager' ? `
           <button class="btn btn-warning btn-sm" onclick="openManagerOfficeModal()" style="font-weight:900;color:#0a0f18;box-shadow:0 4px 14px rgba(255,184,48,0.3);display:inline-flex;align-items:center;gap:6px;">
-            💼 <span>MANAGER OFFICE &amp; OFFERS ${(S.managerCareer && S.managerCareer.jobOffers && S.managerCareer.jobOffers.length > 0) ? `(${S.managerCareer.jobOffers.length})` : ''}</span>
+            💼 <span>MANAGER OFFICE</span>
+          </button>
+          <button class="btn btn-sm" onclick="openManagerApproachesModal()" style="font-weight:900;background:linear-gradient(90deg, #ef4444, #f59e0b);color:#fff;box-shadow:0 4px 14px rgba(239,68,68,0.4);display:inline-flex;align-items:center;gap:6px;animation:pulseBorder 2.5s infinite;">
+            🚨 <span>CLUB APPROACHES ${(S.managerCareer && S.managerCareer.approaches && S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) ? `(${S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length})` : ''}</span>
           </button>
           <button class="btn btn-primary btn-sm" onclick="openPressConferenceModal('general')" style="font-weight:800;background:linear-gradient(90deg, #0284c7, #38bdf8);display:inline-flex;align-items:center;gap:6px;">
             🎙️ <span>PRESS MEETING</span>
@@ -9650,6 +10397,25 @@ function openMatchModal(m) {
         </div>
       ` : ''}
 
+      ${(S.managerCareer && S.managerCareer.latestApproachAlert) ? `
+        <div style="background:linear-gradient(90deg, rgba(239,68,68,0.2), rgba(245,158,11,0.2));border:1px solid #ef4444;border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left;box-shadow:0 4px 16px rgba(239,68,68,0.3);">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span style="font-size:22px;">🚨</span>
+              <div>
+                <b style="color:#fff;font-size:13px;display:block;">POST-MATCH CLUB APPROACH!</b>
+                <div style="color:#cbd5e1;font-size:11.5px;">
+                  <b>${esc(S.managerCareer.latestApproachAlert.club)}</b> has officially approached you with an attractive contract offer!
+                </div>
+              </div>
+            </div>
+            <button class="btn btn-warning btn-xs" onclick="document.getElementById('matchSimModal')?.remove(); openManagerApproachesModal();" style="font-weight:900;color:#0a0f18;white-space:nowrap;box-shadow:0 2px 8px rgba(245,158,11,0.3);">
+              REVIEW APPROACH &rarr;
+            </button>
+          </div>
+        </div>
+      ` : ''}
+
       <div style="display:flex;gap:10px;">
         <button class="btn btn-primary" style="flex:1;" onclick="document.getElementById('matchSimModal').remove(); switchTab('matchday');">
           ⚽ NEXT FIXTURE &rarr;
@@ -12173,94 +12939,252 @@ function mentorYouthProspectAction() {
 // =============================================================
 let currentPressConference = null;
 let currentPressAnswers = [];
+let currentCustomPressStatements = {};
 
-function openPressConferenceModal(stage = 'general') {
+function updatePressImpactPreview() {
+  const previewEl = document.getElementById('pressImpactPreview');
+  if (!previewEl || !currentPressConference) return;
+
+  let totalRep = 0;
+  let totalMorale = 0;
+  let totalBoard = 0;
+  let totalFans = 0;
+
+  (currentPressConference.questions || []).forEach((q, idx) => {
+    const custom = currentCustomPressStatements[idx];
+    if (custom && custom.trim().length > 3) {
+      totalRep += 3;
+      totalMorale += 6;
+      totalBoard += 5;
+      totalFans += 7;
+    } else {
+      const ans = currentPressAnswers[idx] || q.options[0];
+      if (ans && ans.effects) {
+        totalRep += Number(ans.effects.reputation) || 0;
+        totalMorale += Number(ans.effects.morale) || 0;
+        totalBoard += Number(ans.effects.boardConfidence) || 0;
+        totalFans += Number(ans.effects.fanApproval) || 0;
+      }
+    }
+  });
+
+  previewEl.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;font-size:12px;font-weight:800;">
+      <span style="color:var(--text-muted);display:flex;align-items:center;gap:6px;">
+        <span>📊 PROJECTED IMPACT ON SQUAD &amp; CAREER:</span>
+      </span>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span class="pill" style="background:rgba(253,224,71,0.18);color:#fde047;border:1px solid rgba(253,224,71,0.4);">
+          ⭐ Rep ${totalRep >= 0 ? '+' : ''}${totalRep}
+        </span>
+        <span class="pill" style="background:${totalMorale >= 0 ? 'rgba(34,197,94,0.18)' : 'rgba(239,68,68,0.18)'};color:${totalMorale >= 0 ? '#86efac' : '#fca5a5'};border:1px solid ${totalMorale >= 0 ? 'rgba(34,197,94,0.4)' : 'rgba(239,68,68,0.4)'};">
+          🔥 Morale ${totalMorale >= 0 ? '+' : ''}${totalMorale}%
+        </span>
+        <span class="pill" style="background:rgba(56,189,248,0.18);color:#7dd3fc;border:1px solid rgba(56,189,248,0.4);">
+          🟢 Board ${totalBoard >= 0 ? '+' : ''}${totalBoard}%
+        </span>
+        <span class="pill" style="background:rgba(244,114,182,0.18);color:#f472b6;border:1px solid rgba(244,114,182,0.4);">
+          ❤️ Fans ${totalFans >= 0 ? '+' : ''}${totalFans}%
+        </span>
+      </div>
+    </div>
+  `;
+}
+
+function updateCustomPressStatement(qIdx, text) {
+  currentCustomPressStatements[qIdx] = text;
+  updatePressImpactPreview();
+}
+
+function openPressConferenceModal(stage = 'general', regenerate = false) {
   const c = S.clubs.find(x => x.name === S.selectedClub);
   if (!c) return;
 
-  fetch(`/api/world4/press/questions?stage=${stage}&club=${encodeURIComponent(c.name)}&` + (session.roomCode ? 'room=' + session.roomCode : 'soloId=' + session.soloId))
+  const btnSpin = document.getElementById('pressRegenerateBtn');
+  if (btnSpin) btnSpin.innerText = '✨ GENERATING...';
+
+  const qStr = `/api/world4/press/questions?stage=${stage}&club=${encodeURIComponent(c.name)}&regenerate=${regenerate ? 'true' : 'false'}&` + (session.roomCode ? 'room=' + session.roomCode : 'soloId=' + session.soloId);
+  fetch(qStr)
     .then(r => r.json())
     .then(data => {
       currentPressConference = data;
-      currentPressAnswers = (data.questions || []).map(q => q.options[0]);
+      currentPressAnswers = (data.questions || []).map((q, idx) => ({ ...q.options[0], questionId: q.id || `q_${idx}` }));
+      currentCustomPressStatements = {};
 
       document.getElementById('pressConferenceModal')?.remove();
       const overlay = document.createElement('div');
       overlay.className = 'modal-overlay';
       overlay.id = 'pressConferenceModal';
+      overlay.style.zIndex = '9999';
 
       const isMgr = userRole === 'manager';
-      const stageLabel = stage === 'transfer' 
-        ? 'TRANSFER WINDOW & NEGOTIATIONS' 
-        : stage === 'pre' 
-        ? 'PRE-MATCH TACTICAL PREVIEW' 
-        : stage === 'post' 
-        ? 'POST-MATCH REACTION' 
-        : 'GENERAL MEDIA BRIEFING';
+      const mc = S.managerCareer || {};
+      const currentRep = mc.reputation || data.managerReputation || 30;
+      const currentMorale = c.morale || data.squadMorale || 75;
+      const approachesCount = data.approachesCount || (mc.approaches || []).filter(a => a.status === 'pending').length;
+
+      const stageLabels = {
+        general: 'GENERAL MEDIA BRIEFING',
+        pre: 'PRE-MATCH TACTICAL PREVIEW',
+        post: 'POST-MATCH REACTION & DEBRIEF',
+        transfer: 'TRANSFER NEGOTIATIONS & SPECULATION',
+        headhunt: 'POACHING & CLUB APPROACHES'
+      };
 
       overlay.innerHTML = `
-        <div class="modal-box" style="width:min(760px, 96vw);max-height:90vh;overflow-y:auto;padding:26px;">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <div class="modal-box" style="width:min(840px, 96vw);max-height:92vh;overflow-y:auto;padding:26px;background:radial-gradient(circle at 50% 0%, #152238 0%, #0a0f18 100%);border:1px solid rgba(42,139,242,0.4);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,0.85);color:#e2e8f0;">
+          <!-- Top Header -->
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;flex-wrap:wrap;gap:10px;">
             <div>
-              <div class="card-kicker" style="color:var(--accent-gold);">${isMgr ? '👔 HEAD MANAGER MEDIA SUITE' : 'INTERNATIONAL MEDIA SUITE'} · ${stageLabel}</div>
-              <h2 style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;margin:2px 0 0 0;">
-                Official Press Meeting &amp; Media Briefing
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+                <span class="pill" style="background:rgba(245,158,11,0.2);color:#fbbf24;border:1px solid rgba(245,158,11,0.4);font-weight:900;font-size:10.5px;">
+                  🎙️ OFFICIAL PRESS CONFERENCE
+                </span>
+                <span class="pill" style="background:rgba(56,189,248,0.2);color:#38bdf8;font-weight:800;font-size:10.5px;">
+                  ${stageLabels[stage] || 'MEDIA SUITE'}
+                </span>
+                <span class="pill" style="background:linear-gradient(90deg, #9333ea, #3b82f6);color:#fff;font-weight:900;font-size:10px;">
+                  ✨ AI-GENERATED JOURNALISM
+                </span>
+              </div>
+              <h2 style="font-family:var(--font-display);font-size:23px;font-weight:900;color:#fff;margin:2px 0 0 0;letter-spacing:-0.5px;">
+                Press Conference: ${esc(c.name)} Media Room
               </h2>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pressConferenceModal').remove()">✕ CLOSE</button>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button id="pressRegenerateBtn" class="btn btn-warning btn-xs" onclick="openPressConferenceModal('${stage}', true)" style="font-weight:800;color:#0a0f18;box-shadow:0 2px 10px rgba(245,158,11,0.3);display:inline-flex;align-items:center;gap:4px;">
+                ✨ <span>NEW AI QUESTIONS</span>
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('pressConferenceModal').remove()" style="font-size:16px;line-height:1;padding:6px 12px;">✕</button>
+            </div>
           </div>
 
-          <!-- Press Meeting Category Selector -->
+          <!-- Current Career & Morale Stats Bar -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(140px, 1fr));gap:10px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:10px;padding:10px 14px;margin-bottom:16px;">
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10px;font-weight:800;">⭐ MANAGER REPUTATION</span>
+              <b style="color:var(--accent-gold);font-size:14px;">${currentRep}/100</b>
+              <span style="font-size:10.5px;color:#94a3b8;margin-left:4px;">(${mc.tier || 'Tactician'})</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10px;font-weight:800;">🔥 SQUAD MORALE</span>
+              <b style="color:${currentMorale >= 75 ? 'var(--accent-neon)' : '#f87171'};font-size:14px;">${currentMorale}%</b>
+              <span style="font-size:10.5px;color:#94a3b8;margin-left:4px;">(Dressing Room)</span>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10px;font-weight:800;">🟢 BOARD CONFIDENCE</span>
+              <b style="color:#7dd3fc;font-size:14px;">${c.boardConfidence || 85}%</b>
+            </div>
+            <div>
+              <span style="color:var(--text-muted);display:block;font-size:10px;font-weight:800;">❤️ FAN SATISFACTION</span>
+              <b style="color:#f472b6;font-size:14px;">${c.fanSatisfaction || 75}%</b>
+            </div>
+          </div>
+
+          <!-- Category Selector Tabs -->
           <div style="display:flex;gap:8px;margin-bottom:16px;overflow-x:auto;padding-bottom:4px;">
             <button class="btn btn-xs ${stage==='general'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('general')" style="font-weight:800;white-space:nowrap;">
-              🎙️ General Media Meeting
-            </button>
-            <button class="btn btn-xs ${stage==='transfer'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('transfer')" style="font-weight:800;white-space:nowrap;border-color:rgba(239,68,68,0.4);">
-              💼 Transfer Negotiations Speculation
+              🎙️ General Meeting
             </button>
             <button class="btn btn-xs ${stage==='pre'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('pre')" style="font-weight:800;white-space:nowrap;">
-              ⚽ Pre-Match Tactical Briefing
+              ⚽ Pre-Match Tactical
             </button>
             <button class="btn btn-xs ${stage==='post'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('post')" style="font-weight:800;white-space:nowrap;">
               🏁 Post-Match Debrief
             </button>
+            <button class="btn btn-xs ${stage==='transfer'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('transfer')" style="font-weight:800;white-space:nowrap;">
+              💼 Transfer Speculation
+            </button>
+            ${approachesCount > 0 ? `
+              <button class="btn btn-xs ${stage==='headhunt'?'btn-primary':'btn-secondary'}" onclick="openPressConferenceModal('headhunt')" style="font-weight:800;white-space:nowrap;border-color:#ef4444;color:#fca5a5;">
+                🚨 Club Poaching Approaches (${approachesCount})
+              </button>
+            ` : ''}
           </div>
 
-          <p style="color:var(--text-muted);font-size:13px;line-height:1.5;margin-bottom:18px;">
-            Face the football media press corp. Your tone and statements directly affect dressing room morale, fan excitement, board confidence, rival manager mind games, and your <b>Manager Reputation</b>.
+          <p style="color:var(--text-muted);font-size:12.5px;line-height:1.5;margin-bottom:18px;">
+            You are seated before the national football press corp. Every answer directly impacts your <b>Manager Reputation</b>, <b>Squad Dressing Room Morale</b>, <b>Board Trust</b>, and <b>Supporters' Excitement</b>.
           </p>
 
-          <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:20px;">
+          <!-- Journalist Questions List -->
+          <div style="display:flex;flex-direction:column;gap:18px;margin-bottom:20px;">
             ${(data.questions || []).map((q, qIdx) => `
-              <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-                  <span style="font-size:11px;font-weight:900;color:var(--accent-neon);">${esc(q.outlet)} · ${esc(q.journalist)}</span>
-                  <span class="pill" style="font-size:9.5px;">Question ${qIdx + 1}</span>
+              <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(42,139,242,0.3);border-radius:14px;padding:18px;box-shadow:0 6px 20px rgba(0,0,0,0.35);">
+                <!-- Journalist Byline -->
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:8px;">
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-size:16px;">📰</span>
+                    <span style="font-size:12px;font-weight:900;color:var(--accent-neon);">${esc(q.outlet)}</span>
+                    <span style="color:var(--text-muted);font-size:11px;">· by ${esc(q.journalist)}</span>
+                  </div>
+                  <span class="pill" style="font-size:9.5px;background:rgba(255,255,255,0.08);color:var(--text-muted);font-weight:700;">
+                    ${esc(q.category || `Question ${qIdx + 1}`)}
+                  </span>
                 </div>
-                <div style="font-size:13.5px;color:#fff;font-weight:700;margin-bottom:12px;line-height:1.45;">
+
+                <!-- The Question -->
+                <div style="font-size:14px;color:#fff;font-weight:800;margin-bottom:14px;line-height:1.5;font-style:italic;">
                   "${esc(q.question)}"
                 </div>
 
+                <!-- 3 Diverse Tactical Responses with Impact Badges -->
                 <div style="display:flex;flex-direction:column;gap:8px;">
                   ${q.options.map((opt, oIdx) => `
-                    <label style="display:flex;align-items:flex-start;gap:10px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 12px;cursor:pointer;">
-                      <input type="radio" name="press_q_${qIdx}" value="${oIdx}" ${oIdx === 0 ? 'checked' : ''} onchange="selectPressOption(${qIdx}, ${oIdx})" style="margin-top:3px;">
+                    <label style="display:flex;align-items:flex-start;gap:12px;background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.07);border-radius:10px;padding:12px 14px;cursor:pointer;transition:all 0.15s ease;">
+                      <input type="radio" name="press_q_${qIdx}" value="${oIdx}" ${oIdx === 0 ? 'checked' : ''} onchange="selectPressOption(${qIdx}, ${oIdx})" style="margin-top:4px;cursor:pointer;">
                       <div style="flex:1;">
-                        <b style="font-size:12px;color:var(--accent-gold);">${esc(opt.style)}:</b>
-                        <span style="font-size:12.5px;color:#e2e8f0;display:block;margin-top:2px;">${esc(opt.quote)}</span>
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+                          <b style="font-size:12.5px;color:var(--accent-gold);letter-spacing:0.3px;">
+                            ${esc(opt.style)}
+                          </b>
+                          <!-- Impact Badges -->
+                          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span class="pill" style="background:rgba(253,224,71,0.15);color:#fde047;border:1px solid rgba(253,224,71,0.3);font-size:10px;font-weight:800;">
+                              ⭐ Rep ${opt.effects?.reputation >= 0 ? '+' : ''}${opt.effects?.reputation || 0}
+                            </span>
+                            <span class="pill" style="background:${(opt.effects?.morale || 0) >= 0 ? 'rgba(34,197,94,0.15)' : 'rgba(239,68,68,0.15)'};color:${(opt.effects?.morale || 0) >= 0 ? '#86efac' : '#fca5a5'};border:1px solid ${(opt.effects?.morale || 0) >= 0 ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'};font-size:10px;font-weight:800;">
+                              🔥 Morale ${opt.effects?.morale >= 0 ? '+' : ''}${opt.effects?.morale || 0}%
+                            </span>
+                            <span class="pill" style="background:rgba(56,189,248,0.15);color:#7dd3fc;border:1px solid rgba(56,189,248,0.3);font-size:10px;font-weight:700;">
+                              🟢 Board ${opt.effects?.boardConfidence >= 0 ? '+' : ''}${opt.effects?.boardConfidence || 0}%
+                            </span>
+                            <span class="pill" style="background:rgba(244,114,182,0.15);color:#f472b6;border:1px solid rgba(244,114,182,0.3);font-size:10px;font-weight:700;">
+                              ❤️ Fans ${opt.effects?.fanApproval >= 0 ? '+' : ''}${opt.effects?.fanApproval || 0}%
+                            </span>
+                          </div>
+                        </div>
+                        <span style="font-size:12.5px;color:#e2e8f0;display:block;line-height:1.45;">
+                          ${esc(opt.quote)}
+                        </span>
                       </div>
                     </label>
                   `).join('')}
                 </div>
+
+                <!-- Custom Voice Input Option -->
+                <div style="margin-top:10px;padding-top:10px;border-top:1px dashed rgba(255,255,255,0.06);">
+                  <div style="font-size:11px;color:var(--text-muted);font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px;">
+                    <span>✍️ Or Speak Directly: Type Custom Statement to Journalists</span>
+                  </div>
+                  <input type="text" placeholder="Type your own words to the press (e.g. 'We fight for this badge with everything we have')..." 
+                    oninput="updateCustomPressStatement(${qIdx}, this.value)"
+                    style="width:100%;background:rgba(0,0,0,0.35);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 12px;font-size:12px;color:#fff;">
+                </div>
+
               </div>
             `).join('')}
           </div>
 
+          <!-- Bottom Total Projected Impact -->
+          <div id="pressImpactPreview" style="background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:12px 16px;margin-bottom:18px;">
+          </div>
+
+          <!-- Action Buttons -->
           <div style="display:flex;gap:10px;">
-            <button class="btn btn-primary" onclick="submitPressConferenceAction()" style="flex:1;padding:12px;font-weight:800;background:linear-gradient(90deg, #0284c7, #38bdf8);">
-              🎙️ ISSUE STATEMENTS &amp; CONCLUDE PRESS MEETING
+            <button class="btn btn-primary" onclick="submitPressConferenceAction()" style="flex:1;padding:12px;font-weight:800;background:linear-gradient(90deg, #0284c7, #38bdf8);box-shadow:0 4px 16px rgba(2,132,199,0.4);display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+              🎙️ <span>ISSUE STATEMENTS &amp; CONCLUDE PRESS MEETING</span>
             </button>
-            <button class="btn btn-secondary" onclick="document.getElementById('pressConferenceModal').remove()">
+            <button class="btn btn-secondary" onclick="document.getElementById('pressConferenceModal').remove()" style="padding:12px 20px;">
               NO COMMENT
             </button>
           </div>
@@ -12268,6 +13192,7 @@ function openPressConferenceModal(stage = 'general') {
       `;
 
       document.body.appendChild(overlay);
+      updatePressImpactPreview();
     });
 }
 
@@ -12275,19 +13200,135 @@ const openPressMeetingModal = openPressConferenceModal;
 
 function selectPressOption(qIdx, oIdx) {
   if (!currentPressConference) return;
-  currentPressAnswers[qIdx] = currentPressConference.questions[qIdx].options[oIdx];
+  const q = currentPressConference.questions[qIdx];
+  currentPressAnswers[qIdx] = { ...q.options[oIdx], questionId: q.id || `q_${qIdx}` };
+  updatePressImpactPreview();
 }
 
 function submitPressConferenceAction() {
   const c = S.clubs.find(x => x.name === S.selectedClub);
-  post('/api/world4/press/submit', ref({ club: c.name, answers: currentPressAnswers })).then(res => {
+  if (!c) return;
+
+  post('/api/world4/press/submit', ref({
+    club: c.name,
+    answers: currentPressAnswers,
+    customStatements: currentCustomPressStatements
+  })).then(res => {
     document.getElementById('pressConferenceModal')?.remove();
     playSfx('flash');
     playSfx('applause');
-    const repInfo = res.newReputation ? `\n\n👔 Manager Reputation: ${res.newReputation}/100 (${res.newTier || 'Tactician'})` : '';
-    alert(`🎙️ PRESS BRIEFING CONCLUDED!${repInfo}\nBoard Confidence: ${res.newBoardConfidence || res.result?.newBoardConfidence}%\nSquad Morale: ${res.newMorale || res.result?.newMorale}%\nFan Sentiment: ${res.newFanApproval || res.result?.newFanApproval}%`);
-    refresh();
-  }).catch(err => alert(err.message));
+    S = res.state || res;
+    showPressDebriefModal(res.result || res);
+    renderGame();
+  }).catch(err => alert(err.message || 'Error submitting press briefing'));
+}
+
+function showPressDebriefModal(res) {
+  document.getElementById('pressDebriefModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'pressDebriefModal';
+  overlay.style.zIndex = '9999';
+
+  const repDelta = res.repChange || 3;
+  const moraleDelta = res.moraleChange || 8;
+  const boardDelta = res.boardChange || 5;
+  const fanDelta = res.fanChange || 8;
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(680px, 96vw);max-height:90vh;overflow-y:auto;padding:26px;background:radial-gradient(circle at 50% 0%, #152238 0%, #0a0f18 100%);border:1px solid rgba(245,158,11,0.5);border-radius:18px;box-shadow:0 24px 60px rgba(0,0,0,0.9);color:#e2e8f0;text-align:center;">
+      
+      <!-- Newspaper Masthead -->
+      <div style="border-bottom:2px solid rgba(255,255,255,0.15);padding-bottom:12px;margin-bottom:18px;">
+        <div style="font-size:10.5px;font-weight:900;letter-spacing:2px;color:var(--accent-gold);text-transform:uppercase;">
+          📰 THE DAILY FOOTBALL CHRONICLE · LATE SPECIAL EDITION
+        </div>
+        <h1 style="font-family:var(--font-display);font-size:26px;font-weight:900;color:#fff;margin:8px 0 0 0;line-height:1.25;letter-spacing:-0.5px;">
+          ${esc(res.headline || 'GAFFER COMMANDS THE NATIONAL MEDIA')}
+        </h1>
+        <p style="font-size:13px;color:var(--accent-neon);margin:6px 0 0 0;font-weight:700;">
+          ${esc(res.subheading || 'Tactical clarity and player defense win widespread praise across media desk')}
+        </p>
+      </div>
+
+      <!-- Lead Quote Highlight -->
+      ${res.leadQuote ? `
+        <div style="background:rgba(0,0,0,0.35);border-left:4px solid var(--accent-gold);padding:14px 18px;border-radius:0 10px 10px 0;margin-bottom:20px;text-align:left;font-style:italic;font-size:13px;line-height:1.55;color:#f1f5f9;">
+          ${esc(res.leadQuote)}
+        </div>
+      ` : ''}
+
+      <!-- Official Impact Scorecard -->
+      <div style="margin-bottom:22px;">
+        <div style="font-size:11.5px;font-weight:900;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">
+          OFFICIAL PRESS BRIEFING IMPACT SCORECARD
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;text-align:left;">
+          <!-- Reputation Card -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(253,224,71,0.3);border-radius:12px;padding:14px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:800;margin-bottom:4px;">⭐ MANAGER REPUTATION</div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <b style="font-size:22px;color:var(--accent-gold);">${res.newReputation || 35}/100</b>
+              <span class="pill" style="background:rgba(253,224,71,0.2);color:#fde047;font-size:11px;font-weight:800;">
+                +${repDelta} REP
+              </span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+              Status: <b>${esc(res.newTier || 'Tactician')}</b>
+            </div>
+          </div>
+
+          <!-- Morale Card -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:14px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:800;margin-bottom:4px;">🔥 SQUAD MORALE</div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <b style="font-size:22px;color:var(--accent-neon);">${res.newMorale || 80}%</b>
+              <span class="pill" style="background:${moraleDelta >= 0 ? 'rgba(34,197,94,0.2)' : 'rgba(239,68,68,0.2)'};color:${moraleDelta >= 0 ? '#86efac' : '#fca5a5'};font-size:11px;font-weight:800;">
+                ${moraleDelta >= 0 ? '+' : ''}${moraleDelta}%
+              </span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+              Dressing room harmony elevated
+            </div>
+          </div>
+
+          <!-- Board Confidence -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(56,189,248,0.3);border-radius:12px;padding:14px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:800;margin-bottom:4px;">🟢 BOARD CONFIDENCE</div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <b style="font-size:22px;color:#7dd3fc;">${res.newBoardConfidence || 85}%</b>
+              <span class="pill" style="background:rgba(56,189,248,0.2);color:#7dd3fc;font-size:11px;font-weight:800;">
+                ${boardDelta >= 0 ? '+' : ''}${boardDelta}%
+              </span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+              Boardroom stability solidified
+            </div>
+          </div>
+
+          <!-- Fan Approval -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(244,114,182,0.3);border-radius:12px;padding:14px;">
+            <div style="font-size:11px;color:var(--text-muted);font-weight:800;margin-bottom:4px;">❤️ FAN SATISFACTION</div>
+            <div style="display:flex;align-items:baseline;gap:8px;">
+              <b style="font-size:22px;color:#f472b6;">${res.newFanApproval || 78}%</b>
+              <span class="pill" style="background:rgba(244,114,182,0.2);color:#f472b6;font-size:11px;font-weight:800;">
+                ${fanDelta >= 0 ? '+' : ''}${fanDelta}%
+              </span>
+            </div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">
+              Supporters roaring in approval
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" onclick="document.getElementById('pressDebriefModal').remove(); renderGame();" style="width:100%;padding:14px;font-weight:800;font-size:14px;box-shadow:0 4px 16px rgba(42,139,242,0.4);">
+        RETURN TO SQUAD &amp; MATCHDAY &rarr;
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
 }
 
 // =============================================================

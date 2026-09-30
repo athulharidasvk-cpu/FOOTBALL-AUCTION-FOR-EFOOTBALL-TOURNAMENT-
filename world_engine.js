@@ -2100,7 +2100,10 @@ function advanceSeason(s){
           event: `Crowned Division 1 Champions of ${user.country}!`
         });
       }
-      try { refreshManagerJobOffers(s); } catch (e) {}
+      try { 
+        refreshManagerJobOffers(s); 
+        generateManagerApproaches(s, 2, { isSeasonAdvance: true });
+      } catch (e) {}
     }
   }
 
@@ -5009,6 +5012,285 @@ function refreshManagerJobOffers(s) {
   return offers;
 }
 
+function generateManagerApproaches(s, forceCount = 1, context = {}) {
+  if (!s || !s.managerCareer) return [];
+  const mc = s.managerCareer;
+  mc.approaches = mc.approaches || [];
+
+  const currentClub = club(s, s.selectedClub);
+  const currentDiv = currentClub ? currentClub.division : 3;
+  const rep = mc.reputation || 25;
+
+  const activeClubNames = new Set(mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').map(a => a.club));
+  if (currentClub) activeClubNames.add(currentClub.name);
+
+  const availableClubs = s.clubs.filter(c => !activeClubNames.has(c.name));
+  if (availableClubs.length === 0) return [];
+
+  const approachesCreated = [];
+  const countToCreate = Math.min(forceCount, availableClubs.length);
+
+  for (let i = 0; i < countToCreate; i++) {
+    let pool = [];
+    let approachType = 'headhunt';
+
+    if (context.oppName && availableClubs.some(c => c.name === context.oppName) && Math.random() < 0.6) {
+      pool = availableClubs.filter(c => c.name === context.oppName);
+      approachType = 'tactical_admiration';
+    } else if (rep < 35) {
+      pool = availableClubs.filter(c => c.division === currentDiv || c.division === Math.max(1, currentDiv - 1));
+      approachType = Math.random() < 0.5 ? 'wealthy_project' : 'crisis_savior';
+    } else if (rep < 60) {
+      pool = availableClubs.filter(c => c.division <= currentDiv);
+      approachType = Math.random() < 0.4 ? 'headhunt' : (Math.random() < 0.5 ? 'giant_rebuild' : 'tactical_admiration');
+    } else {
+      pool = availableClubs.filter(c => c.division === 1 || c.division === 2);
+      approachType = Math.random() < 0.5 ? 'headhunt' : 'wealthy_project';
+    }
+
+    if (pool.length === 0) pool = availableClubs;
+    const selectedClub = pool[Math.floor(Math.random() * pool.length)];
+    if (!selectedClub) continue;
+    activeClubNames.add(selectedClub.name);
+
+    const div = selectedClub.division || 3;
+    const baseBudget = Math.round((selectedClub.cash || (div === 4 ? 8 : div === 3 ? 18 : div === 2 ? 45 : 95)) * 10) / 10;
+    const warChestOffered = Math.round((baseBudget * (0.85 + Math.random() * 0.45)) * 10) / 10;
+    const baseSal = div === 4 ? 0.45 : div === 3 ? 1.2 : div === 2 ? 3.2 : 9.5;
+    const salaryOffered = Math.round((baseSal * (0.9 + Math.random() * 0.35)) * 100) / 100;
+    const contractYears = Math.floor(Math.random() * 3) + 2;
+
+    const chairmen = [
+      'Sir Reginald Vance', 'Maximilian Sterling', 'Don Alessandro Rossi', 'Chairman Arthur Davies',
+      'Director Marcus Vance', 'President Elena Ramos', 'Lord Thomas Bradford', 'Sheikh Tariq Al-Mansoor'
+    ];
+    const chairman = chairmen[Math.floor(Math.random() * chairmen.length)];
+
+    let letter = '';
+    let title = '';
+    let objective = '';
+    let badge = '';
+
+    if (approachType === 'tactical_admiration') {
+      title = '🎯 TACTICAL ADMIRATION APPROACH';
+      badge = 'TACTICAL MASTERCLASS';
+      objective = div <= 2 ? 'Implement high-pressing philosophy & clinch European qualification' : 'Dominate league possession & secure promotion';
+      letter = `Dear ${mc.name},\n\nFollowing our recent encounters and detailed scouting by our technical committee, our boardroom was thoroughly captivated by your tactical acumen and dressing-room leadership at ${currentClub ? currentClub.name : 'your club'}. We are officially offering you our head coaching position with an initial transfer war chest of ₹${warChestOffered}M to rebuild our squad in your tactical image.`;
+    } else if (approachType === 'crisis_savior') {
+      title = '🛡️ CRISIS RESCUE & REVIVAL APPROACH';
+      badge = 'BOARDROOM RESCUE CALL';
+      objective = 'Steer club out of crisis, stabilize squad morale & avoid relegation';
+      letter = `Dear ${mc.name},\n\nOur club is currently at a critical crossroads. Following the dismissal of our previous manager, our board has identified you as the visionary coach capable of bringing discipline, tactical spine, and belief back to our dressing room. We are offering you a ${contractYears}-year contract, ₹${warChestOffered}M in squad reinforcement funds, and complete authority over tactical decisions.`;
+    } else if (approachType === 'wealthy_project') {
+      title = '💎 AMBITIOUS HIGH-BUDGET PROJECT';
+      badge = 'EXPANSION WAR CHEST';
+      objective = 'Fast-track promotion & challenge for silverware within 2 seasons';
+      letter = `Dear ${mc.name},\n\nUnder our newly announced ownership structure, ${selectedClub.name} is preparing for an unprecedented era of investment. We want a dynamic, hungry head coach at the helm. We are pledging ₹${warChestOffered}M in immediate transfer funding alongside an attractive personal compensation package of ₹${salaryOffered}M per year.`;
+    } else if (approachType === 'giant_rebuild') {
+      title = '👑 RESTORATION OF GLORY INQUIRY';
+      badge = 'SLEEPING GIANT REBUILD';
+      objective = 'Restore club to glory, win domestic silverware & qualify for continental cups';
+      letter = `Dear ${mc.name},\n\n${selectedClub.name} possesses rich heritage and millions of passionate supporters, but we need tactical modernization. Our committee views your achievements as the ideal foundation for our revival. We invite you to sign as Head Coach with full backing from our board.`;
+    } else {
+      title = '🚨 FORMAL HEADHUNTING APPROACH';
+      badge = 'DIVISION ' + div + ' HEADHUNT';
+      objective = div === 1 ? 'Contend for top 4 & international honors' : 'Lead promotion campaign and modernize player development';
+      letter = `Dear ${mc.name},\n\nWe are formally approaching you regarding the Head Coach vacancy at ${selectedClub.name}. Your track record and tactical reputation have made you our primary target. We have prepared contract terms worth ₹${salaryOffered}M per year and a competitive transfer budget of ₹${warChestOffered}M.`;
+    }
+
+    const perks = [
+      'Full Executive Veto on Outgoing Player Sales',
+      'Guaranteed ₹' + Math.round(warChestOffered * 0.3) + 'M Mid-Season War Chest Injection',
+      'Direct line to Chairman & Fast-Track Transfer Approval',
+      'Enhanced Youth Academy Scout Influx'
+    ];
+
+    const newApproach = {
+      id: 'app_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      club: selectedClub.name,
+      crest: selectedClub.crest || 'crest_shield',
+      country: selectedClub.country,
+      league: selectedClub.league,
+      division: div,
+      reputation: selectedClub.reputation || 70,
+      approachType,
+      approachTitle: title,
+      tierBadge: badge,
+      chairmanName: chairman,
+      letter,
+      offeredBudget: warChestOffered,
+      offeredSalary: salaryOffered,
+      salaryFormatted: `₹${salaryOffered}M / yr`,
+      contractYears,
+      objective,
+      perks: perks.slice(0, 2),
+      status: 'pending',
+      matchdayCreated: s.matchday || 1,
+      seasonCreated: s.season || 1,
+      createdAt: new Date().toISOString()
+    };
+
+    mc.approaches.unshift(newApproach);
+    approachesCreated.push(newApproach);
+
+    mc.jobOffers = mc.jobOffers || [];
+    if (!mc.jobOffers.some(o => o.club === selectedClub.name)) {
+      mc.jobOffers.unshift({
+        id: newApproach.id,
+        club: selectedClub.name,
+        country: selectedClub.country,
+        league: selectedClub.league,
+        division: div,
+        tierBadge: badge,
+        crest: selectedClub.crest || 'crest_shield',
+        budget: warChestOffered,
+        salary: `₹${salaryOffered}M / yr`,
+        objective,
+        reputationRequired: rep,
+        reputation: selectedClub.reputation || 70
+      });
+    }
+
+    addNews(s, `🚨 MANAGERIAL APPROACH: ${selectedClub.name} has officially approached ${mc.name} with an ambitious offer to become their new Head Coach!`, 'manager');
+  }
+
+  if (approachesCreated.length > 0) {
+    mc.latestApproachAlert = approachesCreated[0];
+  }
+
+  return approachesCreated;
+}
+
+function respondToManagerApproach(s, approachId, action) {
+  if (!s) return { error: 'World not found.' };
+  if (!s.managerCareer) return { error: 'No active manager career.' };
+  const mc = s.managerCareer;
+  mc.approaches = mc.approaches || [];
+  const app = mc.approaches.find(a => a.id === approachId);
+  if (!app) return { error: 'Approach not found.' };
+
+  const currentClub = club(s, s.selectedClub);
+  const target = club(s, app.club);
+  if (!target) return { error: 'Target club not found.' };
+
+  if (action === 'accept') {
+    const prevClub = s.selectedClub;
+    s.selectedClub = target.name;
+    target.online = true;
+    target.manager = target.manager || {};
+    target.manager.name = mc.name;
+    target.manager.reputation = mc.reputation;
+
+    if (!target.players || target.players.length < 16) {
+      seedSquad(target, s.market, 16);
+    }
+    rebalanceSquadToDivision(s, target);
+
+    const bonusWarChest = Number(app.offeredBudget) || 15;
+    target.cash = Math.round(((target.cash || 10) + bonusWarChest) * 10) / 10;
+
+    mc.reputation = Math.min(100, (mc.reputation || 25) + 6);
+    mc.boardConfidence = 90;
+    mc.contract = {
+      club: target.name,
+      salary: app.offeredSalary || 2.0,
+      salaryFormatted: app.salaryFormatted || `₹${app.offeredSalary || 2.0}M / yr`,
+      yearsRemaining: app.contractYears || 3,
+      expectations: app.objective || 'Win silverware & reach European qualification',
+      releaseClause: Math.max(15, (target.division === 1 ? 50 : 25)),
+      vetoPower: true,
+      youthFunding: true,
+      ratifiedSeason: s.season || 1,
+      extraWarChestGranted: bonusWarChest
+    };
+
+    mc.careerHistory = mc.careerHistory || [];
+    mc.careerHistory.unshift({
+      season: s.season || 1,
+      club: target.name,
+      division: target.division,
+      event: `Formal Approach Accepted: Appointed Head Coach of ${target.name} (Div ${target.division}) with ₹${bonusWarChest}M War Chest!`
+    });
+
+    app.status = 'accepted';
+    mc.latestApproachAlert = null;
+    refreshManagerJobOffers(s);
+
+    addNews(s, `🚨 SENSATIONAL MANAGERIAL APPOINTMENT: ${mc.name} has officially accepted the high-profile approach from ${target.name} to take the reins as Head Coach with a massive ₹${bonusWarChest}M war chest!`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'accepted',
+      newClub: target,
+      managerCareer: mc,
+      message: `🎉 Deal Complete! You are now the official Head Coach of ${target.name} with an injected ₹${bonusWarChest}M transfer war chest.`
+    };
+  }
+
+  if (action === 'leak') {
+    app.status = 'leaked';
+    const retentionWarChest = Math.round((currentClub ? (currentClub.division === 1 ? 12 : 6) : 5) * 10) / 10;
+    if (currentClub) {
+      currentClub.cash = Math.round(((currentClub.cash || 10) + retentionWarChest) * 10) / 10;
+    }
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 4);
+    if (mc.contract) {
+      mc.contract.salary = Math.round(((mc.contract.salary || 1.0) * 1.15) * 100) / 100;
+      mc.contract.salaryFormatted = `₹${mc.contract.salary}M / yr`;
+      mc.contract.extraWarChestGranted = (mc.contract.extraWarChestGranted || 0) + retentionWarChest;
+    }
+
+    addNews(s, `💣 MEDIA BOMBSHELL: Details leak that ${app.club} attempted an audacious swoop for ${mc.name}! In response, ${currentClub ? currentClub.name : 'the board'} immediately pledged an extra ₹${retentionWarChest}M transfer funds and a salary increase to secure their manager's loyalty!`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'leaked',
+      message: `📰 Leaked to Media! The leak created massive press drama. Your current board at ${currentClub ? currentClub.name : 'the club'} panicked and immediately deposited ₹${retentionWarChest}M extra war chest and gave you a 15% salary raise to keep you!`,
+      retentionFunds: retentionWarChest
+    };
+  }
+
+  if (action === 'stall') {
+    app.status = 'stalled';
+    addNews(s, `⏳ MANAGERIAL INQUIRY DELAYED: ${mc.name} requested time before deciding on ${app.club}'s formal offer, remaining focused on current club commitments.`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'stalled',
+      message: `⏳ Decision Postponed! ${app.club} has agreed to wait 1 matchday for your final decision.`
+    };
+  }
+
+  if (action === 'decline') {
+    app.status = 'rejected';
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 6);
+    addNews(s, `🛡️ MANAGERIAL LOYALTY: ${mc.name} has emphatically rejected a formal approach from ${app.club}, declaring complete allegiance to ${currentClub ? currentClub.name : 'the club'}! Fans and board rejoice.`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'rejected',
+      message: `❌ Approach Rejected! You pledged your loyalty to ${currentClub ? currentClub.name : 'your club'}. Board confidence increased to ${mc.boardConfidence}%.`
+    };
+  }
+
+  return { error: 'Unknown action.' };
+}
+
+function solicitManagerApproaches(s) {
+  if (!s) return { error: 'World not found.' };
+  if (!s.managerCareer) getManagerCareerState(s);
+  const mc = s.managerCareer;
+  const created = generateManagerApproaches(s, 2, { solicited: true });
+  addNews(s, `📡 MARKET INQUIRY: ${mc.name}'s representatives actively explored the market, triggering immediate formal headhunting inquiries from interested clubs!`, 'manager');
+  persist();
+  return {
+    success: true,
+    approaches: mc.approaches || [],
+    createdCount: created.length,
+    message: `${created.length} new clubs have submitted formal approaches to hire you!`
+  };
+}
+
 function getManagerCareerState(s) {
   if (!s) return null;
   if (!s.managerCareer) {
@@ -5028,12 +5310,21 @@ function getManagerCareerState(s) {
       titles: 0,
       boardConfidence: 85,
       jobOffers: [],
+      approaches: [],
       careerHistory: c ? [
         { season: s.season || 1, club: c.name, division: c.division, event: 'Appointed Head Coach' }
       ] : []
     };
   }
   refreshManagerJobOffers(s);
+
+  // Guarantee at least 1-2 active approaches from clubs wanting to hire the manager
+  const mc = s.managerCareer;
+  mc.approaches = mc.approaches || [];
+  if (mc.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length === 0) {
+    generateManagerApproaches(s, 2, { initial: true });
+  }
+
   return {
     managerCareer: s.managerCareer,
     currentClub: s.selectedClub ? club(s, s.selectedClub) : null
@@ -5112,7 +5403,182 @@ function updateManagerReputationAfterMatch(s, user, matchResult, isCup) {
 
   mc.winRate = Math.round((mc.wins / mc.matches) * 100);
   refreshManagerJobOffers(s);
+
+  // Other clubs dynamically approach the manager!
+  try {
+    const shouldApproach = isWon
+      ? (Math.random() < 0.50 || (mc.wins % 2 === 0))
+      : (isDraw ? Math.random() < 0.35 : Math.random() < 0.20);
+    if (shouldApproach) {
+      generateManagerApproaches(s, 1, { oppName: isWon ? oppName : null });
+    }
+  } catch (err) {}
+}
+
+function getManagerContractState(s, clubName) {
+  if (!s) return null;
+  const c = club(s, clubName || s.selectedClub);
+  if (!s.managerCareer) getManagerCareerState(s);
+  const mc = s.managerCareer;
+  if (!mc) return null;
+  if (!mc.contract && c) {
+    const div = c.division || 3;
+    const baseSal = div === 4 ? 0.35 : div === 3 ? 0.65 : div === 2 ? 2.5 : 8.0;
+    mc.contract = {
+      club: c.name,
+      salary: baseSal,
+      salaryFormatted: `₹${baseSal}M / yr`,
+      yearsRemaining: 2,
+      expectations: div === 4 ? 'avoid_relegation' : div === 3 ? 'mid_table' : 'promotion',
+      releaseClause: div === 4 ? 12 : div === 3 ? 25 : 60,
+      vetoPower: false,
+      youthFunding: false,
+      ratifiedSeason: s.season || 1,
+      extraWarChestGranted: 0
+    };
+  }
+  return {
+    contract: mc.contract,
+    managerCareer: mc,
+    club: c
+  };
+}
+
+function negotiateManagerRole(s, clubName, isNewJob, offerId, demands, candidateName) {
+  if (!s) return { error: 'World not found.' };
+  let target = club(s, clubName || s.selectedClub);
+  if (!target) {
+    const lowerClubs = s.clubs.filter(x => x.division === 4 || x.division === 3);
+    target = lowerClubs[0] || s.clubs[0];
+  }
+  if (!target) return { error: 'Target club not found.' };
+
+  if (!s.managerCareer) {
+    getManagerCareerState(s);
+  }
+  const mc = s.managerCareer;
+  if (candidateName && String(candidateName).trim()) {
+    mc.name = String(candidateName).trim();
+  }
+
+  const requestedSalary = Math.round(Number(demands?.salary || 0.5) * 100) / 100;
+  const requestedWarChest = Math.round(Number(demands?.transferWarChest || 0) * 10) / 10;
+  const contractYears = Math.min(5, Math.max(1, Number(demands?.contractYears || 2)));
+  const expectations = demands?.expectations || 'balanced';
+  const releaseClause = Number(demands?.releaseClause || 15);
+  const vetoPower = !!demands?.vetoPower;
+  const youthFunding = !!demands?.youthFunding;
+
+  const div = target.division || 3;
+  const maxReasonableWarChest = div === 4 ? 15 : div === 3 ? 28 : div === 2 ? 55 : 95;
+  const baseSalaryCap = div === 4 ? 0.9 : div === 3 ? 1.8 : div === 2 ? 4.5 : 16.0;
+
+  const currentRep = mc.reputation || 25;
+  const repFactor = Math.max(0.6, currentRep / 45);
+  const boardTrust = isNewJob ? 82 : (mc.boardConfidence || 80);
+
+  const warChestExcess = Math.max(0, requestedWarChest - (maxReasonableWarChest * repFactor));
+  const salaryExcess = Math.max(0, requestedSalary - (baseSalaryCap * repFactor));
+
+  // If demands are wildly unrealistic for this division & reputation
+  if (warChestExcess > 25 || salaryExcess > 8.0) {
+    return {
+      status: 'rejected',
+      success: false,
+      message: `The board of ${target.name} has rejected these demands! Chairman: "A request for ₹${requestedWarChest}M war chest and ₹${requestedSalary}M/yr salary exceeds our fiscal capacity for Division ${div}."`,
+      targetClub: target.name
+    };
+  }
+
+  // If demands are slightly elevated, board counters with a compromise
+  if (warChestExcess > 4 || salaryExcess > 0.8 || (requestedWarChest > 10 && boardTrust < 65)) {
+    const offeredWarChest = Math.round(Math.min(requestedWarChest * 0.65, maxReasonableWarChest * repFactor) * 10) / 10;
+    const offeredSalary = Math.round(Math.min(requestedSalary * 0.75, baseSalaryCap * repFactor) * 100) / 100;
+    return {
+      status: 'counter',
+      success: false,
+      message: `The board of ${target.name} presents a counter-offer. Chairman: "We value your managerial acumen, but we must protect the balance sheet. We can offer ₹${offeredWarChest}M additional war chest and ₹${offeredSalary}M/yr salary on a ${Math.min(3, contractYears)}-year contract."`,
+      counterProposal: {
+        salary: offeredSalary,
+        transferWarChest: offeredWarChest,
+        contractYears: Math.min(3, contractYears),
+        expectations,
+        releaseClause: Math.max(8, releaseClause),
+        vetoPower: currentRep >= 35 ? vetoPower : false,
+        youthFunding
+      },
+      targetClub: target.name
+    };
+  }
+
+  // Approved!
+  const grantedWarChest = requestedWarChest;
+  target.cash = Math.round(((target.cash || 10) + grantedWarChest) * 10) / 10;
+
+  mc.contract = {
+    club: target.name,
+    salary: requestedSalary,
+    salaryFormatted: `₹${requestedSalary}M / yr`,
+    yearsRemaining: contractYears,
+    expectations,
+    releaseClause,
+    vetoPower,
+    youthFunding,
+    ratifiedSeason: s.season || 1,
+    extraWarChestGranted: grantedWarChest
+  };
+
+  if (youthFunding) {
+    target.youthFacility = Math.min(5, (target.youthFacility || 2) + 1);
+  }
+
+  if (isNewJob) {
+    const prevClub = s.selectedClub;
+    s.selectedClub = target.name;
+    target.online = true;
+    target.manager = target.manager || {};
+    target.manager.name = mc.name;
+    target.manager.reputation = mc.reputation;
+    if (!target.players || target.players.length < 16) {
+      seedSquad(target, s.market, 16);
+    }
+    rebalanceSquadToDivision(s, target);
+    setupClubRivalries(s.clubs);
+
+    mc.reputation = Math.min(100, (mc.reputation || 25) + 4);
+    mc.boardConfidence = Math.min(98, 85 + (expectations === 'rebuild' ? 6 : 2));
+    mc.careerHistory = mc.careerHistory || [];
+    mc.careerHistory.unshift({
+      season: s.season || 1,
+      club: target.name,
+      division: target.division,
+      event: `Contract Negotiated: Appointed Head Coach with ₹${grantedWarChest}M War Chest (${contractYears} yr deal, ₹${requestedSalary}M/yr)`
+    });
+    addNews(s, `🤝 MANAGERIAL ROLE RATIFIED: ${mc.name} successfully negotiated contract terms to take charge at ${target.name} with an injected ₹${grantedWarChest}M transfer war chest!`, 'manager');
+  } else {
+    mc.boardConfidence = Math.min(99, (mc.boardConfidence || 85) + 6);
+    mc.reputation = Math.min(100, (mc.reputation || 25) + 3);
+    mc.careerHistory = mc.careerHistory || [];
+    mc.careerHistory.unshift({
+      season: s.season || 1,
+      club: target.name,
+      division: target.division,
+      event: `Contract Renegotiated: Extended terms with ₹${grantedWarChest}M fresh war chest (${contractYears} yrs, ₹${requestedSalary}M/yr)`
+    });
+    addNews(s, `📝 CONTRACT EXTENSION: ${mc.name} has committed his future to ${target.name} after securing a new ${contractYears}-year deal and ₹${grantedWarChest}M in squad investment!`, 'manager');
+  }
+
+  refreshManagerJobOffers(s);
+  persist();
+  return {
+    status: 'accepted',
+    success: true,
+    message: `The board of ${target.name} has APPROVED all negotiated role terms! An extra ₹${grantedWarChest}M transfer war chest has been deposited directly into the club treasury.`,
+    managerCareer: mc,
+    contract: mc.contract,
+    targetClub: target
+  };
 }
 
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch,negotiateManagerRole,getManagerContractState,generateManagerApproaches,respondToManagerApproach,solicitManagerApproaches};

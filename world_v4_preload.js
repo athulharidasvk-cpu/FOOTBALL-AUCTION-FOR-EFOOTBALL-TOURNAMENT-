@@ -168,6 +168,58 @@ function attachApp(app){
     if (ioRef) broadcast(ioRef, w);
     res.json({ result: r, state: safeState(w) });
   });
+  app.get('/api/world4/manager/contract', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    res.json(world.getManagerContractState(w, req.query?.club) || {});
+  });
+  app.post('/api/world4/manager/negotiate-role', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.negotiateManagerRole(w, req.body?.club, req.body?.isNewJob, req.body?.offerId, req.body?.demands, req.body?.managerName);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+  app.get('/api/world4/manager/approaches', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const careerState = world.getManagerCareerState(w);
+    const mc = w.managerCareer || (careerState?.managerCareer);
+    res.json({
+      approaches: mc?.approaches || [],
+      latestApproachAlert: mc?.latestApproachAlert || null,
+      currentClub: w.selectedClub
+    });
+  });
+  app.post('/api/world4/manager/approaches/respond', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.respondToManagerApproach(w, req.body?.approachId, req.body?.action);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+  app.post('/api/world4/manager/approaches/solicit', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.solicitManagerApproaches(w);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+  app.post('/api/world4/manager/approaches/dismiss-alert', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    if (w.managerCareer) {
+      w.managerCareer.latestApproachAlert = null;
+    }
+    world.persist();
+    res.json({ success: true });
+  });
 
   // Club Takeovers & Multi-Club Empire
   app.get('/api/world4/takeovers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getTakeoverAndEmpireState(w,req.query?.club||w.selectedClub));});
@@ -223,8 +275,29 @@ function attachApp(app){
   app.post('/api/world4/youth/mentor',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.mentorYouthProspect(w,req.body?.club||w.selectedClub,req.body?.youthId,req.body?.mentorId);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
 
   // Feature 2: Press Conferences & Board Confidence
-  app.get('/api/world4/press/questions',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getPressConference(w,req.query?.club||w.selectedClub,req.query?.stage||'pre'));});
-  app.post('/api/world4/press/submit',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.submitPressConference(w,req.body?.club||w.selectedClub,req.body?.answers||[]);if(r?.error)return res.status(400).json(r);world.persist();if(ioRef)broadcast(ioRef,w);res.json({result:r,state:safeState(w)});});
+  app.get('/api/world4/press/questions', async (req,res)=>{
+    const w = get(req,req);
+    if (!w) return res.status(404).json({error:'World not found'});
+    try {
+      const data = await world.getPressConference(w, req.query?.club||w.selectedClub, req.query?.stage||'pre', req.query?.regenerate === 'true');
+      res.json(data);
+    } catch(err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+  app.post('/api/world4/press/submit', async (req,res)=>{
+    const w = get(req,req);
+    if (!w) return res.status(404).json({error:'World not found'});
+    try {
+      const r = await world.submitPressConference(w, req.body?.club||w.selectedClub, req.body?.answers||[], req.body?.customStatements||{});
+      if (r?.error) return res.status(400).json(r);
+      world.persist();
+      if (ioRef) broadcast(ioRef,w);
+      res.json({ result: r, state: safeState(w) });
+    } catch(err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
   app.get('/api/world4/board/status',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getBoardStatus(w,req.query?.club||w.selectedClub));});
 
   // Feature 4: Stadium Facilities & FFP & Sponsorships

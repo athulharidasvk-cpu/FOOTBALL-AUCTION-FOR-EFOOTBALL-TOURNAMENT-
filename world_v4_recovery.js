@@ -51,5 +51,15 @@ world.getWorld = function(ref) {
     return fresh;
   }
 
+  if (!ref?.room && !ref?.soloId) {
+    if (world.soloWorlds && world.soloWorlds.size > 0) {
+      const allSolo = Array.from(world.soloWorlds.values());
+      return allSolo[allSolo.length - 1];
+    }
+    const fresh = world.createSolo();
+    world.persist();
+    return fresh;
+  }
+
   return null;
 };

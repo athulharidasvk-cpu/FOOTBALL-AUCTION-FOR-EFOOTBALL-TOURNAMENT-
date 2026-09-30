@@ -851,6 +851,10 @@ function getWorld(ref){
   let w = null;
   if(ref?.room&&worldRooms.has(ref.room)) w = worldRooms.get(ref.room);
   else if(ref?.soloId&&soloWorlds.has(ref.soloId)) w = soloWorlds.get(ref.soloId);
+  else if(!ref?.room && !ref?.soloId && soloWorlds.size > 0) {
+    const allSolo = Array.from(soloWorlds.values());
+    w = allSolo[allSolo.length - 1];
+  }
   if(w) upgradeLegacyWorld(w);
   return w;
 }
@@ -1625,6 +1629,12 @@ function simulate(s){
   const nextFixture = getNextFixture(s);
   matchResult.nextFixture = nextFixture;
 
+  if (s.managerCareer && matchResult) {
+    try {
+      updateManagerReputationAfterMatch(s, user, matchResult, fixture.compType !== 'league');
+    } catch (e) {}
+  }
+
   persist();
   return matchResult;
 }
@@ -1855,6 +1865,18 @@ function negotiateTransfer(s, buyerName, playerId, offer = {}) {
     } else {
       addNews(s, `✍️ OFFICIAL: ${p.name} has completed a transfer to ${buyer.name} for ₹${fee}M on a ${years}-year contract!`, 'transfer');
     }
+    if (s.managerCareer) {
+      const repBoost = p.rating >= 80 ? 3 : p.rating >= 75 ? 2 : 1;
+      s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 28) + repBoost);
+      s.managerCareer.boardConfidence = Math.min(99, (s.managerCareer.boardConfidence || 85) + 2);
+      s.managerCareer.careerHistory = s.managerCareer.careerHistory || [];
+      s.managerCareer.careerHistory.unshift({
+        season: s.season || 1,
+        club: buyer.name,
+        event: `Signed transfer target ${p.name} (OVR ${p.rating}) for ₹${fee}M (+${repBoost} Rep)`
+      });
+      if (s.managerCareer.careerHistory.length > 50) s.managerCareer.careerHistory.pop();
+    }
     persist();
     return {
       status: 'accepted',
@@ -2053,6 +2075,32 @@ function advanceSeason(s){
         prize: 1.0,
         summary: `${user.name} consolidated their status in Division ${user.division} for the upcoming campaign.`
       };
+    }
+
+    if (s.managerCareer) {
+      s.managerCareer.careerHistory = s.managerCareer.careerHistory || [];
+      if (userVerdict?.type === 'promoted') {
+        s.managerCareer.promotions = (s.managerCareer.promotions || 0) + 1;
+        s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 25) + 16);
+        s.managerCareer.boardConfidence = 95;
+        s.managerCareer.careerHistory.unshift({
+          season: s.season - 1,
+          club: user.name,
+          division: user.division,
+          event: `Promoted to Division ${user.division}! Massive managerial prestige boost.`
+        });
+      } else if (userVerdict?.type === 'champion') {
+        s.managerCareer.titles = (s.managerCareer.titles || 0) + 1;
+        s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 25) + 20);
+        s.managerCareer.boardConfidence = 100;
+        s.managerCareer.careerHistory.unshift({
+          season: s.season - 1,
+          club: user.name,
+          division: 1,
+          event: `Crowned Division 1 Champions of ${user.country}!`
+        });
+      }
+      try { refreshManagerJobOffers(s); } catch (e) {}
     }
   }
 
@@ -2948,6 +2996,18 @@ function respondToIncomingOffer(s, offerId, decision, counterFee = null) {
     p.contract.years = 3;
 
     addNews(s, `🤝 DEAL AGREED: ${user.name} accepted ₹${offer.fee}M bid from ${offer.suitorClub} for ${p.name}!`, 'transfer');
+    if (s.managerCareer) {
+      const repBoost = Math.max(1, Math.min(4, Math.round(offer.fee / 10)));
+      s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 28) + repBoost);
+      s.managerCareer.boardConfidence = Math.min(99, (s.managerCareer.boardConfidence || 85) + 3);
+      s.managerCareer.careerHistory = s.managerCareer.careerHistory || [];
+      s.managerCareer.careerHistory.unshift({
+        season: s.season || 1,
+        club: user.name,
+        event: `Negotiated transfer sale of ${p.name} to ${offer.suitorClub} for ₹${offer.fee}M (+${repBoost} Rep)`
+      });
+      if (s.managerCareer.careerHistory.length > 50) s.managerCareer.careerHistory.pop();
+    }
     persist();
     return {
       status: 'accepted',
@@ -4075,5 +4135,984 @@ function getDerbyHeadToHead(s, clubName) {
   };
 }
 
+// =============================================================
+// MODULE 1: CUSTOM TACTICAL PLAYBOOKS & PHILOSOPHY PRESETS
+// =============================================================
+const TACTICAL_PRESETS = {
+  gegenpress: {
+    id: 'gegenpress',
+    name: 'Gegenpress (Heavy Metal)',
+    description: 'Relentless forward pressure upon losing possession. Fast transitions, aggressive counter-press, high defensive line.',
+    pressing: 90,
+    defensiveLine: 85,
+    tempo: 85,
+    width: 65,
+    staminaDrain: 1.3,
+    counterBonus: 1.25,
+    icon: '⚡'
+  },
+  tikitaka: {
+    id: 'tikitaka',
+    name: 'Tiki-Taka (Positional Master)',
+    description: 'Dominate possession through short triangular passing, patient probing, and rapid ball circulation in the opponent half.',
+    pressing: 70,
+    defensiveLine: 70,
+    tempo: 45,
+    width: 50,
+    staminaDrain: 0.9,
+    possessionBonus: 1.3,
+    icon: '🎯'
+  },
+  catenaccio: {
+    id: 'catenaccio',
+    name: 'Catenaccio (Fortress Low Block)',
+    description: 'Impenetrable deep defensive wall, rigid discipline, and devastating direct counter-attacks behind retreating opponents.',
+    pressing: 35,
+    defensiveLine: 25,
+    tempo: 75,
+    width: 40,
+    staminaDrain: 0.8,
+    defensiveBonus: 1.35,
+    icon: '🛡️'
+  },
+  route_one: {
+    id: 'route_one',
+    name: 'Route One (Direct Target Man)',
+    description: 'Bypass the midfield with long aerial diagonal balls to a physical target forward. Dominant set-pieces and second balls.',
+    pressing: 55,
+    defensiveLine: 45,
+    tempo: 90,
+    width: 75,
+    staminaDrain: 1.0,
+    aerialBonus: 1.3,
+    icon: '🚀'
+  },
+  total_football: {
+    id: 'total_football',
+    name: 'Fluid Total Football',
+    description: 'Dynamic interchangeable positions, overlapping wingbacks, and total creative freedom across all phases of play.',
+    pressing: 75,
+    defensiveLine: 80,
+    tempo: 70,
+    width: 85,
+    staminaDrain: 1.15,
+    creativityBonus: 1.25,
+    icon: '🌊'
+  }
+};
+
+function getTacticalPlaybookState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+  c.tactics = c.tactics || {
+    preset: 'gegenpress',
+    pressing: 85,
+    defensiveLine: 75,
+    tempo: 80,
+    width: 65,
+    instructions: ['trigger_press', 'work_ball_into_box', 'overlap_wingbacks']
+  };
+  return {
+    club: c.name,
+    tactics: c.tactics,
+    presets: TACTICAL_PRESETS
+  };
+}
+
+function updateTacticalPlaybook(s, clubName, playbookData) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  c.tactics = {
+    ...c.tactics,
+    ...(playbookData || {})
+  };
+  addNews(s, `📋 ${c.name} manager implemented a new tactical blueprint: ${c.tactics.preset ? c.tactics.preset.toUpperCase() : 'Custom Tactical Identity'}.`, 'tactics');
+  persist();
+  return { success: true, tactics: c.tactics };
+}
+
+// =============================================================
+// MODULE 2: SPORTS SCIENCE & MEDICAL REHABILITATION WING
+// =============================================================
+function getMedicalCenterState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+  const players = clubPlayers(s, c);
+
+  c.medical = c.medical || {
+    physioTier: 1,
+    cryoChamber: false,
+    hydroPool: false,
+    injuries: []
+  };
+
+  if (!c.medical.injuries.length && players.length > 5) {
+    const candidate = players[players.length - 2];
+    if (candidate) {
+      c.medical.injuries.push({
+        playerId: candidate.id,
+        playerName: candidate.name,
+        position: candidate.position,
+        type: 'Hamstring Strain',
+        severity: 'Moderate',
+        weeksRemaining: 2,
+        fitToPlayRisk: 'High (70% re-injury chance)',
+        cause: 'Overload in recent high-tempo match'
+      });
+    }
+  }
+
+  const riskRoster = players.map(p => {
+    const injuryRisk = (p.stamina && p.stamina < 70) ? 'High' : (p.stamina && p.stamina < 85) ? 'Moderate' : 'Low';
+    const isInjured = c.medical.injuries.some(inj => inj.playerId === p.id);
+    return {
+      id: p.id,
+      name: p.name,
+      position: p.position,
+      rating: p.rating,
+      stamina: p.stamina || Math.min(100, 75 + Math.floor(Math.random() * 20)),
+      injuryRisk: isInjured ? 'Injured' : injuryRisk,
+      isInjured
+    };
+  });
+
+  return {
+    club: c.name,
+    medical: c.medical,
+    riskRoster,
+    upgrades: [
+      { id: 'physio', name: 'Elite Orthopedic Physio Team', cost: 1.5, perk: 'Reduces all recovery times by 25%', active: c.medical.physioTier >= 2 },
+      { id: 'cryo', name: 'Cryotherapy Recovery Pods', cost: 2.2, perk: 'Restores match stamina +15% faster after fixtures', active: !!c.medical.cryoChamber },
+      { id: 'hydro', name: 'Hydrotherapy Rehabilitation Pool', cost: 3.0, perk: 'Virtually eliminates recurrence of muscle strains', active: !!c.medical.hydroPool }
+    ]
+  };
+}
+
+function executeMedicalAction(s, clubName, action, data) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  c.medical = c.medical || { physioTier: 1, cryoChamber: false, hydroPool: false, injuries: [] };
+
+  if (action === 'upgrade') {
+    const upg = data.upgradeId;
+    if (upg === 'physio') {
+      if (c.cash < 1.5) return { error: 'Insufficient funds (₹1.5M required).' };
+      c.cash = Math.round((c.cash - 1.5) * 10) / 10;
+      c.medical.physioTier = 2;
+      recordTransaction(c, 1.5, 'facility', 'Upgraded to Elite Orthopedic Physio Staff', s);
+      addNews(s, `🏥 ${c.name} hired an Elite Sports Science and Physio team to safeguard squad fitness.`, 'club');
+    } else if (upg === 'cryo') {
+      if (c.cash < 2.2) return { error: 'Insufficient funds (₹2.2M required).' };
+      c.cash = Math.round((c.cash - 2.2) * 10) / 10;
+      c.medical.cryoChamber = true;
+      recordTransaction(c, 2.2, 'facility', 'Installed Cryotherapy Recovery Chambers', s);
+      addNews(s, `❄️ ${c.name} unveiled state-of-the-art Cryotherapy Pods at the training complex.`, 'club');
+    } else if (upg === 'hydro') {
+      if (c.cash < 3.0) return { error: 'Insufficient funds (₹3.0M required).' };
+      c.cash = Math.round((c.cash - 3.0) * 10) / 10;
+      c.medical.hydroPool = true;
+      recordTransaction(c, 3.0, 'facility', 'Installed Hydrotherapy Rehabilitation Pool', s);
+      addNews(s, `🏊 ${c.name} completed construction on an advanced Hydrotherapy Rehabilitation Pool.`, 'club');
+    }
+    persist();
+    return { success: true, medical: c.medical, cash: c.cash };
+  }
+
+  if (action === 'treat_specialist') {
+    const inj = c.medical.injuries.find(x => x.playerId === data.playerId);
+    if (!inj) return { error: 'Player injury record not found.' };
+    if (c.cash < 0.8) return { error: 'Specialist consultation fee of ₹0.8M required.' };
+    c.cash = Math.round((c.cash - 0.8) * 10) / 10;
+    inj.weeksRemaining = Math.max(0, inj.weeksRemaining - 2);
+    if (inj.weeksRemaining === 0) {
+      c.medical.injuries = c.medical.injuries.filter(x => x.playerId !== data.playerId);
+      addNews(s, `🩺 ${inj.playerName} has fully recovered following private surgery in Zurich!`, 'medical');
+    } else {
+      addNews(s, `🩺 ${inj.playerName} recovery expedited by world specialist Dr. Muller (+2 weeks sooner).`, 'medical');
+    }
+    recordTransaction(c, 0.8, 'medical', `Specialist Clinic Treatment for ${inj.playerName}`, s);
+    persist();
+    return { success: true, medical: c.medical, cash: c.cash };
+  }
+
+  if (action === 'injection') {
+    const inj = c.medical.injuries.find(x => x.playerId === data.playerId);
+    if (!inj) return { error: 'Player injury not found.' };
+    c.medical.injuries = c.medical.injuries.filter(x => x.playerId !== data.playerId);
+    addNews(s, `💉 ${inj.playerName} was administered a painkiller injection to start this matchday! (High risk gamble)`, 'medical');
+    persist();
+    return { success: true, playerCleared: true };
+  }
+
+  return { error: 'Invalid medical action' };
+}
+
+// =============================================================
+// MODULE 3: THE LOAN ARMY & WONDERKID DEVELOPMENT NETWORK
+// =============================================================
+function getLoanArmyState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+  c.loans = Array.isArray(c.loans) ? c.loans : [];
+
+  if (!c.loans.length) {
+    c.loans.push({
+      id: 'loan_1',
+      playerId: 'seed_loan_p1',
+      playerName: 'Lucas Morales',
+      position: 'AMF',
+      rating: 74,
+      potential: 86,
+      destinationClub: 'Real Betis Balompié',
+      league: 'La Liga (Spain)',
+      status: 'Regular Starter',
+      appearances: 14,
+      goals: 5,
+      assists: 4,
+      ratingGrowth: '+2 OVR',
+      recallClause: true,
+      buyOption: 18.0
+    });
+  }
+
+  const squad = clubPlayers(s, c);
+  const eligibleLoanPlayers = squad.filter(p => (p.rating <= 79 || (p.age && p.age <= 21)));
+
+  return {
+    club: c.name,
+    loans: c.loans,
+    eligiblePlayers: eligibleLoanPlayers.map(p => ({
+      id: p.id,
+      name: p.name,
+      position: p.position,
+      rating: p.rating,
+      age: p.age || 20
+    }))
+  };
+}
+
+function loanOutPlayer(s, clubName, playerId, destinationClub, terms) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  const p = player(s, playerId);
+  if (!p) return { error: 'Player not found' };
+
+  c.loans = c.loans || [];
+  const dest = destinationClub || 'Sunderland AFC';
+  const role = terms?.role || 'Regular Starter';
+
+  c.loans.push({
+    id: `loan_${Date.now()}`,
+    playerId: p.id,
+    playerName: p.name,
+    position: p.position,
+    rating: p.rating,
+    destinationClub: dest,
+    league: 'Division 2',
+    status: role,
+    appearances: 0,
+    goals: 0,
+    assists: 0,
+    ratingGrowth: '+0 OVR',
+    recallClause: true,
+    buyOption: Math.round((p.askingPrice || 8) * 1.6)
+  });
+
+  c.players = c.players.filter(pid => pid !== p.id);
+  p.onLoan = true;
+  p.loanClub = dest;
+
+  const loanFee = Math.round((p.askingPrice || 8) * 0.15 * 10) / 10;
+  c.cash = Math.round((c.cash + loanFee) * 10) / 10;
+  recordTransaction(c, loanFee, 'loan_fee', `Loan fee received for ${p.name} from ${dest}`, s);
+  addNews(s, `✈️ LOAN DEAL: ${p.name} joins ${dest} on a season-long development loan (+₹${loanFee}M loan fee).`, 'transfers');
+
+  persist();
+  return { success: true, loans: c.loans };
+}
+
+function recallLoanPlayer(s, clubName, playerId) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  c.loans = c.loans || [];
+  const idx = c.loans.findIndex(l => l.playerId === playerId || l.id === playerId);
+  if (idx === -1) return { error: 'Active loan record not found.' };
+
+  const loanRecord = c.loans[idx];
+  c.loans.splice(idx, 1);
+
+  const p = player(s, loanRecord.playerId);
+  if (p) {
+    p.onLoan = false;
+    p.loanClub = null;
+    p.rating = Math.min(94, p.rating + 1);
+    if (!c.players.includes(p.id)) c.players.push(p.id);
+  }
+
+  addNews(s, `🔙 RECALL: ${c.name} exercised mid-season recall clause on ${loanRecord.playerName} from ${loanRecord.destinationClub}!`, 'transfers');
+  persist();
+  return { success: true, loans: c.loans, recalledPlayer: p };
+}
+
+// =============================================================
+// MODULE 4: CLUB TAKEOVERS & MULTI-CLUB OWNERSHIP EMPIRE
+// =============================================================
+function getTakeoverAndEmpireState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+
+  c.ownership = c.ownership || {
+    type: 'custodian',
+    ownerName: `${c.name} Heritage Custodians`,
+    model: 'Traditional Community Heritage',
+    reputation: c.reputation || 70,
+    fanLoyalty: 85,
+    satelliteClubs: [
+      { id: 'sat_1', name: 'Andean Wonderkids FC', country: 'Colombia', tier: 'Feeder Academy', talentOutput: '+1 Youth Prospect/Year' }
+    ],
+    activeBid: {
+      id: 'bid_sovereign',
+      consortium: 'Gulf Horizon Sovereign Wealth Fund',
+      origin: 'Riyadh / Abu Dhabi',
+      type: 'sovereign',
+      cashPurse: 180.0,
+      ambition: 'Immediate European Champions League Dominance',
+      fanStance: 'Mixed (Thrilled by war chest, anxious about identity)',
+      status: 'pending'
+    }
+  };
+
+  return {
+    club: c.name,
+    ownership: c.ownership,
+    availableSatellitesToBuy: [
+      { id: 'sat_nordic', name: 'Nordic Stars IF', country: 'Sweden', cost: 12.0, perk: 'Elite Scouting in Scandinavia (+2 OVR to Youth Intakes)' },
+      { id: 'sat_brazil', name: 'Santos Promessas', country: 'Brazil', cost: 20.0, perk: 'Direct pipeline to 5-star Samba dribblers' },
+      { id: 'sat_algarve', name: 'Algarve Sporting', country: 'Portugal', cost: 15.0, perk: 'EU work permit fast-tracking gateway' }
+    ]
+  };
+}
+
+function executeTakeoverAction(s, clubName, action, data) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  c.ownership = c.ownership || { type: 'custodian', ownerName: `${c.name} Trust`, satelliteClubs: [] };
+
+  if (action === 'accept_bid') {
+    const bid = c.ownership.activeBid;
+    if (!bid) return { error: 'No active takeover bid on the table.' };
+
+    c.ownership.type = bid.type;
+    c.ownership.ownerName = bid.consortium;
+    c.ownership.model = bid.type === 'sovereign' ? 'State-Backed Sovereign Investment' : 'Global Private Equity Group';
+    c.cash = Math.round((c.cash + bid.cashPurse) * 10) / 10;
+    c.reputation = Math.min(95, (c.reputation || 70) + 12);
+    recordTransaction(c, bid.cashPurse, 'takeover_cash', `Hostile Takeover Cash Injection from ${bid.consortium}`, s);
+    addNews(s, `🚨 OFFICIAL CLUB TAKEOVER: ${bid.consortium} has officially acquired ${c.name} with a gargantuan ₹${bid.cashPurse}M War Chest!`, 'board');
+    c.ownership.activeBid = null;
+    persist();
+    return { success: true, ownership: c.ownership, cash: c.cash };
+  }
+
+  if (action === 'reject_bid') {
+    const bid = c.ownership.activeBid;
+    addNews(s, `🛡️ TAKEOVER REBUFFED: ${c.name} board and supporters officially rejected the buyout offer from ${bid?.consortium || 'investors'}.`, 'board');
+    c.ownership.activeBid = null;
+    c.fanSatisfaction = Math.min(100, (c.fanSatisfaction || 75) + 15);
+    persist();
+    return { success: true, ownership: c.ownership };
+  }
+
+  if (action === 'buy_satellite') {
+    const cost = Number(data.cost || 15);
+    if (c.cash < cost) return { error: `Insufficient treasury (₹${cost}M required).` };
+    c.cash = Math.round((c.cash - cost) * 10) / 10;
+    c.ownership.satelliteClubs = c.ownership.satelliteClubs || [];
+    c.ownership.satelliteClubs.push({
+      id: data.satelliteId,
+      name: data.name,
+      country: data.country,
+      tier: 'Satellite Affiliate',
+      perk: data.perk
+    });
+    recordTransaction(c, cost, 'empire_investment', `Purchased affiliate feeder club ${data.name}`, s);
+    addNews(s, `🌐 MULTI-CLUB EMPIRE EXPANSION: ${c.name} completed the acquisition of ${data.name} (${data.country})!`, 'club');
+    persist();
+    return { success: true, ownership: c.ownership, cash: c.cash };
+  }
+
+  return { error: 'Unknown takeover action' };
+}
+
+// =============================================================
+// MODULE 5: SUPER-AGENT SHOWDOWNS & CONTRACT CLAUSES MATRIX
+// =============================================================
+function getContractMatrixState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+  const players = clubPlayers(s, c);
+
+  const AGENT_ARCHETYPES = [
+    { type: 'ruthless', name: 'Jorge "The Shark" Mendes-Pina', trait: 'Demands hefty signing commissions and low buyout clauses' },
+    { type: 'loyal', name: 'Marco Silva (Player Father)', trait: 'Values job security, club status, and happiness over raw wages' },
+    { type: 'corporate', name: 'Stellar Sports Global Partners', trait: 'Demands structured performance incentives (clean sheets / Ballon d’Or)' }
+  ];
+
+  const contracts = players.map((p, idx) => {
+    const agent = AGENT_ARCHETYPES[idx % AGENT_ARCHETYPES.length];
+    p.clauses = p.clauses || {
+      releaseClause: Math.round((p.askingPrice || 8) * (agent.type === 'ruthless' ? 1.3 : 1.8)),
+      bonusGoalOrCleanSheet: 0.15,
+      ballonDorBonus: 5.0,
+      relegationWageCut: agent.type === 'ruthless' ? 'None (Protected)' : '35% Cut',
+      agentFeePct: agent.type === 'ruthless' ? 15 : 7,
+      agentType: agent.type,
+      agentName: agent.name
+    };
+    return {
+      id: p.id,
+      name: p.name,
+      position: p.position,
+      rating: p.rating,
+      salary: p.salary || 1.2,
+      contractYears: p.contractYears || 3,
+      clauses: p.clauses
+    };
+  });
+
+  return {
+    club: c.name,
+    contracts
+  };
+}
+
+function executeContractRenewal(s, clubName, playerId, clausesData) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  const p = player(s, playerId);
+  if (!p) return { error: 'Player not found' };
+
+  const newWage = Math.round(Number(clausesData.salary || p.salary || 1.2) * 10) / 10;
+  const newRelease = Math.round(Number(clausesData.releaseClause || 25));
+  const agentFee = Math.round((newWage * 0.5) * 10) / 10;
+
+  if (c.cash < agentFee) return { error: `Insufficient cash for Agent Commission (₹${agentFee}M).` };
+  c.cash = Math.round((c.cash - agentFee) * 10) / 10;
+  p.salary = newWage;
+  p.contractYears = 4;
+  p.clauses = {
+    ...p.clauses,
+    releaseClause: newRelease,
+    bonusGoalOrCleanSheet: Number(clausesData.bonusGoalOrCleanSheet || 0.15),
+    relegationWageCut: clausesData.relegationWageCut || '35% Cut'
+  };
+
+  recordTransaction(c, agentFee, 'agent_fee', `Contract extension & agent commission for ${p.name}`, s);
+  addNews(s, `✍️ CONTRACT EXTENSION: ${p.name} penned a new 4-year deal with ${c.name} (Release clause locked at ₹${newRelease}M).`, 'transfers');
+  persist();
+  return { success: true, player: p, cash: c.cash };
+}
+
+// =============================================================
+// MODULE 6: PRE-SEASON SUMMER GLOBAL TOURS & FRIENDLY CUPS
+// =============================================================
+const PRESEASON_DESTINATIONS = [
+  {
+    id: 'usa_cup',
+    title: 'North American Champions Showcase',
+    flag: '🇺🇸',
+    cities: 'New York & Los Angeles',
+    appearanceFee: 18.0,
+    merchandiseBonus: 4.5,
+    fansGained: 25000,
+    opponents: ['New York City FC', 'LA Galaxy', 'Club América']
+  },
+  {
+    id: 'asia_tour',
+    title: 'East Asian Super Prestige Tour',
+    flag: '🇯🇵',
+    cities: 'Tokyo & Seoul',
+    appearanceFee: 15.0,
+    merchandiseBonus: 6.0,
+    fansGained: 35000,
+    opponents: ['Vissel Kobe', 'FC Seoul', 'Al-Hilal']
+  },
+  {
+    id: 'gulf_invitational',
+    title: 'Middle East Luxury Invitational',
+    flag: '🇦🇪',
+    cities: 'Dubai & Doha',
+    appearanceFee: 24.0,
+    merchandiseBonus: 3.0,
+    fansGained: 15000,
+    opponents: ['Al-Nassr', 'Al Ain FC', 'Flamengo']
+  }
+];
+
+function getPreseasonTourState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+  return {
+    club: c.name,
+    season: s.season,
+    completed: !!c.preseasonCompleted,
+    destinations: PRESEASON_DESTINATIONS
+  };
+}
+
+function simulatePreseasonTour(s, clubName, tourId) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  if (c.preseasonCompleted) return { error: 'Pre-season tour has already been conducted for this summer!' };
+
+  const tour = PRESEASON_DESTINATIONS.find(t => t.id === tourId) || PRESEASON_DESTINATIONS[0];
+  const totalPayout = Math.round((tour.appearanceFee + tour.merchandiseBonus) * 10) / 10;
+
+  c.cash = Math.round((c.cash + totalPayout) * 10) / 10;
+  c.fans = (c.fans || 20000) + tour.fansGained;
+  c.preseasonCompleted = true;
+
+  const friendlyResults = tour.opponents.map(opp => {
+    const myScore = Math.floor(Math.random() * 3) + 1;
+    const oppScore = Math.floor(Math.random() * 2);
+    return { opponent: opp, score: `${myScore} - ${oppScore}`, verdict: myScore >= oppScore ? 'W' : 'L' };
+  });
+
+  recordTransaction(c, totalPayout, 'commercial_tour', `Summer Pre-Season Tour: ${tour.title} (Fee + Merch)`, s);
+  addNews(s, `✈️ TOUR COMPLETE: ${c.name} concluded the ${tour.title}! Banked ₹${totalPayout}M + ${tour.fansGained.toLocaleString()} new global fans!`, 'competition');
+  persist();
+  return {
+    success: true,
+    tour,
+    payout: totalPayout,
+    friendlyResults,
+    cash: c.cash
+  };
+}
+
+// =============================================================
+// MODULE 7: CLUB HALL OF FAME & LEGENDS TESTIMONIAL MATCH
+// =============================================================
+function getHallOfFameState(s, clubName) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+
+  c.hallOfFame = Array.isArray(c.hallOfFame) ? c.hallOfFame : [];
+
+  if (!c.hallOfFame.length) {
+    c.hallOfFame.push(
+      {
+        id: 'legend_1',
+        name: 'Roberto Valente',
+        era: '2014 - 2023',
+        position: 'ST',
+        retiredNumber: 9,
+        appearances: 342,
+        goals: 218,
+        honors: ['2x League Titles', '1x European Trophy', 'Golden Boot 2019'],
+        quote: 'My blood runs true for this badge and these supporters.'
+      },
+      {
+        id: 'legend_2',
+        name: 'Gennaro Conti',
+        era: '2011 - 2021',
+        position: 'CB',
+        retiredNumber: 4,
+        appearances: 410,
+        goals: 24,
+        honors: ['Club Captain for 7 years', '3x Domestic Cups', 'Clean Sheet Record'],
+        quote: 'Defending this citadel was the honor of my lifetime.'
+      }
+    );
+  }
+
+  return {
+    club: c.name,
+    legends: c.hallOfFame
+  };
+}
+
+function hostTestimonialMatch(s, clubName, legendId) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+  c.hallOfFame = c.hallOfFame || [];
+  const legend = c.hallOfFame.find(l => l.id === legendId) || c.hallOfFame[0];
+
+  const gateReceipts = 11.5;
+  c.cash = Math.round((c.cash + gateReceipts) * 10) / 10;
+  c.fanSatisfaction = 100;
+  c.morale = 100;
+
+  recordTransaction(c, gateReceipts, 'testimonial_gate', `Testimonial Benefit Match honoring ${legend.name}`, s);
+  addNews(s, `🌟 LEGENDS TESTIMONIAL: ${c.name} stadium celebrated club icon ${legend.name} in an emotional 4-3 spectacle against World XI! (+₹11.5M gate)`, 'match');
+  persist();
+  return {
+    success: true,
+    score: `${c.name} 4 - 3 World Legends XI`,
+    legendName: legend.name,
+    revenue: gateReceipts,
+    cash: c.cash
+  };
+}
+
+// =============================================================
+// MODULE 8: HALF-TIME TALKS & VAR REVIEW INCIDENTS
+// =============================================================
+function executeHalfTimeTalk(s, clubName, talkType) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found' };
+
+  let outcome = {};
+  if (talkType === 'hairdryer') {
+    const success = Math.random() > 0.35;
+    if (success) {
+      c.morale = Math.min(100, (c.morale || 70) + 12);
+      outcome = {
+        verdict: '🔥 Hairdryer Fired Up the Squad!',
+        narrative: 'Teacups were thrown across the dressing room. Players emerged with fury in their eyes (+20% second-half work rate).',
+        boost: 'attack'
+      };
+    } else {
+      c.morale = Math.max(40, (c.morale || 70) - 8);
+      outcome = {
+        verdict: '⚡ Hairdryer Backfired!',
+        narrative: 'Several senior players felt insulted and retreated into their shells. Morale took a dip.',
+        boost: 'none'
+      };
+    }
+  } else if (talkType === 'tactical') {
+    outcome = {
+      verdict: '📋 Masterclass Tactical Realignment',
+      narrative: 'Instructed central pivot to double-mark their playmaker and commanded fullbacks to push high (+15% defensive composure).',
+      boost: 'defense'
+    };
+  } else {
+    c.morale = Math.min(100, (c.morale || 70) + 8);
+    outcome = {
+      verdict: '🗣️ Inspirational Dressing Room Rally',
+      narrative: 'Calm, passionate reminder of what this shirt represents to the city. Squad rallied with renewed belief (+10% team chemistry).',
+      boost: 'chemistry'
+    };
+  }
+  return { success: true, outcome, morale: c.morale };
+}
+
+function generateVarReviewIncident(s, matchContext) {
+  const incidents = [
+    {
+      type: 'offside',
+      title: 'MARGINAL OFFSIDE CHECK',
+      narrative: 'Checking potential offside by attacker shoulder blade millimeter line...',
+      overturned: Math.random() > 0.45,
+      impact: 'Goal disallowed for offside (0.04m margin)'
+    },
+    {
+      type: 'penalty',
+      title: 'POSSIBLE PENALTY REVIEW',
+      narrative: 'Checking potential trailing leg trip inside the penalty box...',
+      overturned: Math.random() > 0.4,
+      impact: 'Penalty awarded to attacking side!'
+    },
+    {
+      type: 'red_card',
+      title: 'SERIOUS FOUL PLAY RED CARD CHECK',
+      narrative: 'Reviewing studs-up lunging challenge near the touchline...',
+      overturned: Math.random() > 0.5,
+      impact: 'Straight Red Card issued for dangerous play!'
+    }
+  ];
+  return incidents[Math.floor(Math.random() * incidents.length)];
+}
+
+// =============================================================
+// MODULE 10: MANAGER CAREER & LOWER DIVISION APPOINTMENTS
+// =============================================================
+function getLowerDivisionClubs(s, country) {
+  if (!s || !Array.isArray(s.clubs)) return [];
+  let candidates = s.clubs.filter(c => c.division === 3 || c.division === 4);
+  if (country && country !== 'all') {
+    candidates = candidates.filter(c => c.country.toLowerCase() === country.toLowerCase());
+  }
+  return candidates.map(c => {
+    const players = clubPlayers(s, c);
+    const avgRating = players.length ? Math.round(players.reduce((sum, p) => sum + (p.rating || 60), 0) / players.length) : (c.division === 4 ? 64 : 68);
+    const startingRep = c.division === 4 ? 20 : 28;
+    return {
+      name: c.name,
+      country: c.country,
+      league: c.league,
+      division: c.division,
+      reputation: c.reputation || (c.division === 4 ? 45 : 55),
+      cash: Math.round((c.cash || (c.division === 4 ? 3.5 : 8.5)) * 10) / 10,
+      fans: c.fans || (c.division === 4 ? 6500 : 14000),
+      crest: c.crest || 'crest_shield',
+      jersey: c.jersey || { home: '#10243b', away: '#ffffff' },
+      rating: avgRating,
+      playersCount: players.length || 16,
+      managerStartingReputation: startingRep,
+      tierLabel: c.division === 4 ? 'Division 4 · Grassroots Underdog' : 'Division 3 · Regional Contender',
+      boardObjective: c.division === 4 
+        ? 'Avoid relegation, establish tactical discipline, and ignite local passion.' 
+        : 'Mount promotion charge, maintain top-half standing, and develop young prospects.',
+      managerSalary: c.division === 4 ? '₹0.35M / yr' : '₹0.65M / yr'
+    };
+  });
+}
+
+function assignManagerToClub(s, clubName, managerName) {
+  if (!s) return { error: 'World not found.' };
+  let c = null;
+  if (clubName) {
+    c = club(s, clubName);
+  }
+  if (!c) {
+    const lowerClubs = s.clubs.filter(x => x.division === 4 || x.division === 3);
+    c = lowerClubs[Math.floor(Math.random() * lowerClubs.length)] || s.clubs[0];
+  }
+  if (!c) return { error: 'No available club found to assign.' };
+
+  s.selectedClub = c.name;
+  c.online = true;
+  c.manager = c.manager || {};
+  c.manager.name = (managerName && String(managerName).trim()) ? String(managerName).trim() : 'Head Coach';
+  const startRep = c.division === 4 ? 22 : 28;
+  c.manager.reputation = startRep;
+
+  // Ensure squad is seeded
+  if (!c.players || c.players.length < 16) {
+    seedSquad(c, s.market, 16);
+  }
+  rebalanceSquadToDivision(s, c);
+  setupClubRivalries(s.clubs);
+
+  s.managerCareer = {
+    name: c.manager.name,
+    role: 'manager',
+    reputation: startRep,
+    tier: startRep < 35 ? 'Grassroots Tactician' : 'Rising Coach',
+    matches: 0,
+    wins: 0,
+    draws: 0,
+    losses: 0,
+    winRate: 0,
+    promotions: 0,
+    titles: 0,
+    boardConfidence: 85,
+    appointedSeason: s.season || 1,
+    initialClub: c.name,
+    initialDivision: c.division,
+    jobOffers: [],
+    careerHistory: [
+      {
+        season: s.season || 1,
+        club: c.name,
+        country: c.country,
+        division: c.division,
+        event: `Official Head Coach Appointment at ${c.name} (Division ${c.division})`
+      }
+    ]
+  };
+
+  refreshManagerJobOffers(s);
+  addNews(s, `👔 OFFICIAL APPOINTMENT: ${s.managerCareer.name} has taken the hotseat as Head Coach of ${c.name} in Division ${c.division}! Mission: Climb from the lower leagues to the top of world football.`, 'manager');
+  persist();
+  return c;
+}
+
+function refreshManagerJobOffers(s) {
+  if (!s || !s.managerCareer) return [];
+  const mc = s.managerCareer;
+  const currentClub = club(s, s.selectedClub);
+  const currentDiv = currentClub ? currentClub.division : 3;
+  const rep = mc.reputation || 25;
+
+  if (rep < 35) mc.tier = 'Grassroots Tactician';
+  else if (rep < 55) mc.tier = 'Rising Coach';
+  else if (rep < 75) mc.tier = 'Respected Gaffer';
+  else if (rep < 90) mc.tier = 'Elite Mastermind';
+  else mc.tier = 'World-Class Legend';
+
+  const offers = [];
+  // Tier 1 Job Inquiries: Division 2 Clubs (Rep 36+)
+  if (rep >= 36 && currentDiv > 2) {
+    const div2Clubs = s.clubs.filter(c => c.division === 2 && c.name !== (currentClub ? currentClub.name : ''));
+    if (div2Clubs.length > 0) {
+      const candidates = [...div2Clubs].sort(() => 0.5 - Math.random()).slice(0, 2);
+      candidates.forEach(c => {
+        offers.push({
+          id: 'offer_' + c.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          club: c.name,
+          country: c.country,
+          league: c.league,
+          division: c.division,
+          tierBadge: 'DIVISION 2 PROMOTION CONTENDER',
+          crest: c.crest || 'crest_shield',
+          budget: Math.round((c.cash || 18) * 10) / 10,
+          salary: '₹1.8M / yr',
+          objective: 'Lead squad into Division 1 promotion contention',
+          reputationRequired: 36,
+          reputation: c.reputation || 68
+        });
+      });
+    }
+  }
+
+  // Tier 2 Job Inquiries: Division 1 Clubs (Rep 58+)
+  if (rep >= 58 && currentDiv > 1) {
+    const div1Clubs = s.clubs.filter(c => c.division === 1 && (c.reputation || 70) < 86 && c.name !== (currentClub ? currentClub.name : ''));
+    if (div1Clubs.length > 0) {
+      const candidates = [...div1Clubs].sort(() => 0.5 - Math.random()).slice(0, 2);
+      candidates.forEach(c => {
+        offers.push({
+          id: 'offer_' + c.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          club: c.name,
+          country: c.country,
+          league: c.league,
+          division: c.division,
+          tierBadge: 'TOP FLIGHT DIVISION 1 CLUB',
+          crest: c.crest || 'crest_shield',
+          budget: Math.round((c.cash || 45) * 10) / 10,
+          salary: '₹4.2M / yr',
+          objective: 'Establish top-half presence & qualify for European competitions',
+          reputationRequired: 58,
+          reputation: c.reputation || 78
+        });
+      });
+    }
+  }
+
+  // Tier 3 Job Inquiries: Elite Giants & Champions (Rep 78+)
+  if (rep >= 78) {
+    const eliteClubs = s.clubs.filter(c => c.division === 1 && (c.reputation || 70) >= 86 && c.name !== (currentClub ? currentClub.name : ''));
+    if (eliteClubs.length > 0) {
+      const candidates = [...eliteClubs].sort(() => 0.5 - Math.random()).slice(0, 2);
+      candidates.forEach(c => {
+        offers.push({
+          id: 'offer_' + c.name.toLowerCase().replace(/[^a-z0-9]/g, '_'),
+          club: c.name,
+          country: c.country,
+          league: c.league,
+          division: c.division,
+          tierBadge: '👑 CONTINENTAL & WORLD TITAN',
+          crest: c.crest || 'crest_crown',
+          budget: Math.round((c.cash || 85) * 10) / 10,
+          salary: '₹12.5M / yr',
+          objective: 'Win Champions League, Domestic League Title & World Trophies',
+          reputationRequired: 78,
+          reputation: c.reputation || 90
+        });
+      });
+    }
+  }
+
+  mc.jobOffers = offers;
+  return offers;
+}
+
+function getManagerCareerState(s) {
+  if (!s) return null;
+  if (!s.managerCareer) {
+    const c = s.selectedClub ? club(s, s.selectedClub) : null;
+    const startRep = c ? (c.division === 4 ? 22 : c.division === 3 ? 28 : 50) : 25;
+    s.managerCareer = {
+      name: (c && c.manager && c.manager.name) ? c.manager.name : 'Head Coach',
+      role: 'manager',
+      reputation: startRep,
+      tier: startRep < 35 ? 'Grassroots Tactician' : startRep < 55 ? 'Rising Coach' : 'Respected Gaffer',
+      matches: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      winRate: 0,
+      promotions: 0,
+      titles: 0,
+      boardConfidence: 85,
+      jobOffers: [],
+      careerHistory: c ? [
+        { season: s.season || 1, club: c.name, division: c.division, event: 'Appointed Head Coach' }
+      ] : []
+    };
+  }
+  refreshManagerJobOffers(s);
+  return {
+    managerCareer: s.managerCareer,
+    currentClub: s.selectedClub ? club(s, s.selectedClub) : null
+  };
+}
+
+function acceptManagerJobOffer(s, targetClubName) {
+  if (!s) return { error: 'World not found.' };
+  if (!s.managerCareer) return { error: 'No active manager career.' };
+  const target = club(s, targetClubName);
+  if (!target) return { error: 'Target club not found.' };
+
+  const prevClub = s.selectedClub;
+  s.selectedClub = target.name;
+  target.online = true;
+  target.manager = target.manager || {};
+  target.manager.name = s.managerCareer.name;
+  target.manager.reputation = s.managerCareer.reputation;
+
+  if (!target.players || target.players.length < 16) {
+    seedSquad(target, s.market, 16);
+  }
+  rebalanceSquadToDivision(s, target);
+
+  s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 25) + 5);
+  s.managerCareer.boardConfidence = 88;
+  s.managerCareer.careerHistory = s.managerCareer.careerHistory || [];
+  s.managerCareer.careerHistory.unshift({
+    season: s.season || 1,
+    club: target.name,
+    division: target.division,
+    event: `Sensational Move: Appointed Head Coach of ${target.name} (Div ${target.division})`
+  });
+
+  refreshManagerJobOffers(s);
+  addNews(s, `🚨 MAJOR MANAGERIAL APPOINTMENT: ${s.managerCareer.name} has officially accepted the managerial post at ${target.name} after a sensational climb!`, 'manager');
+  persist();
+  return { success: true, newClub: target, managerCareer: s.managerCareer };
+}
+
+function updateManagerReputationAfterMatch(s, user, matchResult, isCup) {
+  if (!s || !s.managerCareer || !matchResult || !user) return;
+  const mc = s.managerCareer;
+  const isUserHome = matchResult.home === user.name;
+  const userGoals = isUserHome ? matchResult.homeGoals : matchResult.awayGoals;
+  const oppGoals = isUserHome ? matchResult.awayGoals : matchResult.homeGoals;
+  const oppName = isUserHome ? matchResult.away : matchResult.home;
+  const opp = club(s, oppName);
+
+  mc.matches = (mc.matches || 0) + 1;
+  const isWon = userGoals > oppGoals || (matchResult.cupWinner === user.name);
+  const isDraw = userGoals === oppGoals && !matchResult.cupWinner;
+
+  if (isWon) {
+    mc.wins = (mc.wins || 0) + 1;
+    let repGain = 2;
+    if (matchResult.isDerby) repGain += 2;
+    if (opp && opp.division < user.division) repGain += 3; // Giant-killing lower tier bonus!
+    if (opp && (opp.reputation || 60) > (user.reputation || 60) + 10) repGain += 2;
+    mc.reputation = Math.min(100, (mc.reputation || 25) + repGain);
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 3);
+    if (user.manager) user.manager.reputation = mc.reputation;
+  } else if (isDraw) {
+    mc.draws = (mc.draws || 0) + 1;
+    if (opp && opp.division < user.division) {
+      mc.reputation = Math.min(100, (mc.reputation || 25) + 1);
+    }
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 1);
+  } else {
+    mc.losses = (mc.losses || 0) + 1;
+    if (opp && opp.division > user.division) {
+      mc.reputation = Math.max(15, (mc.reputation || 25) - 1);
+    }
+    mc.boardConfidence = Math.max(20, (mc.boardConfidence || 85) - 3);
+  }
+
+  mc.winRate = Math.round((mc.wins / mc.matches) * 100);
+  refreshManagerJobOffers(s);
+}
+
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch};

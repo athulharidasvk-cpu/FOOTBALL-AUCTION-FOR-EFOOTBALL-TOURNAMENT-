@@ -1416,89 +1416,169 @@ world.getPressConference = function(w, clubName, stage = 'pre') {
 
   const matchday = (w.matchday || 0) + 1;
   const oppClub = w.clubs.find(x => x.name !== c.name && x.division === c.division) || w.clubs[0];
+  const pendingBidsCount = (w.incomingOffers || []).filter(o => o.status === 'pending').length;
 
-  const questions = [
-    {
-      id: 'q1_tactics',
-      outlet: 'Sky Sports Football',
-      journalist: 'David Croft',
-      question: `Manager, how are you approaching the upcoming clash against ${oppClub.name}? Pundits question whether your tactics are too open defensively.`,
-      options: [
-        {
-          id: 'opt1_agg',
-          style: 'Combative / Aggressive',
-          quote: `"We don't fear anyone. We're going to play on the front foot and tear right through them!"`,
-          effects: { morale: +5, pressure: +10, fanApproval: +6, rivalComposure: -8 }
-        },
-        {
-          id: 'opt2_comp',
-          style: 'Composed / Tactical',
-          quote: `"We've analyzed their transitional patterns. Tactical discipline and compactness will win this fixture."`,
-          effects: { morale: +3, focus: +10, boardConfidence: +5, rivalComposure: 0 }
-        },
-        {
-          id: 'opt3_hum',
-          style: 'Passionate / Fan-Focused',
-          quote: `"This match is for the supporters filling the stands. Every player will leave everything on that grass today."`,
-          effects: { morale: +10, fanApproval: +12, chemistry: +4 }
-        }
-      ]
-    },
-    {
-      id: 'q2_squad',
-      outlet: 'The Athletic Football Review',
-      journalist: 'Amy Lawrence',
-      question: `There are whispers in the dressing room about squad rotation and playing time. How do you keep star players content?`,
-      options: [
-        {
-          id: 'opt2_merit',
-          style: 'Meritocracy',
-          quote: `"Reputation counts for zero. Whoever trains hardest and executes on matchday starts. Simple as that."`,
-          effects: { morale: +4, determination: +6, focus: +5 }
-        },
-        {
-          id: 'opt2_diplomatic',
-          style: 'Diplomatic Shield',
-          quote: `"We have a united dressing room with an incredible bond. We succeed as a brotherhood."`,
-          effects: { morale: +8, chemistry: +6, boardConfidence: +3 }
-        },
-        {
-          id: 'opt2_warning',
-          style: 'Stern Warning',
-          quote: `"Anyone who puts personal ego above the badge can find themselves sitting in the reserves."`,
-          effects: { discipline: +10, morale: -2, rivalComposure: -4 }
-        }
-      ]
-    },
-    {
-      id: 'q3_board',
-      outlet: 'Gazetta Del Calcio',
-      journalist: 'Matteo Bellini',
-      question: `The board has made their seasonal ambitions clear. Do you feel the pressure on your shoulders?`,
-      options: [
-        {
-          id: 'opt3_thrive',
-          style: 'Thrive on Pressure',
-          quote: `"Pressure is a privilege. I came here to conquer titles, not hide in mid-table obscurity."`,
-          effects: { boardConfidence: +8, reputation: +3, morale: +5 }
-        },
-        {
-          id: 'opt3_patient',
-          style: 'Long-Term Process',
-          quote: `"We are building a sustainable football identity block by block. Trust the process."`,
-          effects: { boardConfidence: +4, fanApproval: +4, financialDiscipline: +5 }
-        },
-        {
-          id: 'opt3_demand_funds',
-          style: 'Demand Reinforcements',
-          quote: `"If the board want trophies, they need to continue backing us in the transfer market."`,
-          effects: { boardConfidence: -5, fanApproval: +8, transferUrgency: +10 }
-        }
-      ]
-    }
-  ];
+  let questions = [];
 
-  return { stage, questions, club: c.name, opponent: oppClub.name };
+  if (stage === 'transfer') {
+    questions = [
+      {
+        id: 'q1_transfer_negotiation',
+        outlet: 'Transfer Market Insider',
+        journalist: 'Fabrizio Romano',
+        question: `Boss, rival clubs are heavily circling your key squad members with official cash bids (${pendingBidsCount} offers tabled). What is your firm stance on incoming transfer negotiations?`,
+        options: [
+          {
+            id: 'opt1_hardball',
+            style: 'Tough Negotiator',
+            quote: `"Nobody leaves this squad on the cheap. We set the valuations. If suitors don't meet our terms and record fees, they can look elsewhere."`,
+            effects: { morale: +6, boardConfidence: +6, fanApproval: +8, reputation: +3 }
+          },
+          {
+            id: 'opt1_reinvest',
+            style: 'Pragmatic Rebuilder',
+            quote: `"Every player has a price. If a marquee bid arrives that allows us to recruit 3 or 4 high-caliber replacements, we will negotiate."`,
+            effects: { morale: +2, boardConfidence: +8, fanApproval: +4, reputation: +2 }
+          },
+          {
+            id: 'opt1_lockdown',
+            style: 'Squad Lockdown / Untouchable',
+            quote: `"This squad is strictly NOT FOR SALE. We are building a winning project and our key men are essential to our promotion charge."`,
+            effects: { morale: +10, boardConfidence: +3, fanApproval: +12, reputation: +2 }
+          }
+        ]
+      },
+      {
+        id: 'q2_targets',
+        outlet: 'Sky Sports News Desk',
+        journalist: 'Kaveh Solhekol',
+        question: `Are you actively negotiating to bring in new signings before the transfer deadline, or are you satisfied with the squad depth?`,
+        options: [
+          {
+            id: 'opt2_active_push',
+            style: 'Demanding Backing',
+            quote: `"We have identified key transfer targets. I am pushing the board to release funds and seal negotiations to reinforce our starting XI."`,
+            effects: { morale: +5, boardConfidence: +4, fanApproval: +8, reputation: +2 }
+          },
+          {
+            id: 'opt2_trust_academy',
+            style: 'Faith in Youth Academy',
+            quote: `"We won't make panic buys. We have brilliant hungry young talent in our academy who are ready to step up and shine."`,
+            effects: { morale: +8, boardConfidence: +8, fanApproval: +6, reputation: +3 }
+          },
+          {
+            id: 'opt2_secretive',
+            style: 'Card Close to Chest',
+            quote: `"Negotiations happen behind closed doors, not in front of microphones. We do our business quietly and efficiently."`,
+            effects: { morale: +4, boardConfidence: +5, fanApproval: +4, reputation: +2 }
+          }
+        ]
+      },
+      {
+        id: 'q3_lower_div_ambition',
+        outlet: 'The Football League Weekly',
+        journalist: 'Simon Stone',
+        question: `Managing in Division ${c.division}, how do you persuade top-tier talent to sign with your club over established giants?`,
+        options: [
+          {
+            id: 'opt3_vision',
+            style: 'Inspiring Tactical Vision',
+            quote: `"Players come here because of our tactical philosophy and because they know they will be the cornerstone of a historic promotion rise."`,
+            effects: { morale: +8, boardConfidence: +7, fanApproval: +10, reputation: +4 }
+          },
+          {
+            id: 'opt3_development',
+            style: 'Player Development Promise',
+            quote: `"Under my coaching staff, players improve their ratings rapidly and become fan icons. That is more valuable than sitting on a big club bench."`,
+            effects: { morale: +7, boardConfidence: +6, fanApproval: +7, reputation: +3 }
+          }
+        ]
+      }
+    ];
+  } else {
+    questions = [
+      {
+        id: 'q1_tactics',
+        outlet: 'Sky Sports Football',
+        journalist: 'David Croft',
+        question: `Manager, how are you approaching the tactical setup for ${c.name}? Pundits are debating whether your system is suited for a promotion charge in Division ${c.division}.`,
+        options: [
+          {
+            id: 'opt1_agg',
+            style: 'High-Pressing Attack',
+            quote: `"We don't fear anyone. We're going to press high, control transitions, and attack with relentless intensity!"`,
+            effects: { morale: +6, boardConfidence: +5, fanApproval: +8, reputation: +2 }
+          },
+          {
+            id: 'opt1_comp',
+            style: 'Tactical Discipline',
+            quote: `"We have analyzed our opponents rigorously. Compact defense, disciplined shape, and ruthless counter-attacks win trophies."`,
+            effects: { morale: +4, boardConfidence: +7, fanApproval: +5, reputation: +3 }
+          },
+          {
+            id: 'opt1_hum',
+            style: 'Fan & Grassroots Passion',
+            quote: `"This match is for every supporter in the stands. My players will battle for every inch on that pitch with pure heart."`,
+            effects: { morale: +10, boardConfidence: +4, fanApproval: +12, reputation: +2 }
+          }
+        ]
+      },
+      {
+        id: 'q2_squad_and_transfers',
+        outlet: 'The Athletic Football Review',
+        journalist: 'Amy Lawrence',
+        question: `With the transfer window active, there are questions about squad morale and contract negotiations. How do you keep the dressing room unified?`,
+        options: [
+          {
+            id: 'opt2_merit',
+            style: 'Total Meritocracy',
+            quote: `"Reputation counts for zero in my squad. Whoever trains hardest and executes our tactical plan earns the shirt on matchday."`,
+            effects: { morale: +6, boardConfidence: +6, fanApproval: +5, reputation: +3 }
+          },
+          {
+            id: 'opt2_diplomatic',
+            style: 'United Brotherhood',
+            quote: `"We have an exceptional bond in this dressing room. We win together, suffer together, and conquer together."`,
+            effects: { morale: +9, boardConfidence: +5, fanApproval: +6, reputation: +2 }
+          },
+          {
+            id: 'opt2_demanding',
+            style: 'Relentless High Standards',
+            quote: `"Anyone who puts ego above the club crest can find the exit. We hold elite standards for every minute we wear this badge."`,
+            effects: { morale: +3, boardConfidence: +8, fanApproval: +6, reputation: +3 }
+          }
+        ]
+      },
+      {
+        id: 'q3_board_expectations',
+        outlet: 'Gazzetta dello Sport',
+        journalist: 'Matteo Bellini',
+        question: `The board and fans have set clear expectations for this season. Do you feel the pressure to deliver immediate promotion and silverware?`,
+        options: [
+          {
+            id: 'opt3_thrive',
+            style: 'Thrive on Pressure',
+            quote: `"Pressure is a privilege. I came to ${c.name} to build a legacy, gain promotion, and take this club to the very top division."`,
+            effects: { boardConfidence: +8, fanApproval: +10, morale: +6, reputation: +4 }
+          },
+          {
+            id: 'opt3_process',
+            style: 'Process & Sustainability',
+            quote: `"We are building a sustainable football powerhouse block by block. Trust our process and the silverware will follow."`,
+            effects: { boardConfidence: +6, fanApproval: +5, morale: +4, reputation: +2 }
+          },
+          {
+            id: 'opt3_demand_backing',
+            style: 'Demand Board Transfer Backing',
+            quote: `"If the board want titles, they must continue backing our transfer negotiations and sanctioning key target signings."`,
+            effects: { boardConfidence: +3, fanApproval: +8, morale: +5, reputation: +3 }
+          }
+        ]
+      }
+    ];
+  }
+
+  return { stage, questions, club: c.name, opponent: oppClub.name, division: c.division };
 };
 
 world.submitPressConference = function(w, clubName, answers = []) {
@@ -1508,12 +1588,14 @@ world.submitPressConference = function(w, clubName, answers = []) {
   let totalMoraleChange = 0;
   let totalBoardChange = 0;
   let totalFanChange = 0;
+  let totalRepChange = 0;
 
   answers.forEach(ans => {
     if (ans.effects) {
       totalMoraleChange += ans.effects.morale || 0;
       totalBoardChange += ans.effects.boardConfidence || 0;
       totalFanChange += ans.effects.fanApproval || 0;
+      totalRepChange += ans.effects.reputation || 0;
     }
   });
 
@@ -1521,11 +1603,35 @@ world.submitPressConference = function(w, clubName, answers = []) {
   c.fanSatisfaction = Math.max(30, Math.min(99, (c.fanSatisfaction || 70) + totalFanChange));
   c.boardConfidence = Math.max(25, Math.min(99, (c.boardConfidence || 75) + totalBoardChange));
 
+  // Manager Career updates & progression:
+  if (w.managerCareer) {
+    w.managerCareer.boardConfidence = c.boardConfidence;
+    const gainedRep = Math.max(1, Math.min(5, totalRepChange || Math.round((totalBoardChange + totalFanChange) / 6)));
+    w.managerCareer.reputation = Math.min(100, Math.max(10, (w.managerCareer.reputation || 28) + gainedRep));
+    w.managerCareer.tier = w.managerCareer.reputation < 36 
+      ? 'Grassroots Tactician' 
+      : w.managerCareer.reputation < 58 
+      ? 'Rising Coach' 
+      : w.managerCareer.reputation < 78 
+      ? 'Respected Gaffer' 
+      : w.managerCareer.reputation < 90 
+      ? 'Elite Manager' 
+      : 'Legendary Tactician';
+
+    w.managerCareer.careerHistory = w.managerCareer.careerHistory || [];
+    w.managerCareer.careerHistory.unshift({
+      season: w.season || 1,
+      club: c.name,
+      event: `Addressed national media in official press briefing (+${gainedRep} Rep)`
+    });
+    if (w.managerCareer.careerHistory.length > 50) w.managerCareer.careerHistory.pop();
+  }
+
   w.news.unshift({
     id: `press_${Date.now()}`,
     season: w.season,
     type: 'media',
-    text: `🎙️ PRESS BRIEFING: ${c.name} manager held an electric media conference. Squad morale stands at ${c.morale}% and Board confidence at ${c.boardConfidence}%.`,
+    text: `🎙️ PRESS BRIEFING: ${c.name} manager commanded the media conference. Squad morale stands at ${c.morale}%, Board confidence at ${c.boardConfidence}%, and Manager Reputation at ${w.managerCareer?.reputation || 30}/100.`,
     at: new Date().toISOString()
   });
 
@@ -1534,7 +1640,9 @@ world.submitPressConference = function(w, clubName, answers = []) {
     success: true,
     newMorale: c.morale,
     newBoardConfidence: c.boardConfidence,
-    newFanApproval: c.fanSatisfaction
+    newFanApproval: c.fanSatisfaction,
+    newReputation: w.managerCareer?.reputation,
+    newTier: w.managerCareer?.tier
   };
 };
 

@@ -44,7 +44,7 @@ function ref(bodyOrReq, socket){
 function get(bodyOrReq, socket){
   const r = ref(bodyOrReq, socket);
   const found = world.getWorld(r);
-  if (!found) {
+  if (!found && (r.room || r.soloId)) {
     console.warn(`[WorldPreload] getWorld lookup failed for ref:`, JSON.stringify(r));
   }
   return found;
@@ -126,6 +126,69 @@ function attachApp(app){
   app.get('/api/world4/playoffs',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json({playoffs:world.initiatePlayoffs(w)});});
   app.post('/api/world4/playoffs/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulatePlayoffsRound(w,Number(req.body?.targetTier||2));world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
 
+  // Tactical Playbooks & Philosophy Presets
+  app.get('/api/world4/tactics',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getTacticalPlaybookState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/tactics/update',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.updateTacticalPlaybook(w,req.body?.club||w.selectedClub,req.body?.tactics);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Sports Science & Medical Rehabilitation
+  app.get('/api/world4/medical',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getMedicalCenterState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/medical/action',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeMedicalAction(w,req.body?.club||w.selectedClub,req.body?.action,req.body);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Loan Army & Wonderkid Network
+  app.get('/api/world4/loans',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getLoanArmyState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/loans/loan-out',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.loanOutPlayer(w,req.body?.club||w.selectedClub,req.body?.playerId,req.body?.destinationClub,req.body?.terms);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+  app.post('/api/world4/loans/recall',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.recallLoanPlayer(w,req.body?.club||w.selectedClub,req.body?.playerId);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Manager Career Mode & Lower Division Assignment Routes
+  app.get('/api/world4/manager/lower-clubs', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    res.json({ clubs: world.getLowerDivisionClubs(w, req.query?.country) });
+  });
+  app.get('/api/world4/manager/career', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    res.json(world.getManagerCareerState(w) || {});
+  });
+  app.post('/api/world4/manager/assign', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.assignManagerToClub(w, req.body?.club, req.body?.managerName);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+  app.post('/api/world4/manager/accept-job', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.acceptManagerJobOffer(w, req.body?.targetClub);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  // Club Takeovers & Multi-Club Empire
+  app.get('/api/world4/takeovers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getTakeoverAndEmpireState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/takeovers/action',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeTakeoverAction(w,req.body?.club||w.selectedClub,req.body?.action,req.body);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Contract Clauses & Agent Matrix
+  app.get('/api/world4/contracts',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getContractMatrixState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/contracts/renew',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeContractRenewal(w,req.body?.club||w.selectedClub,req.body?.playerId,req.body?.clauses);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Pre-Season Global Tours
+  app.get('/api/world4/preseason',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getPreseasonTourState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/preseason/simulate',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.simulatePreseasonTour(w,req.body?.club||w.selectedClub,req.body?.tourId);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Hall of Fame & Legends Testimonial
+  app.get('/api/world4/halloffame',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getHallOfFameState(w,req.query?.club||w.selectedClub));});
+  app.post('/api/world4/halloffame/testimonial',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.hostTestimonialMatch(w,req.body?.club||w.selectedClub,req.body?.legendId);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+
+  // Half-time talks & VAR review
+  app.post('/api/world4/match/halftime-talk',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeHalfTimeTalk(w,req.body?.club||w.selectedClub,req.body?.talkType);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
+  app.post('/api/world4/match/var-check',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.generateVarReviewIncident(w,req.body));});
+
   app.get('/api/world4/deadline-day',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getDeadlineDayState(w));});
   app.post('/api/world4/deadline-day/action',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeDeadlineDayAction(w,req.body?.action,req.body);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});
 
@@ -198,6 +261,10 @@ function attachApp(app){
 function attachIO(io){
   if(attachedIO)return;attachedIO=true;ioRef=io;
   io.on('connection',socket=>{
+    const initialRef = ref({}, socket);
+    if (initialRef.soloId) socket.worldSoloId = initialRef.soloId;
+    if (initialRef.room) socket.worldRoom = initialRef.room;
+    if (initialRef.managerId) socket.worldManagerId = initialRef.managerId;
     socket.on('world4:soloCreate',()=>{const w=world.createSolo();socket.worldSoloId=w.soloId;socket.emit('world4:session',{type:'solo',soloId:w.soloId,state:safeState(w)});});
     socket.on('world4:createRoom',d=>{const w=world.createRoom(d?.name,d?.maxHumans,d?.managerName);const j=world.joinRoom(w,d?.managerName);socket.worldRoom=w.roomCode;socket.worldManagerId=j.id;joinRoomSocket(socket,w);socket.emit('world4:session',{type:'online',roomCode:w.roomCode,managerId:j.id,state:safeState(w)});broadcast(io,w);});
     socket.on('world4:joinRoom',d=>{const w=world.worldRooms.get(String(d?.code||'').toUpperCase());if(!w)return socket.emit('world4:error',{error:'Room not found'});const j=world.joinRoom(w,d?.managerName);if(j.error)return socket.emit('world4:error',j);socket.worldRoom=w.roomCode;socket.worldManagerId=j.id;joinRoomSocket(socket,w);socket.emit('world4:session',{type:'online',roomCode:w.roomCode,managerId:j.id,state:safeState(w)});broadcast(io,w);});

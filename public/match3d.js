@@ -1,3 +1,4 @@
+const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined" && window.svgIcon) ? window.svgIcon(n, s, c) : "";
 // public/match3d.js - Three.js 3D Matchday Gameplay Engine & Stadium Visualizer
 
 (function (global) {
@@ -217,13 +218,13 @@
 
     ctx.font = "bold 24px sans-serif";
     ctx.fillStyle = "#38bdf8";
-    ctx.fillText("⚽ FOOTBALL AUCTION LEAGUE", 20, 40);
+    ctx.fillText("${getSvgIcon('ball', 14)} FOOTBALL AUCTION LEAGUE", 20, 40);
 
     ctx.fillStyle = "#facc15";
     ctx.fillText("⭐ PEP'S TACTICAL MASTERCLASS", 420, 40);
 
     ctx.fillStyle = "#22c55e";
-    ctx.fillText("🏆 BALLON D'OR CUP", 820, 40);
+    ctx.fillText("${getSvgIcon('trophy', 14)} BALLON D'OR CUP", 820, 40);
 
     return new THREE.CanvasTexture(canvas);
   }
@@ -1166,7 +1167,7 @@
             this.startHighlight(this.currentHighlightIndex + 1);
           } else {
             // Loop or celebrate final whistle
-            this.displayCommentary("🏁 FULL-TIME WHISTLE! What an exhilarating match!", "fulltime");
+            this.displayCommentary("${getSvgIcon('flag-checkered', 14)} FULL-TIME WHISTLE! What an exhilarating match!", "fulltime");
             if (typeof global.playWhistleSound === "function") global.playWhistleSound();
             this.isPaused = true;
             this.updateHud();
@@ -1340,7 +1341,7 @@
       const banner = document.getElementById("match3dGoalBanner");
       if (banner) {
         banner.innerHTML = `
-          <div class="banner-fire">⚽ GOOOOOAL!</div>
+          <div class="banner-fire">${getSvgIcon('ball', 14)} GOOOOOAL!</div>
           <div class="banner-scorer">${hl.scorer || "Sensational Strike"} (${hl.minute}')</div>
           <div class="banner-sub">${hl.team} take the advantage!</div>
         `;
@@ -1399,14 +1400,14 @@
       this.soundEnabled = !this.soundEnabled;
       const soundBtn = document.getElementById("btnMatch3dSound");
       if (soundBtn) {
-        soundBtn.innerHTML = this.soundEnabled ? "🔊 Sound: ON" : "🔇 Sound: OFF";
+        soundBtn.innerHTML = this.soundEnabled ? "${getSvgIcon('sound', 14)} Sound: ON" : "${getSvgIcon('mute', 14)} Sound: OFF";
       }
     }
 
     displayCommentary(text, type = "normal") {
       const box = document.getElementById("match3dCommentary");
       if (!box) return;
-      box.innerHTML = `<span class="comm-icon">${type === 'goal' ? '🔥' : type === 'save' ? '🧤' : '📢'}</span> <span class="comm-text">${text}</span>`;
+      box.innerHTML = `<span class="comm-icon">${type === "goal" ? getSvgIcon("flame", 14) : type === "save" ? getSvgIcon("glove", 14) : getSvgIcon("megaphone", 14)}</span> <span class="comm-text">${text}</span>`;
       box.classList.remove("pop");
       void box.offsetWidth; // reflow
       box.classList.add("pop");
@@ -1448,7 +1449,7 @@
 
       if (derbyTag) {
         if (this.matchData.isRivalry) {
-          derbyTag.innerText = `🔥 ${this.matchData.derbyName || "ARCH RIVAL DERBY"}`;
+          derbyTag.innerText = `${getSvgIcon('flame', 14)} ${this.matchData.derbyName || "ARCH RIVAL DERBY"}`;
           derbyTag.style.display = "inline-block";
         } else {
           derbyTag.style.display = "none";

@@ -1,3 +1,4 @@
+const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined" && window.svgIcon) ? window.svgIcon(n, s, c) : "";
 // public/injury_center.js - Player Injury List & Club Medical Centre Engine
 
 (function (global) {
@@ -264,10 +265,10 @@
       inj.recoveryPct = 100;
       inj.status = "Cleared (Taped)";
       inj.physioNote = "Passed morning fitness test! Cleared to feature with protective strapping.";
-      showMedicalNotice(`✅ Fitness Test Passed: ${inj.playerName} is declared FIT for matchday selection!`, true);
+      showMedicalNotice(`${getSvgIcon('check', 14)} Fitness Test Passed: ${inj.playerName} is declared FIT for matchday selection!`, true);
     } else {
       inj.physioNote = "Late fitness test failed. Pain flare-up detected during sprint drills. Kept in medical bay for safety.";
-      showMedicalNotice(`⚠️ Fitness Test Failed: Medical staff recommend 1 more match of rehabilitation for ${inj.playerName}.`, false);
+      showMedicalNotice(`${getSvgIcon('alert', 14)}️ Fitness Test Failed: Medical staff recommend 1 more match of rehabilitation for ${inj.playerName}.`, false);
     }
 
     renderMedicalCentre();
@@ -325,7 +326,7 @@
         <!-- MEDICAL HEADER & SQUAD HEALTH OVERVIEW -->
         <div class="medical-header-card">
           <div class="medical-header-left">
-            <div class="medical-crest-icon">🏥</div>
+            <div class="medical-crest-icon">${getSvgIcon('hospital', 14)}</div>
             <div>
               <div class="medical-title">CLUB MEDICAL CENTRE & INJURY WARD</div>
               <div class="medical-subtitle">Physiotherapy, Cryo-Rehab & Squad Matchday Fitness</div>
@@ -358,21 +359,21 @@
         <div class="medical-filter-bar">
           <div class="medical-filter-chips">
             <button type="button" class="med-chip ${currentFilter === 'myClub' ? 'active' : ''}" onclick="InjuryCenter.setFilter('myClub')">
-              🛡️ My Club (${myClubInjuries.length})
+              ${getSvgIcon('shield', 14)}️ My Club (${myClubInjuries.length})
             </button>
             <button type="button" class="med-chip ${currentFilter === 'all' ? 'active' : ''}" onclick="InjuryCenter.setFilter('all')">
-              🌐 All League (${activeInjuries.filter(i => i.matchesRemaining > 0).length})
+              ${getSvgIcon('globe', 14)} All League (${activeInjuries.filter(i => i.matchesRemaining > 0).length})
             </button>
             <button type="button" class="med-chip ${currentFilter === 'severe' ? 'active' : ''}" onclick="InjuryCenter.setFilter('severe')">
-              🔴 Severe (${activeInjuries.filter(i => i.severity === 'Severe' && i.matchesRemaining > 0).length})
+              ${getSvgIcon('dot-red', 14)} Severe (${activeInjuries.filter(i => i.severity === 'Severe' && i.matchesRemaining > 0).length})
             </button>
             <button type="button" class="med-chip ${currentFilter === 'fit' ? 'active' : ''}" onclick="InjuryCenter.setFilter('fit')">
-              ✅ Cleared & Fit (${activeInjuries.filter(i => i.matchesRemaining === 0).length})
+              ${getSvgIcon('check', 14)} Cleared & Fit (${activeInjuries.filter(i => i.matchesRemaining === 0).length})
             </button>
           </div>
 
           <div class="med-quick-notice">
-            <span>💡 <em>Rehab treatments accelerate player recovery by 1 full matchday.</em></span>
+            <span>${getSvgIcon('lightbulb', 14)} <em>Rehab treatments accelerate player recovery by 1 full matchday.</em></span>
           </div>
         </div>
 
@@ -380,7 +381,7 @@
         <div class="medical-cards-grid">
           ${displayList.length === 0 ? `
             <div class="medical-empty-card">
-              <span style="font-size: 38px;">🎉</span>
+              <span style="font-size: 38px;">${getSvgIcon('party', 14)}</span>
               <h3>No Injured Players in This Category</h3>
               <p>Squad is boasting peak physical conditioning with zero players in the treatment room!</p>
             </div>
@@ -405,19 +406,19 @@
           <div class="injured-player-meta">
             <div class="injured-avatar-badge">
               <span class="pos-tag">${inj.position}</span>
-              <span class="rating-tag">⭐${inj.rating}</span>
+              <span class="rating-tag">${getSvgIcon("star", 13, "#f59e0b")}${inj.rating}</span>
             </div>
             <div>
               <div class="injured-player-name">${escapeHtml(inj.playerName)}</div>
               <div class="injured-club-row">
-                <span>🛡️ ${escapeHtml(inj.club)}</span>
+                <span>${getSvgIcon('shield', 14)}️ ${escapeHtml(inj.club)}</span>
                 ${isMine ? `<span class="your-club-badge">YOUR CLUB</span>` : ''}
               </div>
             </div>
           </div>
 
           <div class="injury-diagnosis-tag" style="background: ${statusBg}; border-color: ${severityColor}; color: ${severityColor};">
-            ${isFit ? '✅ FIT & CLEARED' : `🚨 ${inj.injuryType}`}
+            ${isFit ? (getSvgIcon('check', 14) + ' FIT & CLEARED') : (getSvgIcon('alert', 14) + ' ' + inj.injuryType)}
           </div>
 
         </div>
@@ -453,7 +454,7 @@
 
         <!-- PHYSIO CLINICAL NOTE -->
         <div class="injury-physio-note">
-          <span class="note-icon">📋</span>
+          <span class="note-icon">${getSvgIcon('clipboard', 14)}</span>
           <p><strong>Chief Physio:</strong> “${escapeHtml(inj.physioNote)}”</p>
         </div>
 
@@ -461,15 +462,15 @@
         ${isMine && !isFit ? `
           <div class="injury-actions-row">
             <button type="button" class="btn-med-action btn-accelerate" onclick="InjuryCenter.accelerateRehab('${inj.id}')">
-              ⚡ Accelerate Rehab (₹2.5M)
+              ${getSvgIcon('lightning', 14)} Accelerate Rehab (₹2.5M)
             </button>
             <button type="button" class="btn-med-action btn-test" onclick="InjuryCenter.runLateFitnessTest('${inj.id}')">
-              🩺 Late Fitness Test
+              ${getSvgIcon('hospital', 14)} Late Fitness Test
             </button>
           </div>
         ` : isFit ? `
           <div class="injury-fit-cleared-bar">
-            <span>✅ Player cleared for starting XI selection in next match.</span>
+            <span>${getSvgIcon('check', 14)} Player cleared for starting XI selection in next match.</span>
           </div>
         ` : ''}
 
@@ -483,7 +484,7 @@
     if (!inj) return "";
     return `
       <span class="inline-injury-tag" onclick="InjuryCenter.openModal('${inj.id}')" title="${inj.injuryType} - ${inj.matchesRemaining} Match(es) Out">
-        🏥 Out (${inj.matchesRemaining}m)
+        ${getSvgIcon('hospital', 14)} Out (${inj.matchesRemaining}m)
       </span>
     `;
   }

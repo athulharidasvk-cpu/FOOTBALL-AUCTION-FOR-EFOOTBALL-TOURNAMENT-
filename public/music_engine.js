@@ -377,7 +377,7 @@
     step = 0;
     updateUI();
     if (isPlaying && typeof showSaveToast === "function") {
-      showSaveToast(`🎵 Now Playing: ${TRACKS[currentTrackIndex].title}`, "🎶");
+      showSaveToast(`Now Playing: ${TRACKS[currentTrackIndex].title}`);
     }
   }
 
@@ -410,12 +410,16 @@
     if (genreEl) genreEl.innerText = `${track.genre} • ${track.bpm} BPM`;
 
     if (playBtn) {
-      playBtn.innerHTML = isPlaying ? "⏸️" : "▶️";
+      playBtn.innerHTML = isPlaying 
+        ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>`
+        : `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>`;
       playBtn.classList.toggle("playing", isPlaying);
     }
 
     if (topMusicBtn) {
-      topMusicBtn.innerHTML = isPlaying ? "🎵" : "🔇";
+      topMusicBtn.innerHTML = isPlaying 
+        ? `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`
+        : `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`;
       topMusicBtn.classList.toggle("active-music", isPlaying);
       topMusicBtn.title = isPlaying ? `Playing: ${track.title} (Click to toggle)` : "Music Paused (Click to Play)";
     }

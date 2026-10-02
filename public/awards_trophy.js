@@ -1,3 +1,4 @@
+const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined" && window.svgIcon) ? window.svgIcon(n, s, c) : "";
 // public/awards_trophy.js - Season Individual Awards & Champion Trophy Lifting Ceremony
 
 (function (global) {
@@ -21,7 +22,7 @@
     if (!awardsData || !awardsData.ballonDor) {
       container.innerHTML = `
         <div class="awards-empty-card">
-          <span style="font-size: 42px;">🏆</span>
+          <span style="font-size: 42px;">${getSvgIcon('trophy', 14)}</span>
           <h3>Season In Progress</h3>
           <p>Complete matchday rounds to accumulate official player stats and crown the Ballon d'Or winner!</p>
         </div>
@@ -42,7 +43,7 @@
         <div class="ballon-dor-visual-column">
           <div class="trophy-gold-globe">
             <span class="globe-shine"></span>
-            <span class="globe-emoji">🏆</span>
+            <span class="globe-emoji">${getSvgIcon('trophy', 14)}</span>
           </div>
           <div class="ballon-pedestal">
             <span>BALLON D'OR</span>
@@ -51,10 +52,10 @@
         </div>
 
         <div class="ballon-dor-winner-details">
-          <div class="ballon-crown-pill">👑 WORLD FOOTBALLER OF THE YEAR</div>
+          <div class="ballon-crown-pill">${getSvgIcon('crown', 14)} WORLD FOOTBALLER OF THE YEAR</div>
           <h2 class="ballon-winner-name">${escapeHtml(b.winner)}</h2>
           <div class="ballon-winner-club">
-            <span>🛡️</span>
+            <span>${getSvgIcon('shield', 14)}️</span>
             <span>${escapeHtml(b.club)}</span>
             <span class="club-rating-tag">⭐ ${b.overallRating} OVR</span>
           </div>
@@ -99,7 +100,7 @@
         
         <!-- 1. GOLDEN GLOVE (YASHIN TROPHY) -->
         <div class="honor-card glove">
-          <div class="honor-icon-wrapper glove-icon">🧤</div>
+          <div class="honor-icon-wrapper glove-icon">${getSvgIcon('glove', 14)}</div>
           <div class="honor-type">YASHIN TROPHY</div>
           <div class="honor-title">Golden Glove</div>
           <div class="honor-winner">${escapeHtml(gg.winner)}</div>
@@ -113,7 +114,7 @@
 
         <!-- 2. GOLDEN BOOT (TOP SCORER) -->
         <div class="honor-card boot">
-          <div class="honor-icon-wrapper boot-icon">⚽</div>
+          <div class="honor-icon-wrapper boot-icon">${getSvgIcon('ball', 14)}</div>
           <div class="honor-type">PICHICHI TROPHY</div>
           <div class="honor-title">Golden Boot</div>
           <div class="honor-winner">${escapeHtml(gb.winner)}</div>
@@ -127,7 +128,7 @@
 
         <!-- 3. PLAYMAKER OF THE YEAR -->
         <div class="honor-card playmaker">
-          <div class="honor-icon-wrapper playmaker-icon">🎯</div>
+          <div class="honor-icon-wrapper playmaker-icon">${getSvgIcon('target', 14)}</div>
           <div class="honor-type">VISIONARY TROPHY</div>
           <div class="honor-title">Playmaker of Year</div>
           <div class="honor-winner">${escapeHtml(pm.winner)}</div>
@@ -141,7 +142,7 @@
 
         <!-- 4. GOLDEN BOY (U-21) -->
         <div class="honor-card golden-boy">
-          <div class="honor-icon-wrapper boy-icon">🌟</div>
+          <div class="honor-icon-wrapper boy-icon">${getSvgIcon('star', 14)}</div>
           <div class="honor-type">KOPA TROPHY</div>
           <div class="honor-title">Golden Boy (U-21)</div>
           <div class="honor-winner">${escapeHtml(gboy.winner)}</div>
@@ -201,7 +202,7 @@
           <div class="tots-card-gold-border">
             <span class="tots-rating">${p.rating || 90}</span>
             <span class="tots-pos">${p.position || "CF"}</span>
-            <div class="tots-player-face">⚽</div>
+            <div class="tots-player-face">${getSvgIcon('ball', 14)}</div>
             <div class="tots-player-name">${escapeHtml(p.name)}</div>
             <div class="tots-player-club">${escapeHtml(p.club)}</div>
           </div>
@@ -262,7 +263,7 @@
       <div class="trophy-stage-podium">
         
         <!-- CLOSE BUTTON -->
-        <button type="button" class="trophy-close-btn" onclick="AwardsTrophy.closeCeremony()">✕ EXIT CELEBRATION</button>
+        <button type="button" class="trophy-close-btn" onclick="AwardsTrophy.closeCeremony()">${getSvgIcon('x', 14)} EXIT CELEBRATION</button>
 
         <!-- FLOODLIGHT BEAMS -->
         <div class="stage-spotlight-left"></div>
@@ -271,7 +272,7 @@
 
         <!-- CEREMONY BANNER -->
         <div class="ceremony-header-banner">
-          <div class="ceremony-tag">🏆 OFFICIAL TROPHY PRESENTATION</div>
+          <div class="ceremony-tag">${getSvgIcon('trophy', 14)} OFFICIAL TROPHY PRESENTATION</div>
           <h1 class="ceremony-title">${escapeHtml(c.champion)} ARE CHAMPIONS!</h1>
           <div class="ceremony-subtitle">Season ${c.season || 1} • ${escapeHtml(c.division)} Champions of the League</div>
         </div>
@@ -280,9 +281,9 @@
         <div class="trophy-lift-container">
           <div class="trophy-sunburst-rays"></div>
           <div class="trophy-sparkle-layer">
-            <span class="sparkle s1">✨</span>
+            <span class="sparkle s1">${getSvgIcon('sparkles', 14)}</span>
             <span class="sparkle s2">⭐</span>
-            <span class="sparkle s3">✨</span>
+            <span class="sparkle s3">${getSvgIcon('sparkles', 14)}</span>
             <span class="sparkle s4">⭐</span>
           </div>
 
@@ -323,7 +324,7 @@
               <!-- Rim Trim -->
               <ellipse cx="100" cy="50" rx="45" ry="10" fill="url(#silverChrome)" stroke="#fef08a" stroke-width="1.5"/>
               <!-- Crown Crownlet on Front -->
-              <text x="100" y="105" text-anchor="middle" font-size="28" fill="#ffffff">👑</text>
+              <text x="100" y="105" text-anchor="middle" font-size="28" fill="#ffffff">${getSvgIcon('crown', 14)}</text>
               <text x="100" y="125" text-anchor="middle" font-size="11" font-weight="900" font-family="-apple-system, sans-serif" fill="#ffffff" letter-spacing="1">CHAMPIONS</text>
 
               <!-- Stem & Pedestal -->
@@ -337,9 +338,9 @@
 
           <!-- CAPTAIN & SQUAD CELEBRATION -->
           <div class="captain-lift-tag">
-            <span class="lift-hands">🙌</span>
+            <span class="lift-hands">${getSvgIcon('party', 14)}</span>
             <span>CAPTAIN ${escapeHtml(c.captain).toUpperCase()} LIFTS THE TROPHY!</span>
-            <span class="lift-hands">🙌</span>
+            <span class="lift-hands">${getSvgIcon('party', 14)}</span>
           </div>
         </div>
 

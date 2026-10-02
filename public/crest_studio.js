@@ -3,25 +3,44 @@
 (function (global) {
   "use strict";
 
-  // Available emblem symbols and mascots
+  // Available emblem symbols and mascots (Pure Vector)
   const EMBLEMS = [
-    { id: "lion", name: "Lion", icon: "🦁", desc: "Pride & Courage" },
-    { id: "eagle", name: "Eagle", icon: "🦅", desc: "Vision & Speed" },
-    { id: "crown", name: "Royal Crown", icon: "👑", desc: "Prestige & Royalty" },
-    { id: "dragon", name: "Dragon", icon: "🐉", desc: "Power & Ferocity" },
-    { id: "lightning", name: "Lightning", icon: "⚡", desc: "Electric Attack" },
-    { id: "swords", name: "Gladiator Swords", icon: "⚔️", desc: "Combat & Honor" },
-    { id: "wolf", name: "Lone Wolf", icon: "🐺", desc: "Pack Unity & Hunt" },
-    { id: "bull", name: "Raging Bull", icon: "🐂", desc: "Relentless Force" },
-    { id: "shark", name: "Apex Shark", icon: "🦈", desc: "Predatory Focus" },
-    { id: "snake", name: "Serpent", icon: "🐍", desc: "Venomous Strike" },
-    { id: "star", name: "Gold Star", icon: "🌟", desc: "Championship Glory" },
-    { id: "shield", name: "Aegis Shield", icon: "🛡️", desc: "Ironclad Defense" },
-    { id: "anchor", name: "Port Anchor", icon: "⚓", desc: "Steadfast Tradition" },
-    { id: "castle", name: "Fortress", icon: "🏰", desc: "Impenetrable Home" },
-    { id: "football", name: "Classic Football", icon: "⚽", desc: "Pure Football Heritage" },
-    { id: "fire", name: "Phoenix Flame", icon: "🔥", desc: "Unstoppable Intensity" }
+    { id: "lion", name: "Lion", desc: "Pride & Courage" },
+    { id: "eagle", name: "Eagle", desc: "Vision & Speed" },
+    { id: "crown", name: "Royal Crown", desc: "Prestige & Royalty" },
+    { id: "dragon", name: "Dragon", desc: "Power & Ferocity" },
+    { id: "lightning", name: "Lightning", desc: "Electric Attack" },
+    { id: "swords", name: "Gladiator Swords", desc: "Combat & Honor" },
+    { id: "wolf", name: "Lone Wolf", desc: "Pack Unity & Hunt" },
+    { id: "bull", name: "Raging Bull", desc: "Relentless Force" },
+    { id: "shark", name: "Apex Shark", desc: "Predatory Focus" },
+    { id: "snake", name: "Serpent", desc: "Venomous Strike" },
+    { id: "star", name: "Gold Star", desc: "Championship Glory" },
+    { id: "shield", name: "Aegis Shield", desc: "Ironclad Defense" },
+    { id: "anchor", name: "Port Anchor", desc: "Steadfast Tradition" },
+    { id: "castle", name: "Fortress", desc: "Impenetrable Home" },
+    { id: "football", name: "Classic Football", desc: "Pure Football Heritage" },
+    { id: "fire", name: "Phoenix Flame", desc: "Unstoppable Intensity" }
   ];
+
+  const EMBLEM_SVGS = {
+    lion: '<path d="M-6 -6 L6 -6 L6 4 Q6 9 0 11 Q-6 9 -6 4 Z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M-3 0 Q0 -3 3 0 Q0 5 -3 0" fill="currentColor"/>',
+    eagle: '<path d="M-8 4 Q-3 -7 0 -9 Q3 -7 8 4 Q0 1 -8 4 Z" fill="currentColor"/><circle cx="0" cy="-3" r="1.5" fill="#000"/>',
+    crown: '<path d="M-8 5 L-6 -5 L-2 0 L2 -5 L6 5 Z" fill="currentColor"/><rect x="-6" y="6" width="12" height="2" fill="currentColor"/>',
+    dragon: '<path d="M-7 4 Q-2 -8 4 -6 Q-1 0 7 2 Q0 7 -7 4 Z" fill="currentColor"/>',
+    lightning: '<polygon points="1 -9 -7 0 0 0 -1 9 7 -1 0 -1 1 -9" fill="currentColor"/>',
+    swords: '<line x1="-7" y1="-7" x2="7" y2="7" stroke="currentColor" stroke-width="2"/><line x1="7" y1="-7" x2="-7" y2="7" stroke="currentColor" stroke-width="2"/><rect x="-2" y="-2" width="4" height="4" fill="currentColor"/>',
+    wolf: '<polygon points="0 -8 -6 4 -3 8 0 5 3 8 6 4" fill="currentColor"/>',
+    bull: '<path d="M-8 -6 Q-5 2 0 6 Q5 2 8 -6 M-5 -2 Q0 8 5 -2" fill="none" stroke="currentColor" stroke-width="2"/>',
+    shark: '<path d="M-8 0 Q-2 -7 6 -4 Q0 2 -6 6 Z" fill="currentColor"/>',
+    snake: '<path d="M0 -8 Q6 -4 0 0 Q-6 4 0 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>',
+    star: '<polygon points="0 -8 2.5 -2.5 8 -2 4 2 5.5 8 0 4.5 -5.5 8 -4 2 -8 -2 -2.5 -2.5" fill="currentColor"/>',
+    shield: '<path d="M-7 -7 L7 -7 L7 2 Q7 8 0 10 Q-7 8 -7 2 Z" fill="currentColor"/>',
+    anchor: '<line x1="0" y1="-8" x2="0" y2="7" stroke="currentColor" stroke-width="2"/><circle cx="0" cy="-6" r="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M-7 3 Q0 9 7 3" fill="none" stroke="currentColor" stroke-width="2"/>',
+    castle: '<path d="M-7 7 L-7 -3 L-5 -3 L-5 0 L-3 0 L-3 -3 L-1 -3 L-1 0 L1 0 L1 -3 L3 -3 L3 0 L5 0 L5 -3 L7 -3 L7 7 Z" fill="currentColor"/>',
+    football: '<circle cx="0" cy="0" r="7" fill="none" stroke="currentColor" stroke-width="1.8"/><polygon points="0 -3 -3 -1 -2 3 2 3 3 -1" fill="currentColor"/>',
+    fire: '<path d="M-2 7 Q-6 3 -4 -1 Q0 -8 3 -3 Q6 1 4 4 Q2 7 -2 7 Z" fill="currentColor"/>'
+  };
 
   // Preset Crest Themes
   const CREST_PRESETS = [
@@ -192,12 +211,12 @@
         <path d="${pathD}" fill="none" stroke="${accent}" stroke-width="3" stroke-linejoin="round" />
         <path d="${pathD}" fill="none" stroke="#000000" stroke-width="1" stroke-opacity="0.3" />
 
-        <!-- Center Mascot Emblem -->
+        <!-- Center Mascot Emblem (Vector Graphic) -->
         <g transform="translate(50, 44)">
           <circle cx="0" cy="0" r="19" fill="#09090b" fill-opacity="0.65" stroke="${accent}" stroke-width="1.5" />
-          <text x="0" y="7" text-anchor="middle" font-size="20" font-family="'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif">
-            ${emblemObj.icon}
-          </text>
+          <g color="${accent}">
+            ${EMBLEM_SVGS[emblemObj.id] || EMBLEM_SVGS.shield}
+          </g>
         </g>
 
         <!-- Club Monogram -->

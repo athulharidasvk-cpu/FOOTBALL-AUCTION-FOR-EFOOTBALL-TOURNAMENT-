@@ -1,3 +1,4 @@
+const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined" && window.svgIcon) ? window.svgIcon(n, s, c) : "";
 // public/jersey_studio.js - Interactive Jersey Kit Designer & Aesthetic Sales Multiplier Engine
 
 (function (global) {
@@ -309,7 +310,7 @@
         <g transform="translate(100, 115)">
           <circle cx="0" cy="0" r="14" fill="${a}" stroke="#ffffff" stroke-width="1.5"/>
           <circle cx="0" cy="0" r="11" fill="${p}"/>
-          <text x="0" y="4" text-anchor="middle" font-size="10" font-weight="900" fill="${t}">👑</text>
+          <text x="0" y="4" text-anchor="middle" font-size="10" font-weight="900" fill="${t}">${getSvgIcon('crown', 14)}</text>
         </g>
         
         <!-- Kit Manufacturer Logo on Right Chest -->
@@ -390,7 +391,7 @@
       <div class="jersey-preview-duo">
         <div class="jersey-card-preview front">
           <div class="jersey-card-header">
-            <span>👕 HOME KIT FRONT</span>
+            <span>${getSvgIcon('jersey', 14)} HOME KIT FRONT</span>
             <span class="kit-view-badge">MATCHDAY</span>
           </div>
           <div class="jersey-svg-box">
@@ -399,7 +400,7 @@
         </div>
         <div class="jersey-card-preview back">
           <div class="jersey-card-header">
-            <span>👕 SQUAD BACK</span>
+            <span>${getSvgIcon('jersey', 14)} SQUAD BACK</span>
             <span class="kit-view-badge">#${currentDesign.number}</span>
           </div>
           <div class="jersey-svg-box">
@@ -516,9 +517,9 @@
 
     const saveBtn = document.getElementById("btnSaveJerseyKit");
     if (saveBtn) {
-      saveBtn.innerText = "✅ Official Kit Saved!";
+      saveBtn.innerText = "${getSvgIcon('check', 14)} Official Kit Saved!";
       setTimeout(() => {
-        saveBtn.innerText = "💾 Save & Launch Official Kit";
+        saveBtn.innerText = "${getSvgIcon('save', 14)} Save & Launch Official Kit";
       }, 2500);
     }
   }

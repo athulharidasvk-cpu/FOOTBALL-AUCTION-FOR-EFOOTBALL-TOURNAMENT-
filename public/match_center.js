@@ -1,3 +1,4 @@
+const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined" && window.svgIcon) ? window.svgIcon(n, s, c) : "";
 // public/match_center.js - Broadcast Match Center with Team Logos & Minute-by-Minute Live Statistics
 
 (function (global) {
@@ -15,24 +16,24 @@
 
   // Team Logo & Crest Database
   const CLUB_CRESTS = {
-    "Real Madrid": { emoji: "👑", primary: "#ffffff", secondary: "#d4af37", stars: 5 },
-    "Barcelona": { emoji: "🔵🔴", primary: "#991b1b", secondary: "#1e3a8a", stars: 5 },
-    "Manchester City": { emoji: "🏙️", primary: "#38bdf8", secondary: "#0f172a", stars: 5 },
-    "Bayern Munich": { emoji: "🛡️", primary: "#dc2626", secondary: "#ffffff", stars: 5 },
-    "Arsenal": { emoji: "🔴⚪", primary: "#ef4444", secondary: "#ffffff", stars: 5 },
-    "Liverpool": { emoji: "🦅", primary: "#b91c1c", secondary: "#10b981", stars: 5 },
-    "Paris Saint-Germain": { emoji: "🗼", primary: "#1e3a8a", secondary: "#dc2626", stars: 5 },
-    "Borussia Dortmund": { emoji: "🐝", primary: "#facc15", secondary: "#09090b", stars: 4.5 },
-    "Juventus": { emoji: "🦓", primary: "#ffffff", secondary: "#09090b", stars: 4.5 },
-    "Inter Milan": { emoji: "🐍", primary: "#1e40af", secondary: "#09090b", stars: 4.5 },
-    "AC Milan": { emoji: "👹", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
-    "Atletico Madrid": { emoji: "🔴⚪", primary: "#b91c1c", secondary: "#1e3a8a", stars: 4.5 },
-    "Napoli": { emoji: "🌋", primary: "#0ea5e9", secondary: "#ffffff", stars: 4 },
-    "Bayer Leverkusen": { emoji: "🦁", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
-    "Ajax": { emoji: "⚔️", primary: "#ffffff", secondary: "#dc2626", stars: 4 },
-    "Benfica": { emoji: "🦅", primary: "#dc2626", secondary: "#ffffff", stars: 4 },
-    "Sporting CP": { emoji: "🦁", primary: "#16a34a", secondary: "#ffffff", stars: 4 },
-    "FC Porto": { emoji: "🐉", primary: "#1d4ed8", secondary: "#ffffff", stars: 4 }
+    "Real Madrid": { emoji: "${getSvgIcon('crown', 14)}", primary: "#ffffff", secondary: "#d4af37", stars: 5 },
+    "Barcelona": { emoji: "${getSvgIcon('dot-blue', 14)}${getSvgIcon('dot-red', 14)}", primary: "#991b1b", secondary: "#1e3a8a", stars: 5 },
+    "Manchester City": { emoji: "${getSvgIcon('office', 14)}️", primary: "#38bdf8", secondary: "#0f172a", stars: 5 },
+    "Bayern Munich": { emoji: "${getSvgIcon('shield', 14)}️", primary: "#dc2626", secondary: "#ffffff", stars: 5 },
+    "Arsenal": { emoji: "${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}", primary: "#ef4444", secondary: "#ffffff", stars: 5 },
+    "Liverpool": { emoji: "${getSvgIcon('shield', 14)}", primary: "#b91c1c", secondary: "#10b981", stars: 5 },
+    "Paris Saint-Germain": { emoji: "${getSvgIcon('temple', 14)}", primary: "#1e3a8a", secondary: "#dc2626", stars: 5 },
+    "Borussia Dortmund": { emoji: "${getSvgIcon('zap', 14)}", primary: "#facc15", secondary: "#09090b", stars: 4.5 },
+    "Juventus": { emoji: "${getSvgIcon('jersey', 14)}", primary: "#ffffff", secondary: "#09090b", stars: 4.5 },
+    "Inter Milan": { emoji: "${getSvgIcon('shield', 14)}", primary: "#1e40af", secondary: "#09090b", stars: 4.5 },
+    "AC Milan": { emoji: "${getSvgIcon('flame', 14)}", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
+    "Atletico Madrid": { emoji: "${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}", primary: "#b91c1c", secondary: "#1e3a8a", stars: 4.5 },
+    "Napoli": { emoji: "${getSvgIcon('flame', 14)}", primary: "#0ea5e9", secondary: "#ffffff", stars: 4 },
+    "Bayer Leverkusen": { emoji: "${getSvgIcon('shield', 14)}", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
+    "Ajax": { emoji: "${getSvgIcon('swords', 14)}️", primary: "#ffffff", secondary: "#dc2626", stars: 4 },
+    "Benfica": { emoji: "${getSvgIcon('shield', 14)}", primary: "#dc2626", secondary: "#ffffff", stars: 4 },
+    "Sporting CP": { emoji: "${getSvgIcon('shield', 14)}", primary: "#16a34a", secondary: "#ffffff", stars: 4 },
+    "FC Porto": { emoji: "${getSvgIcon('flame', 14)}", primary: "#1d4ed8", secondary: "#ffffff", stars: 4 }
   };
 
   function getClubCrest(clubName) {
@@ -42,7 +43,7 @@
       const customLogo = userTeam.customLogo || userTeam.crestSvg;
       return {
         customLogo: customLogo,
-        emoji: "🛡️",
+        emoji: "${getSvgIcon('shield', 14)}️",
         primary: "#38bdf8",
         secondary: "#facc15",
         stars: 5
@@ -56,7 +57,7 @@
     const hues = [210, 350, 140, 270, 45, 180];
     const hue = hues[Math.abs(hash) % hues.length];
     return {
-      emoji: "⚽",
+      emoji: "${getSvgIcon('ball', 14)}",
       primary: `hsl(${hue}, 80%, 50%)`,
       secondary: "#ffffff",
       stars: 4
@@ -74,7 +75,7 @@
         streakLabel: "STEADY FORM",
         streakClass: "streak-neutral",
         dotsHtml: "",
-        badgeText: "⚡ 50% MOMENTUM"
+        badgeText: "${getSvgIcon('lightning', 14)} 50% MOMENTUM"
       };
     }
 
@@ -141,7 +142,7 @@
     // Determine winning/losing streak
     let streakType = "neutral";
     let streakCount = 0;
-    let streakLabel = "⚖️ STEADY FORM";
+    let streakLabel = "${getSvgIcon('scales', 14)}️ STEADY FORM";
     let streakClass = "streak-neutral";
 
     if (last5.length > 0) {
@@ -154,20 +155,20 @@
       if (firstRes === "W" && streakCount >= 2) {
         streakType = "win";
         rawScore += streakCount * 4;
-        streakLabel = `🔥 ${streakCount}W WINNING STREAK`;
+        streakLabel = `${getSvgIcon('flame', 14)} ${streakCount}W WINNING STREAK`;
         streakClass = "streak-win";
       } else if (firstRes === "L" && streakCount >= 2) {
         streakType = "loss";
         rawScore -= streakCount * 4;
-        streakLabel = `❄️ ${streakCount}L LOSING SLUMP`;
+        streakLabel = `${getSvgIcon('wind', 14)}️ ${streakCount}L LOSING SLUMP`;
         streakClass = "streak-loss";
       } else if (!last5.map(x => String(x).toUpperCase()).includes("L") && last5.length >= 3) {
         streakType = "unbeaten";
         rawScore += 6;
-        streakLabel = `🛡️ UNBEATEN (${last5.length} MATCHES)`;
+        streakLabel = `${getSvgIcon('shield', 14)}️ UNBEATEN (${last5.length} MATCHES)`;
         streakClass = "streak-unbeaten";
       } else if (firstRes === "W") {
-        streakLabel = "⚡ POSITIVE FORM";
+        streakLabel = "${getSvgIcon('lightning', 14)} POSITIVE FORM";
         streakClass = "streak-positive";
       }
     }
@@ -189,7 +190,7 @@
       streakLabel,
       streakClass,
       dotsHtml,
-      badgeText: `${streakType === "win" ? "🔥" : streakType === "loss" ? "❄️" : "⚡"} ${momentumScore}% MOMENTUM`
+      badgeText: `${streakType === "win" ? "${getSvgIcon('flame', 14)}" : streakType === "loss" ? "${getSvgIcon('wind', 14)}️" : "${getSvgIcon('lightning', 14)}"} ${momentumScore}% MOMENTUM`
     };
   }
 
@@ -263,7 +264,7 @@
           type: "goal",
           team: goal.team,
           player: goal.scorer,
-          description: `⚽ GOOOAAAL! ${goal.scorer} finds the back of the net with an unstoppable strike!`,
+          description: `${getSvgIcon('ball', 14)} GOOOAAAL! ${goal.scorer} finds the back of the net with an unstoppable strike!`,
           homeScore: currentHome,
           awayScore: currentAway
         });
@@ -281,11 +282,11 @@
         const isHome = Math.random() > 0.45;
         const actingTeam = isHome ? homeTeam : awayTeam;
         const events = [
-          { type: "shot", desc: `💥 Fierce shot unleashed from 22 yards! Just misses the top post.` },
-          { type: "save", desc: `🧤 Spectacular diving save by the goalkeeper to tip it over the bar!` },
-          { type: "foul", desc: `⚠️ Crunching tackle in midfield. Referee awards a free kick.` },
-          { type: "corner", desc: `🚩 Whipped cross deflected behind for a dangerous corner.` },
-          { type: "attack", desc: `⚡ Rapid counter-attack down the flank carving through defense.` }
+          { type: "shot", desc: `${getSvgIcon('bomb', 14)} Fierce shot unleashed from 22 yards! Just misses the top post.` },
+          { type: "save", desc: `${getSvgIcon('glove', 14)} Spectacular diving save by the goalkeeper to tip it over the bar!` },
+          { type: "foul", desc: `${getSvgIcon('alert', 14)}️ Crunching tackle in midfield. Referee awards a free kick.` },
+          { type: "corner", desc: `${getSvgIcon('flag', 14)} Whipped cross deflected behind for a dangerous corner.` },
+          { type: "attack", desc: `${getSvgIcon('lightning', 14)} Rapid counter-attack down the flank carving through defense.` }
         ];
         const ev = events[Math.floor(Math.random() * events.length)];
         matchTimeline.push({
@@ -305,7 +306,7 @@
           type: "yellow_card",
           team: cardTeam,
           player: "Defensive Anchor",
-          description: `🟨 Tactical foul to prevent a break. Yellow card issued!`,
+          description: `${getSvgIcon('card-yellow', 14)} Tactical foul to prevent a break. Yellow card issued!`,
           homeScore: currentHome,
           awayScore: currentAway
         });
@@ -317,7 +318,7 @@
       type: "fulltime",
       team: "both",
       player: "Referee",
-      description: `🏁 FULL-TIME WHISTLE! An exhilarating contest concludes: ${homeTeam} ${currentHome} - ${currentAway} ${awayTeam}!`,
+      description: `${getSvgIcon('flag-checkered', 14)} FULL-TIME WHISTLE! An exhilarating contest concludes: ${homeTeam} ${currentHome} - ${currentAway} ${awayTeam}!`,
       homeScore: currentHome,
       awayScore: currentAway
     });
@@ -406,7 +407,7 @@
                 <span id="scoreDisplayAway">0</span>
               </div>
               <div class="match-clock-digital" id="matchDigitalClock">0'</div>
-              <div class="match-venue-pill">🏟️ ${escapeHtml(currentFixture.matchdayStats?.stadiumName || "Stadium Grand Arena")}</div>
+              <div class="match-venue-pill">${getSvgIcon('stadium', 14)}️ ${escapeHtml(currentFixture.matchdayStats?.stadiumName || "Stadium Grand Arena")}</div>
             </div>
 
             <!-- AWAY CLUB CREST -->
@@ -459,8 +460,8 @@
               </div>
               <div class="timeline-filters">
                 <button type="button" class="tfilter-btn active" id="tf_all" onclick="MatchCenter.setFilter('all')">All</button>
-                <button type="button" class="tfilter-btn" id="tf_goals" onclick="MatchCenter.setFilter('goals')">⚽ Goals</button>
-                <button type="button" class="tfilter-btn" id="tf_cards" onclick="MatchCenter.setFilter('cards')">🟨 Discipline</button>
+                <button type="button" class="tfilter-btn" id="tf_goals" onclick="MatchCenter.setFilter('goals')">${getSvgIcon('ball', 14)} Goals</button>
+                <button type="button" class="tfilter-btn" id="tf_cards" onclick="MatchCenter.setFilter('cards')">${getSvgIcon('card-yellow', 14)} Discipline</button>
               </div>
             </div>
 
@@ -473,7 +474,7 @@
           <div class="match-stats-panel">
             <div class="panel-header">
               <div class="panel-title-tag">
-                <span>📊</span>
+                <span>${getSvgIcon('stats', 14)}</span>
                 <span>MATCHDAY STATISTICS & IMPACT</span>
               </div>
               <span class="live-pulse-dot" title="Live sync"></span>
@@ -584,22 +585,22 @@
     let html = "";
     // Display recent events first or reverse chronological
     filtered.slice().reverse().forEach(ev => {
-      let icon = "⚡";
+      let icon = "${getSvgIcon('lightning', 14)}";
       let cardClass = "ev-action";
       if (ev.type === "goal") {
-        icon = "⚽";
+        icon = "${getSvgIcon('ball', 14)}";
         cardClass = "ev-goal";
       } else if (ev.type === "save") {
-        icon = "🧤";
+        icon = "${getSvgIcon('glove', 14)}";
         cardClass = "ev-save";
       } else if (ev.type === "yellow_card") {
-        icon = "🟨";
+        icon = "${getSvgIcon('card-yellow', 14)}";
         cardClass = "ev-yellow";
       } else if (ev.type === "red_card") {
-        icon = "🟥";
+        icon = "${getSvgIcon('card-red', 14)}";
         cardClass = "ev-red";
       } else if (ev.type === "kickoff" || ev.type === "fulltime" || ev.type === "halftime") {
-        icon = "🏁";
+        icon = "${getSvgIcon('flag-checkered', 14)}";
         cardClass = "ev-whistle";
       }
 
@@ -744,7 +745,7 @@
 
         <div class="matchday-merch-tile">
           <div class="merch-head">
-            <span>👕 MATCHDAY KIT REVENUE</span>
+            <span>${getSvgIcon('jersey', 14)} MATCHDAY KIT REVENUE</span>
             <span class="multiplier-chip">1.5x Multiplier</span>
           </div>
           <div class="merch-val">+₹${revDynamic}M Earned</div>
@@ -758,7 +759,7 @@
     const banner = document.getElementById("match3dGoalBanner");
     if (!banner) return;
     banner.innerHTML = `
-      <div class="banner-fire">⚽ GOOOOOAL!</div>
+      <div class="banner-fire">${getSvgIcon('ball', 14)} GOOOOOAL!</div>
       <div class="banner-scorer">${escapeHtml(event.player)} (${event.minute}')</div>
       <div class="banner-sub">${escapeHtml(event.team)} takes the glory!</div>
     `;
@@ -875,7 +876,7 @@
     let html = "";
     fixtures.forEach((f, idx) => {
       const playedMark = f.played ? `(${f.homeScore}-${f.awayScore})` : "(Upcoming)";
-      const derbyMark = f.isRivalry ? "🔥 " : "";
+      const derbyMark = f.isRivalry ? "${getSvgIcon('flame', 14)} " : "";
       html += `<option value="${idx}">R${f.round}: ${derbyMark}${f.homeTeam} vs ${f.awayTeam} ${playedMark}</option>`;
     });
 

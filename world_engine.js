@@ -5580,5 +5580,672 @@ function negotiateManagerRole(s, clubName, isNewJob, offerId, demands, candidate
   };
 }
 
+// =============================================================
+// FEATURE: SOCCER CHAMPS NATIONAL TEAMS & INTERNATIONAL OFFERS
+// =============================================================
+const NATIONAL_TEAMS_DATA = [
+  { country: 'Brazil', flag: '🇧🇷', federation: 'CBF · CONMEBOL', rank: 5, stars: 5, rating: 89, captain: 'Vinicius Jr', keyPlayers: ['Vinicius Jr', 'Rodrygo', 'Alisson', 'Guimarães', 'Endrick'], mandate: 'Win the World Championship & Bring Joga Bonito Back', bonus: 18.0, salary: 5.5, repReq: 50 },
+  { country: 'Argentina', flag: '🇦🇷', federation: 'AFA · CONMEBOL', rank: 1, stars: 5, rating: 91, captain: 'Lionel Messi', keyPlayers: ['Lionel Messi', 'Lautaro Martínez', 'Julián Álvarez', 'Enzo Fernández', 'Dibu Martínez'], mandate: 'Defend World Crown & Conquer International Glory', bonus: 20.0, salary: 6.0, repReq: 60 },
+  { country: 'France', flag: '🇫🇷', federation: 'FFF · UEFA', rank: 2, stars: 5, rating: 90, captain: 'Kylian Mbappé', keyPlayers: ['Kylian Mbappé', 'Griezmann', 'Camavinga', 'Tchouaméni', 'Saliba'], mandate: 'Dominate Europe & Lift International Silverware', bonus: 19.0, salary: 5.8, repReq: 55 },
+  { country: 'England', flag: '🏴󠁧󠁢󠁥󠁮󠁧󠁿', federation: 'The FA · UEFA', rank: 4, stars: 4.5, rating: 88, captain: 'Jude Bellingham', keyPlayers: ['Jude Bellingham', 'Harry Kane', 'Bukayo Saka', 'Phil Foden', 'Declan Rice'], mandate: 'End 60 Years of Hurt & Bring Football Home', bonus: 16.0, salary: 5.0, repReq: 45 },
+  { country: 'Spain', flag: '🇪🇸', federation: 'RFEF · UEFA', rank: 3, stars: 5, rating: 90, captain: 'Rodri', keyPlayers: ['Rodri', 'Lamine Yamal', 'Pedri', 'Nico Williams', 'Carvajal'], mandate: 'Tiki-Taka Domination & Continental Supremacy', bonus: 18.0, salary: 5.4, repReq: 52 },
+  { country: 'Germany', flag: '🇩🇪', federation: 'DFB · UEFA', rank: 8, stars: 4.5, rating: 86, captain: 'Jamal Musiala', keyPlayers: ['Jamal Musiala', 'Florian Wirtz', 'Kimmich', 'Rüdiger', 'Havertz'], mandate: 'Restore German Tactical Efficiency & Silverware', bonus: 14.0, salary: 4.5, repReq: 40 },
+  { country: 'Portugal', flag: '🇵🇹', federation: 'FPF · UEFA', rank: 7, stars: 4.5, rating: 87, captain: 'Cristiano Ronaldo', keyPlayers: ['Cristiano Ronaldo', 'Bruno Fernandes', 'Bernardo Silva', 'Rafael Leão', 'Rúben Dias'], mandate: 'Unleash World-Class Generation & Win the Gold', bonus: 15.0, salary: 4.8, repReq: 42 },
+  { country: 'Netherlands', flag: '🇳🇱', federation: 'KNVB · UEFA', rank: 6, stars: 4, rating: 85, captain: 'Virgil van Dijk', keyPlayers: ['Virgil van Dijk', 'Frenkie de Jong', 'Cody Gakpo', 'Simons', 'Dumfries'], mandate: 'Total Football Revival & Deep Tournament Run', bonus: 12.0, salary: 4.0, repReq: 35 },
+  { country: 'Italy', flag: '🇮🇹', federation: 'FIGC · UEFA', rank: 9, stars: 4, rating: 85, captain: 'Nicolò Barella', keyPlayers: ['Nicolò Barella', 'Bastoni', 'Donnarumma', 'Dimarco', 'Chiesa'], mandate: 'Ironclad Catenaccio & European Rejuvenation', bonus: 13.0, salary: 4.2, repReq: 38 },
+  { country: 'Japan', flag: '🇯🇵', federation: 'JFA · AFC', rank: 15, stars: 3.5, rating: 82, captain: 'Kaoru Mitoma', keyPlayers: ['Kaoru Mitoma', 'Takefusa Kubo', 'Endo', 'Minamino', 'Tomiyasu'], mandate: 'Asian Supremacy & Historic World Cup Quarter-Final', bonus: 9.0, salary: 2.8, repReq: 28 },
+  { country: 'USA', flag: '🇺🇸', federation: 'USSF · CONCACAF', rank: 16, stars: 3.5, rating: 81, captain: 'Christian Pulisic', keyPlayers: ['Christian Pulisic', 'Weston McKennie', 'Tyler Adams', 'Balogun', 'Dest'], mandate: 'Lead Golden Generation to Global Prominence', bonus: 8.5, salary: 2.6, repReq: 26 },
+  { country: 'Nigeria', flag: '🇳🇬', federation: 'NFF · CAF', rank: 28, stars: 3.5, rating: 81, captain: 'Victor Osimhen', keyPlayers: ['Victor Osimhen', 'Lookman', 'Chukwueze', 'Iwobi', 'Bassey'], mandate: 'Conquer Africa & Unleash Super Eagles On The World', bonus: 8.0, salary: 2.5, repReq: 25 },
+  { country: 'Morocco', flag: '🇲🇦', federation: 'FRMF · CAF', rank: 12, stars: 4, rating: 84, captain: 'Achraf Hakimi', keyPlayers: ['Achraf Hakimi', 'Ziyech', 'En-Nesyri', 'Bounou', 'Ounahi'], mandate: 'Atlas Lions Semifinal Standard & African Crown', bonus: 11.0, salary: 3.5, repReq: 32 },
+  { country: 'Belgium', flag: '🇧🇪', federation: 'RBFA · UEFA', rank: 10, stars: 4, rating: 84, captain: 'Kevin De Bruyne', keyPlayers: ['Kevin De Bruyne', 'Lukaku', 'Doku', 'Tielemans', 'Onana'], mandate: 'Golden Generation Final Hurrah & Silverware', bonus: 11.5, salary: 3.6, repReq: 34 },
+  { country: 'Croatia', flag: '🇭🇷', federation: 'HNS · UEFA', rank: 11, stars: 4, rating: 83, captain: 'Luka Modrić', keyPlayers: ['Luka Modrić', 'Kovačić', 'Gvardiol', 'Kramarić', 'Livaković'], mandate: 'Defy Odds & Clinch Ultimate International Glory', bonus: 10.0, salary: 3.2, repReq: 30 },
+  { country: 'India', flag: '🇮🇳', federation: 'AIFF · AFC', rank: 99, stars: 2.5, rating: 73, captain: 'Sunil Chhetri', keyPlayers: ['Sunil Chhetri', 'Lallianzuala Chhangte', 'Sandesh Jhingan', 'Gurpreet Singh', 'Sahal Samad'], mandate: 'Asian Cup Miracles, Grassroots Boom & Top 60 Surge', bonus: 6.0, salary: 1.5, repReq: 20 }
+];
+
+function getNationalTeamState(s) {
+  if (!s) return null;
+  const mc = s.managerCareer || getManagerCareerState(s).managerCareer;
+  const rep = mc.reputation || 25;
+
+  s.nationalManagement = s.nationalManagement || {
+    currentJob: null, // { country, flag, rank, stars, rating, mandate, contractYears, matches, wins, draws, losses, trophies: [] }
+    offers: [],
+    tournament: null,
+    history: []
+  };
+
+  const nm = s.nationalManagement;
+
+  // Refresh or generate realistic national team approaches
+  const activeCountry = nm.currentJob ? nm.currentJob.country : null;
+  const availableNations = NATIONAL_TEAMS_DATA.filter(n => n.country !== activeCountry);
+
+  // Generate 2 to 4 active offers tailored to manager rep
+  let validOffers = availableNations.filter(n => rep >= (n.repReq - 10));
+  if (validOffers.length === 0) validOffers = availableNations.filter(n => n.rank >= 20 || n.country === 'India');
+
+  // Keep pending offers fresh
+  if (!nm.offers || nm.offers.length === 0) {
+    const selectedNations = [...validOffers].sort(() => 0.5 - Math.random()).slice(0, 3);
+    nm.offers = selectedNations.map(nat => ({
+      id: 'nat_offer_' + nat.country.toLowerCase() + '_' + Date.now().toString(36),
+      country: nat.country,
+      flag: nat.flag,
+      federation: nat.federation,
+      rank: nat.rank,
+      stars: nat.stars,
+      rating: nat.rating,
+      captain: nat.captain,
+      keyPlayers: nat.keyPlayers,
+      mandate: nat.mandate,
+      salaryFormatted: `₹${nat.salary}M / yr (Federation Honorarium)`,
+      salary: nat.salary,
+      bonus: nat.bonus,
+      repReq: nat.repReq,
+      isQualified: rep >= nat.repReq,
+      status: 'pending',
+      letter: `Dear Manager ${mc.name},\n\nThe Executive Committee of the ${nat.federation} has closely reviewed your managerial triumphs. We formally invite you to accept the role of National Team Head Coach to lead our country in the upcoming World Championship. We fully support your concurrent club commitments in a dual-management capacity.`
+    }));
+  }
+
+  // Ensure active tournament structure exists
+  if (!nm.tournament || nm.tournament.status === 'completed') {
+    const tourneyNations = ['Brazil', 'Argentina', 'France', 'England', 'Spain', 'Germany', 'Portugal', 'Netherlands', 'Italy', 'Japan', 'USA', 'Morocco', 'Croatia', 'Belgium', 'Nigeria', 'India'];
+    nm.tournament = {
+      name: 'FIFA World Nations Championship 🏆',
+      status: 'quarter_finals',
+      stage: 'Quarter-Finals',
+      season: s.season || 1,
+      bracket: [
+        { id: 'qf1', stage: 'Quarter-Final', home: 'Argentina', away: 'Germany', homeGoals: null, awayGoals: null, played: false, winner: null },
+        { id: 'qf2', stage: 'Quarter-Final', home: 'Brazil', away: 'Spain', homeGoals: null, awayGoals: null, played: false, winner: null },
+        { id: 'qf3', stage: 'Quarter-Final', home: 'France', away: 'England', homeGoals: null, awayGoals: null, played: false, winner: null },
+        { id: 'qf4', stage: 'Quarter-Final', home: 'Portugal', away: 'Netherlands', homeGoals: null, awayGoals: null, played: false, winner: null }
+      ],
+      champion: null
+    };
+
+    // If manager has a nation, insert their country into Quarter-Final 1!
+    if (nm.currentJob) {
+      nm.tournament.bracket[0].home = nm.currentJob.country;
+    }
+  }
+
+  return {
+    currentJob: nm.currentJob,
+    offers: nm.offers,
+    tournament: nm.tournament,
+    history: nm.history || [],
+    managerRep: rep
+  };
+}
+
+function respondToNationalOffer(s, offerIdOrCountry, action) {
+  if (!s) return { error: 'World not found.' };
+  const nmState = getNationalTeamState(s);
+  const nm = s.nationalManagement;
+  const mc = s.managerCareer || getManagerCareerState(s).managerCareer;
+
+  const offer = nm.offers.find(o => o.id === offerIdOrCountry || o.country.toLowerCase() === String(offerIdOrCountry).toLowerCase());
+  if (!offer) return { error: 'National offer not found.' };
+
+  if (action === 'accept') {
+    const nationData = NATIONAL_TEAMS_DATA.find(n => n.country === offer.country) || offer;
+    nm.currentJob = {
+      country: nationData.country,
+      flag: nationData.flag,
+      federation: nationData.federation,
+      rank: nationData.rank,
+      stars: nationData.stars,
+      rating: nationData.rating,
+      captain: nationData.captain,
+      keyPlayers: nationData.keyPlayers,
+      mandate: nationData.mandate,
+      salary: nationData.salary,
+      salaryFormatted: `₹${nationData.salary}M / yr`,
+      matches: 0,
+      wins: 0,
+      draws: 0,
+      losses: 0,
+      trophies: [],
+      appointedDate: new Date().toLocaleDateString(),
+      contractYears: 4
+    };
+
+    mc.reputation = Math.min(100, (mc.reputation || 25) + 8);
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 5);
+    mc.careerHistory = mc.careerHistory || [];
+    mc.careerHistory.unshift({
+      season: s.season || 1,
+      club: nm.currentJob.country + ' National Team',
+      event: `Appointed Head Coach of ${nm.currentJob.flag} ${nm.currentJob.country} National Team!`
+    });
+
+    offer.status = 'accepted';
+    nm.offers = nm.offers.filter(o => o.id !== offer.id);
+
+    // Update tournament bracket so current job nation is the flagship participant
+    if (nm.tournament && nm.tournament.bracket) {
+      nm.tournament.bracket[0].home = nm.currentJob.country;
+    }
+
+    addNews(s, `🌍 HISTORIC INTERNATIONAL APPOINTMENT: ${mc.name} has officially been confirmed as Head Coach of ${nationData.flag} ${nationData.country}! The manager will lead the nation concurrently with club football!`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'accepted',
+      currentJob: nm.currentJob,
+      message: `🎉 Official Appointment! You are now the Head Coach of the ${nationData.flag} ${nationData.country} National Team!`
+    };
+  }
+
+  if (action === 'decline') {
+    offer.status = 'declined';
+    nm.offers = nm.offers.filter(o => o.id !== offer.id);
+    addNews(s, `🤝 INTERNATIONAL RESOLVE: ${mc.name} respectfully declined the coaching invitation from the ${offer.federation}, prioritizing club focus.`, 'manager');
+    persist();
+    return {
+      success: true,
+      action: 'declined',
+      message: `You declined the offer from ${offer.country}.`
+    };
+  }
+
+  return { error: 'Unknown action.' };
+}
+
+function simulateNationalTournamentMatch(s, keyMomentsGoals = null) {
+  if (!s) return { error: 'World not found.' };
+  const nmState = getNationalTeamState(s);
+  const nm = s.nationalManagement;
+  const t = nm.tournament;
+  const cJob = nm.currentJob;
+
+  if (!t || t.status === 'completed') {
+    return { error: 'Tournament completed. Advance season or reset bracket.' };
+  }
+
+  const results = [];
+  const currentMatches = t.bracket.filter(m => !m.played);
+  if (currentMatches.length === 0) {
+    return { error: 'No pending matches in active round.' };
+  }
+
+  currentMatches.forEach(m => {
+    let hg = Math.floor(Math.random() * 4);
+    let ag = Math.floor(Math.random() * 3);
+
+    // If manager's national team is playing and key moments were scored, apply them!
+    if (cJob && (m.home === cJob.country || m.away === cJob.country)) {
+      if (typeof keyMomentsGoals === 'number') {
+        if (m.home === cJob.country) hg = keyMomentsGoals;
+        else ag = keyMomentsGoals;
+      } else {
+        // Boost for manager's national team
+        if (m.home === cJob.country) hg = Math.max(hg, Math.floor(Math.random() * 3) + 1);
+        if (m.away === cJob.country) ag = Math.max(ag, Math.floor(Math.random() * 3) + 1);
+      }
+    }
+
+    if (hg === ag) {
+      // Extra time / penalty decider for knockout
+      if (Math.random() < 0.5) hg++;
+      else ag++;
+    }
+
+    m.homeGoals = hg;
+    m.awayGoals = ag;
+    m.winner = hg > ag ? m.home : m.away;
+    m.played = true;
+    results.push(m);
+
+    if (cJob) {
+      if (m.home === cJob.country || m.away === cJob.country) {
+        cJob.matches = (cJob.matches || 0) + 1;
+        const userWon = m.winner === cJob.country;
+        if (userWon) {
+          cJob.wins = (cJob.wins || 0) + 1;
+          s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 25) + 3);
+        } else {
+          cJob.losses = (cJob.losses || 0) + 1;
+        }
+      }
+    }
+  });
+
+  // Advance stage
+  if (t.stage === 'Quarter-Finals') {
+    const winners = results.map(r => r.winner);
+    t.stage = 'Semi-Finals';
+    t.bracket = [
+      { id: 'sf1', stage: 'Semi-Final', home: winners[0] || 'Brazil', away: winners[1] || 'Spain', homeGoals: null, awayGoals: null, played: false, winner: null },
+      { id: 'sf2', stage: 'Semi-Final', home: winners[2] || 'France', away: winners[3] || 'Portugal', homeGoals: null, awayGoals: null, played: false, winner: null }
+    ];
+    addNews(s, `🌍 WORLD NATIONS SEMI-FINALS: ${winners.join(', ')} advance to the final four of the World Championship!`, 'competition');
+  } else if (t.stage === 'Semi-Finals') {
+    const winners = results.map(r => r.winner);
+    t.stage = 'Final';
+    t.bracket = [
+      { id: 'final', stage: 'Grand Final', home: winners[0] || 'Brazil', away: winners[1] || 'France', homeGoals: null, awayGoals: null, played: false, winner: null }
+    ];
+    addNews(s, `🌍 WORLD NATIONS FINAL SET: ${winners[0]} vs ${winners[1]} will clash for the ultimate world crown!`, 'competition');
+  } else if (t.stage === 'Final') {
+    const champion = results[0]?.winner || 'Champions';
+    t.stage = 'Completed';
+    t.status = 'completed';
+    t.champion = champion;
+
+    if (cJob && champion === cJob.country) {
+      cJob.trophies = cJob.trophies || [];
+      cJob.trophies.push(`FIFA World Championship (Season ${s.season || 1})`);
+      s.managerCareer.titles = (s.managerCareer.titles || 0) + 1;
+      s.managerCareer.reputation = Math.min(100, (s.managerCareer.reputation || 25) + 15);
+      addNews(s, `🏆 WORLD CHAMPIONS! ${cJob.country} managed by ${s.managerCareer.name} lift the World Championship Trophy! Unprecedented international glory!`, 'competition');
+    } else {
+      addNews(s, `🏆 WORLD CHAMPIONS: ${champion} triumph in the World Championship Final!`, 'competition');
+    }
+  }
+
+  persist();
+  return {
+    success: true,
+    results,
+    tournament: t,
+    currentJob: cJob
+  };
+}
+
+// =============================================================
+// FEATURE: SOCCER CHAMPS YOUTH SCOUT & WONDERKID SYSTEM
+// =============================================================
+const YOUTH_MASTER_SCOUTS = [
+  { id: 'scout_samba', name: 'Mateo Silveira', title: 'South American Samba Scout', region: 'South America', tier: 'Master Scout', starRating: 5, hireCost: 1.2, specialty: 'Brazilian & Argentine Wingers · 5★ Flair & Finishing', bonusPotential: 6, avatar: '🇧🇷' },
+  { id: 'scout_tactical', name: 'Hans Van Der Meer', title: 'Continental European Academy Sleuth', region: 'Europe', tier: 'Senior Scout', starRating: 4.5, hireCost: 1.0, specialty: 'Dutch & German Registas · Press Resistance & Vision', bonusPotential: 5, avatar: '🇳🇱' },
+  { id: 'scout_dynamo', name: 'Amara Diop', title: 'West African Dynamo Pathfinder', region: 'Africa', tier: 'Senior Scout', starRating: 4.5, hireCost: 0.8, specialty: 'Lightning Strikers & Box-to-Box Powerhouses', bonusPotential: 5, avatar: '🇸🇳' },
+  { id: 'scout_grassroots', name: 'Arthur Pendelton', title: 'British Grassroots Sleuth', region: 'Grassroots', tier: 'Scout Specialist', starRating: 4, hireCost: 0.5, specialty: 'Lower League Grit, High Determination & Defensive Rocks', bonusPotential: 4, avatar: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
+  { id: 'scout_whisperer', name: 'Luciano "El Brujo" Castiglione', title: 'The Wonderkid Whisperer', region: 'Global Elite', tier: 'Legendary Master Scout', starRating: 5, hireCost: 2.2, specialty: 'Unearths Generational 92-96 POT Prodigies / Future Ballon d’Or Winners', bonusPotential: 8, avatar: '👑' }
+];
+
+const WONDERKID_POOLS = {
+  'South America': [
+    { name: 'Thiago Estevão', pos: 'RWF', nat: 'Brazil', age: 16, baseOvr: 68, basePot: 93, moniker: 'The Favela Magician', trait: 'Silky Elastico & Rapid Cutback', wage: 0.25 },
+    { name: 'Mateo Rossi Romero', pos: 'CF', nat: 'Argentina', age: 17, baseOvr: 71, basePot: 94, moniker: 'The Next Batistuta', trait: 'Thunderous Volley & Ice In Veins', wage: 0.35 },
+    { name: 'Lucas Beraldo Paez', pos: 'CAM', nat: 'Colombia', age: 16, baseOvr: 66, basePot: 91, moniker: 'Andean Playmaker', trait: 'Golden Vision & Dead-Ball Mastery', wage: 0.2 },
+    { name: 'Felipe Santana', pos: 'LWF', nat: 'Brazil', age: 15, baseOvr: 65, basePot: 95, moniker: 'Generational Samba Star', trait: 'Explosive Acceleration & Dribbling Maestro', wage: 0.2 }
+  ],
+  'Europe': [
+    { name: 'Kasper Lindqvist', pos: 'CMF', nat: 'Denmark', age: 17, baseOvr: 70, basePot: 92, moniker: 'The Nordic Regista', trait: 'Pinpoint 60-Yard Diagonal Passes', wage: 0.3 },
+    { name: 'Julian Weidmann', pos: 'CAM', nat: 'Germany', age: 16, baseOvr: 69, basePot: 93, moniker: 'Space Investigator', trait: 'Flawless Half-Space Movement', wage: 0.25 },
+    { name: 'Xavier Soler', pos: 'CB', nat: 'Spain', age: 17, baseOvr: 72, basePot: 91, moniker: 'La Masia Stopper', trait: 'Ball-Playing Defensive Commander', wage: 0.35 },
+    { name: 'Antoine Boucher', pos: 'CF', nat: 'France', age: 16, baseOvr: 69, basePot: 94, moniker: 'The Lightning Finisher', trait: 'Breakaway Pace & Lethal Low Driven Finish', wage: 0.3 }
+  ],
+  'Africa': [
+    { name: 'Malick Fofana', pos: 'CF', nat: 'Ivory Coast', age: 16, baseOvr: 70, basePot: 93, moniker: 'The Abidjan Rocket', trait: '96 Acceleration & Relentless Power', wage: 0.25 },
+    { name: 'Samuel Chukwu', pos: 'RW', nat: 'Nigeria', age: 17, baseOvr: 68, basePot: 91, moniker: 'The Lagos Flyer', trait: 'Blistering Stepover & Direct Dribbling', wage: 0.22 },
+    { name: 'Ibrahim Konaté', pos: 'DMF', nat: 'Mali', age: 18, baseOvr: 72, basePot: 92, moniker: 'The Midfield Wall', trait: 'Unstoppable Tackles & Iron Lungs', wage: 0.3 }
+  ],
+  'Grassroots': [
+    { name: 'Leo "Jack" Sterling', pos: 'CF', nat: 'England', age: 16, baseOvr: 67, basePot: 90, moniker: 'The Street Scrapper', trait: 'Aggressive Pressing & Clinical Poaching', wage: 0.18 },
+    { name: 'Callum O’Shea', pos: 'CB', nat: 'Ireland', age: 17, baseOvr: 68, basePot: 89, moniker: 'The Celtic Rock', trait: 'Dominant Aerial Duels & Fearless Blocks', wage: 0.2 }
+  ],
+  'Global Elite': [
+    { name: 'Kenjiro "Ken" Endo', pos: 'CAM', nat: 'Japan', age: 16, baseOvr: 73, basePot: 96, moniker: 'The Shinjuku Prodigy', trait: 'Laser Accuracy, 99 Composure & World Wonderkid', wage: 0.4 },
+    { name: 'Alessandro De Luca', pos: 'CF', nat: 'Italy', age: 16, baseOvr: 72, basePot: 95, moniker: 'The Golden Boy Phenom', trait: 'Postage Stamp Curler & Instinctive Flick', wage: 0.4 },
+    { name: 'Mateo "El Pibe" Cruz', pos: 'RW', nat: 'Argentina', age: 15, baseOvr: 71, basePot: 96, moniker: 'The Heir to the Throne', trait: 'Left-Footed Magic, Telepathic Dribble & Wonderkid', wage: 0.38 }
+  ]
+};
+
+function getYouthScoutState(s, clubName) {
+  if (!s) return null;
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return null;
+
+  c.youthSystem = c.youthSystem || {
+    hiredScouts: [
+      { ...YOUTH_MASTER_SCOUTS[0], hiredAt: 'Active Staff' }
+    ],
+    activeExpeditions: [],
+    dossiers: [],
+    academyPlayers: []
+  };
+
+  return {
+    club: c.name,
+    cash: c.cash,
+    availableScouts: YOUTH_MASTER_SCOUTS,
+    hiredScouts: c.youthSystem.hiredScouts,
+    activeExpeditions: c.youthSystem.activeExpeditions,
+    dossiers: c.youthSystem.dossiers,
+    academyPlayers: c.youthSystem.academyPlayers
+  };
+}
+
+function hireYouthScout(s, clubName, scoutId) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+  const ys = getYouthScoutState(s, c.name);
+
+  const scoutTemplate = YOUTH_MASTER_SCOUTS.find(sc => sc.id === scoutId);
+  if (!scoutTemplate) return { error: 'Scout not found.' };
+
+  if (c.youthSystem.hiredScouts.some(sc => sc.id === scoutId)) {
+    return { error: 'Scout already on payroll.' };
+  }
+
+  if (c.cash < scoutTemplate.hireCost) {
+    return { error: `Insufficient club treasury. Need ₹${scoutTemplate.hireCost}M, club has ₹${money(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - scoutTemplate.hireCost) * 10) / 10);
+  recordTransaction(c, -scoutTemplate.hireCost, 'staff_hire', `Hired Master Youth Scout: ${scoutTemplate.name}`, s);
+
+  const newScout = { ...scoutTemplate, hiredAt: new Date().toLocaleDateString() };
+  c.youthSystem.hiredScouts.push(newScout);
+
+  addNews(s, `🔭 YOUTH SCOUT APPOINTMENT: ${c.name} has appointed ${scoutTemplate.name} (${scoutTemplate.title}) to lead global wonderkid scouting!`, 'club');
+  persist();
+  return {
+    success: true,
+    scout: newScout,
+    youthState: getYouthScoutState(s, c.name),
+    message: `Hired ${scoutTemplate.name}! Ready to dispatch on scouting missions.`
+  };
+}
+
+function dispatchWonderkidExpedition(s, clubName, scoutId, region = 'South America') {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+  getYouthScoutState(s, c.name);
+
+  const scout = c.youthSystem.hiredScouts.find(sc => sc.id === scoutId) || c.youthSystem.hiredScouts[0];
+  const expeditionCost = scout ? Math.round(scout.hireCost * 0.4 * 10) / 10 : 0.4;
+
+  if (c.cash < expeditionCost) {
+    return { error: `Expedition mission requires ₹${expeditionCost}M operational funding. Club has ₹${money(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - expeditionCost) * 10) / 10);
+  recordTransaction(c, -expeditionCost, 'scouting_expedition', `Expedition to ${region} led by ${scout ? scout.name : 'Head Scout'}`, s);
+
+  // Generate 2 to 3 genuine high-potential wonderkids
+  const pool = WONDERKID_POOLS[region] || WONDERKID_POOLS['South America'];
+  const shuffled = [...pool].sort(() => 0.5 - Math.random()).slice(0, 3);
+
+  const newDossiers = shuffled.map(p => {
+    const potVariance = Math.floor(Math.random() * 4);
+    const potential = Math.min(97, p.basePot + (scout?.bonusPotential ? Math.floor(scout.bonusPotential * 0.4) : 0) + potVariance);
+    const id = 'wk_' + Date.now().toString(36) + '_' + Math.random().toString(36).substr(2, 4);
+
+    return {
+      id,
+      name: p.name,
+      position: p.pos,
+      nationality: p.nat,
+      age: p.age,
+      rating: p.baseOvr,
+      potentialStars: potential >= 94 ? 5 : potential >= 90 ? 4.5 : 4,
+      potentialRange: `${potential - 2}-${potential + 2} POT`,
+      potentialExact: potential,
+      moniker: p.moniker,
+      trait: p.trait,
+      recommendedBy: scout ? scout.name : 'Youth Academy',
+      signingFee: Math.round((p.wage * 2.8 + (potential >= 93 ? 1.2 : 0.5)) * 10) / 10,
+      wage: p.wage,
+      region,
+      status: 'scouted',
+      date: new Date().toLocaleDateString()
+    };
+  });
+
+  c.youthSystem.dossiers.unshift(...newDossiers);
+  if (c.youthSystem.dossiers.length > 15) {
+    c.youthSystem.dossiers = c.youthSystem.dossiers.slice(0, 15);
+  }
+
+  addNews(s, `🌟 WONDERKID DOSSIER ARRIVES: Scout ${scout ? scout.name : 'Network'} unearths ${newDossiers.length} sensational teenage talents in ${region}!`, 'scout');
+  persist();
+  return {
+    success: true,
+    dossiers: newDossiers,
+    expeditionCost,
+    message: `Scouting expedition to ${region} returned with ${newDossiers.length} high-potential wonderkids!`
+  };
+}
+
+function signWonderkid(s, clubName, wonderkidId, destination = 'academy') {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+  getYouthScoutState(s, c.name);
+
+  const dossier = c.youthSystem.dossiers.find(d => d.id === wonderkidId);
+  if (!dossier) return { error: 'Wonderkid dossier not found.' };
+
+  const fee = dossier.signingFee || 0.8;
+  if (c.cash < fee) {
+    return { error: `Signing fee is ₹${fee}M. Club has ₹${money(c.cash)}M.` };
+  }
+
+  c.cash = Math.max(0, Math.round((c.cash - fee) * 10) / 10);
+  recordTransaction(c, -fee, 'wonderkid_signing', `Signed Wonderkid ${dossier.name} (${dossier.potentialRange})`, s);
+
+  dossier.status = destination === 'first_team' ? 'promoted' : 'in_academy';
+
+  if (destination === 'first_team') {
+    // Add directly to senior squad
+    const playerObj = {
+      id: 'p_wk_' + Date.now().toString(36),
+      name: dossier.name,
+      position: dossier.position,
+      rating: dossier.rating,
+      potential: dossier.potentialExact,
+      age: dossier.age,
+      nationality: dossier.nationality,
+      wage: dossier.wage,
+      askingPrice: Math.round(fee * 2.5 * 10) / 10,
+      contractYears: 4,
+      ownerClub: c.name,
+      isWonderkid: true,
+      trait: dossier.trait,
+      moniker: dossier.moniker,
+      morale: 95,
+      fitness: 100
+    };
+
+    s.market.unshift(playerObj);
+    c.players = c.players || [];
+    c.players.push(playerObj.id);
+
+    addNews(s, `✍️ SENIOR WONDERKID SIGNING: ${c.name} promotes 16-year-old phenom ${dossier.name} (${dossier.moniker}, ${dossier.potentialRange}) directly into the first team!`, 'transfer');
+    persist();
+    return {
+      success: true,
+      destination: 'first_team',
+      player: playerObj,
+      message: `Signed ${dossier.name} to the first team squad!`
+    };
+  } else {
+    // Enrolled in Youth Academy
+    const academyObj = {
+      id: dossier.id,
+      name: dossier.name,
+      position: dossier.position,
+      nationality: dossier.nationality,
+      age: dossier.age,
+      rating: dossier.rating,
+      potentialExact: dossier.potentialExact,
+      potentialRange: dossier.potentialRange,
+      moniker: dossier.moniker,
+      trait: dossier.trait,
+      enrolledAtSeason: s.season || 1,
+      developmentProgress: 15
+    };
+
+    c.youthSystem.academyPlayers.unshift(academyObj);
+    addNews(s, `🏫 ACADEMY ENROLLMENT: ${c.name} secures signature of teenage wonderkid ${dossier.name} into the youth academy!`, 'club');
+    persist();
+    return {
+      success: true,
+      destination: 'academy',
+      academyPlayer: academyObj,
+      message: `Enrolled ${dossier.name} into your Youth Academy!`
+    };
+  }
+}
+
+function promoteAcademyWonderkid(s, clubName, academyPlayerId) {
+  const c = club(s, clubName || s.selectedClub);
+  if (!c) return { error: 'Club not found.' };
+  getYouthScoutState(s, c.name);
+
+  const idx = c.youthSystem.academyPlayers.findIndex(p => p.id === academyPlayerId);
+  if (idx === -1) return { error: 'Academy wonderkid not found.' };
+
+  const ap = c.youthSystem.academyPlayers[idx];
+  // Promotion gives +2 OVR bump for graduation
+  const gradOvr = Math.min(ap.potentialExact, ap.rating + 2);
+
+  const playerObj = {
+    id: 'p_grad_' + Date.now().toString(36),
+    name: ap.name,
+    position: ap.position,
+    rating: gradOvr,
+    potential: ap.potentialExact,
+    age: ap.age,
+    nationality: ap.nationality,
+    wage: 0.35,
+    askingPrice: 8.5,
+    contractYears: 4,
+    ownerClub: c.name,
+    isWonderkid: true,
+    trait: ap.trait,
+    moniker: ap.moniker,
+    morale: 95,
+    fitness: 100
+  };
+
+  s.market.unshift(playerObj);
+  c.players = c.players || [];
+  c.players.push(playerObj.id);
+  c.youthSystem.academyPlayers.splice(idx, 1);
+
+  addNews(s, `🎓 ACADEMY GRADUATION: ${ap.name} (${gradOvr} OVR, ${ap.moniker}) officially promoted to ${c.name} first-team squad!`, 'club');
+  persist();
+  return {
+    success: true,
+    player: playerObj,
+    message: `${ap.name} has graduated and joined the senior squad!`
+  };
+}
+
+// =============================================================
+// FEATURE: SOCCER CHAMPS KEY MOMENTS MATCH RECORDER
+// =============================================================
+function recordKeyMomentsMatch(s, payload = {}) {
+  const user = club(s, s.selectedClub);
+  if (!user) return { error: 'Choose a club first.' };
+
+  const fixture = getNextFixture(s);
+  if (!fixture) return { error: 'No upcoming fixture.' };
+
+  const goalsScored = Math.max(0, Number(payload.goalsScored) || 0);
+  const chancesPlayed = Math.max(1, Number(payload.chancesPlayed) || 3);
+  const opp = fixture.opponent;
+
+  // Simulate opponent goals based on their rating
+  let oppGoals = 0;
+  const oppChance = (opp.rating || 75) / 100;
+  if (Math.random() < oppChance * 0.7) oppGoals++;
+  if (Math.random() < oppChance * 0.35) oppGoals++;
+
+  const userWon = goalsScored > oppGoals;
+  const isDraw = goalsScored === oppGoals;
+
+  s.matchday = (s.matchday || 0) + 1;
+
+  const matchResult = {
+    home: fixture.homeTeam,
+    away: fixture.awayTeam,
+    homeGoals: fixture.isHome ? goalsScored : oppGoals,
+    awayGoals: fixture.isHome ? oppGoals : goalsScored,
+    isCup: fixture.compType !== 'league',
+    competitionName: fixture.fullTitle,
+    compLabel: fixture.compLabel,
+    compType: fixture.compType,
+    compBadgeColor: fixture.compBadgeColor,
+    compStage: fixture.compStage,
+    fixture,
+    keyMomentsPlayed: true,
+    chancesPlayed,
+    userGoalsScored: goalsScored,
+    date: new Date().toISOString()
+  };
+
+  // Update manager career stats
+  if (s.managerCareer) {
+    const mc = s.managerCareer;
+    mc.matches = (mc.matches || 0) + 1;
+    if (userWon) {
+      mc.wins = (mc.wins || 0) + 1;
+      mc.reputation = Math.min(100, (mc.reputation || 25) + 4);
+      mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 4);
+      user.morale = Math.min(100, (user.morale || 75) + 6);
+    } else if (isDraw) {
+      mc.draws = (mc.draws || 0) + 1;
+      mc.reputation = Math.min(100, (mc.reputation || 25) + 1);
+    } else {
+      mc.losses = (mc.losses || 0) + 1;
+      mc.boardConfidence = Math.max(30, (mc.boardConfidence || 85) - 3);
+      user.morale = Math.max(40, (user.morale || 75) - 4);
+    }
+
+    if (userWon && Math.random() < 0.5) {
+      generateManagerApproaches(s, 1, { oppName: opp.name, postWin: true });
+    }
+  }
+
+  // Update league standings if league match
+  if (fixture.compType === 'league') {
+    const userClubInTable = s.clubs.find(c => c.name === user.name);
+    const oppClubInTable = s.clubs.find(c => c.name === opp.name);
+    if (userClubInTable && oppClubInTable) {
+      userClubInTable.played = (userClubInTable.played || 0) + 1;
+      oppClubInTable.played = (oppClubInTable.played || 0) + 1;
+      userClubInTable.gf = (userClubInTable.gf || 0) + goalsScored;
+      userClubInTable.ga = (userClubInTable.ga || 0) + oppGoals;
+      oppClubInTable.gf = (oppClubInTable.gf || 0) + oppGoals;
+      oppClubInTable.ga = (oppClubInTable.ga || 0) + goalsScored;
+
+      if (userWon) {
+        userClubInTable.won = (userClubInTable.won || 0) + 1;
+        userClubInTable.points = (userClubInTable.points || 0) + 3;
+        oppClubInTable.lost = (oppClubInTable.lost || 0) + 1;
+      } else if (isDraw) {
+        userClubInTable.drawn = (userClubInTable.drawn || 0) + 1;
+        userClubInTable.points = (userClubInTable.points || 0) + 1;
+        oppClubInTable.drawn = (oppClubInTable.drawn || 0) + 1;
+        oppClubInTable.points = (oppClubInTable.points || 0) + 1;
+      } else {
+        userClubInTable.lost = (userClubInTable.lost || 0) + 1;
+        oppClubInTable.won = (oppClubInTable.won || 0) + 1;
+        oppClubInTable.points = (oppClubInTable.points || 0) + 3;
+      }
+    }
+  }
+
+  const resultVerbiage = userWon ? 'SENSATIONAL TRIUMPH' : isDraw ? 'HONORS EVEN' : 'HEARTBREAKING REVERSE';
+  addNews(s, `🕹️ SOCCER CHAMPS KEY MOMENTS: ${resultVerbiage}! ${user.name} finish ${matchResult.homeGoals}-${matchResult.awayGoals} vs ${opp.name}. You scored ${goalsScored} clutch goals from ${chancesPlayed} key moments!`, 'match');
+
+  persist();
+  return {
+    success: true,
+    matchResult,
+    userWon,
+    isDraw,
+    goalsScored,
+    oppGoals,
+    nextFixture: getNextFixture(s)
+  };
+}
+
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch,negotiateManagerRole,getManagerContractState,generateManagerApproaches,respondToManagerApproach,solicitManagerApproaches};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch,negotiateManagerRole,getManagerContractState,generateManagerApproaches,respondToManagerApproach,solicitManagerApproaches,getNationalTeamState,respondToNationalOffer,simulateNationalTournamentMatch,getYouthScoutState,hireYouthScout,dispatchWonderkidExpedition,signWonderkid,promoteAcademyWonderkid,recordKeyMomentsMatch};

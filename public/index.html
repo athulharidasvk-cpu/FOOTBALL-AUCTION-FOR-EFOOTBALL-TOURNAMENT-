@@ -3126,6 +3126,1231 @@ function acceptRoleCounterProposal(clubName, counterDemands) {
   }).catch(err => alert(err.message || 'Error ratifying compromise.'));
 }
 
+// =============================================================
+// =============================================================
+// FEATURE 1: WORLD SOCCER CHAMPS + SCORE! HERO CURVE ENGINE
+// =============================================================
+let activeKeyMomentsSession = null;
+
+function startSoccerChampsKeyMoments(isArcadeMode = false) {
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!c) return alert('Select a club first.');
+
+  const fixture = computeClientNextFixture(S);
+  const opp = fixture ? fixture.opponent : { name: 'Opposition XI', rating: 76, division: c.division, crest: '🛡️' };
+
+  const attackerName = (c.players && c.players[0] && player(S, c.players[0])?.name) || 'Star Striker';
+  const supportName = (c.players && c.players[1] && player(S, c.players[1])?.name) || 'Midfield Maestro';
+  const wingerName = (c.players && c.players[2] && player(S, c.players[2])?.name) || 'Pacy Winger';
+
+  // Dynamic match minutes for Soccer Champs highlight timeline
+  const matchMoments = [
+    { minute: "24'", label: 'COUNTER-ATTACK OVERLOAD', timeRatio: 0.25 },
+    { minute: "62'", label: 'TIKI-TAKA BOX PENETRATION', timeRatio: 0.65 },
+    { minute: "88'", label: 'LAST-GASP CLUTCH WINNER', timeRatio: 0.95 }
+  ];
+
+  activeKeyMomentsSession = {
+    isArcadeMode,
+    userClubName: c.name,
+    userCrest: c.crest || c.name,
+    oppName: opp.name,
+    oppCrest: opp.crest || opp.name,
+    fixture,
+    chanceIndex: 0,
+    currentPhase: 0,
+    totalChances: 3,
+    homeScore: 0,
+    awayScore: 0,
+    goalsScored: 0,
+    starsEarned: 0,
+    attackerName,
+    supportName,
+    wingerName,
+    clubColor: c.jersey?.home || '#00f0ff',
+    oppColor: opp.jersey?.home || '#ef4444',
+    matchMoments,
+    scenarios: [
+      {
+        minute: "24'",
+        title: 'MOMENT 1 (24\'): FAST BREAKAWAY & CROSS-FIELD CURLER',
+        desc: 'Curve a through-ball into space for your winger, whip the cross into the penalty spot, and curl it into the top corner!',
+        phases: [
+          {
+            phaseName: 'PHASE 1: MIDFIELD THROUGH-BALL',
+            instruction: 'Draw a curving banana pass into the channel for your winger to sprint onto!',
+            ballPos: { x: 300, y: 340 },
+            actor: { name: supportName, number: '8', x: 300, y: 340 },
+            targetTeammate: { name: wingerName, number: '7', x: 470, y: 250, runTarget: { x: 480, y: 200 } },
+            defenders: [{ x: 370, y: 280, r: 15 }],
+            isFinalShot: false
+          },
+          {
+            phaseName: 'PHASE 2: WHIPPED CROSS INTO THE BOX',
+            instruction: 'Draw a curling cross bending around the center-back towards the penalty spot!',
+            ballPos: { x: 480, y: 200 },
+            actor: { name: wingerName, number: '7', x: 480, y: 200 },
+            targetTeammate: { name: attackerName, number: '9', x: 320, y: 190, runTarget: { x: 320, y: 135 } },
+            defenders: [{ x: 395, y: 175, r: 15 }],
+            isFinalShot: false
+          },
+          {
+            phaseName: 'PHASE 3: TOP CORNER VOLLEY / FINISH',
+            instruction: 'Draw your curved strike past the diving keeper into the top corner!',
+            ballPos: { x: 320, y: 135 },
+            actor: { name: attackerName, number: '9', x: 320, y: 135 },
+            targetTeammate: null,
+            defenders: [{ x: 260, y: 105, r: 15 }, { x: 380, y: 105, r: 15 }],
+            gk: { x: 320, y: 58, r: 16 },
+            goal: { left: 230, right: 410, y: 48 },
+            isFinalShot: true
+          }
+        ]
+      },
+      {
+        minute: "62'",
+        title: 'MOMENT 2 (62\'): TACTICAL 1-2 CUTBACK THROUGH THE LINE',
+        desc: 'Thread a bending pass between the defensive pair, then curl a pinpoint finish inside the post!',
+        phases: [
+          {
+            phaseName: 'PHASE 1: SPLIT THE DEFENSIVE PAIR',
+            instruction: 'Draw a curving low pass between the defenders into the path of your striker!',
+            ballPos: { x: 220, y: 320 },
+            actor: { name: supportName, number: '10', x: 220, y: 320 },
+            targetTeammate: { name: attackerName, number: '9', x: 320, y: 220, runTarget: { x: 320, y: 160 } },
+            defenders: [{ x: 275, y: 260, r: 15 }],
+            isFinalShot: false
+          },
+          {
+            phaseName: 'PHASE 2: CLINICAL SIDE-NETTING FINISH',
+            instruction: 'Draw a bending strike around the diving goalkeeper into the side netting!',
+            ballPos: { x: 320, y: 160 },
+            actor: { name: attackerName, number: '9', x: 320, y: 160 },
+            targetTeammate: null,
+            defenders: [{ x: 250, y: 115, r: 15 }],
+            gk: { x: 320, y: 58, r: 16 },
+            goal: { left: 230, right: 410, y: 48 },
+            isFinalShot: true
+          }
+        ]
+      },
+      {
+        minute: "88'",
+        title: 'MOMENT 3 (88\'): 25-YARD CLUTCH FREE KICK / SCREAMER',
+        desc: 'Draw a high curling arc over or around the 3-man wall into the top postage stamp to seal victory!',
+        phases: [
+          {
+            phaseName: 'CLUTCH FINISH: TOP BINS OR BUST',
+            instruction: 'Draw a steep curling curve bending around the defensive wall into the top corner!',
+            ballPos: { x: 320, y: 300 },
+            actor: { name: attackerName, number: '10', x: 320, y: 300 },
+            targetTeammate: null,
+            defenders: [
+              { x: 295, y: 185, r: 14 },
+              { x: 320, y: 185, r: 14 },
+              { x: 345, y: 185, r: 14 }
+            ],
+            gk: { x: 320, y: 58, r: 16 },
+            goal: { left: 230, right: 410, y: 48 },
+            isFinalShot: true
+          }
+        ]
+      }
+    ]
+  };
+
+  renderScoreHeroModalHtml();
+}
+
+function renderScoreHeroModalHtml() {
+  document.getElementById('scoreHeroModal')?.remove();
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+
+  const currentScn = ses.scenarios[ses.chanceIndex];
+  const currentPhase = currentScn.phases[ses.currentPhase];
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'scoreHeroModal';
+  overlay.style.zIndex = '99999';
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(760px, 98vw);padding:16px;text-align:center;background:#070d18;border:2px solid #00f0ff;border-radius:18px;box-shadow:0 0 50px rgba(0,240,255,0.3);">
+      
+      <!-- World Soccer Champs Authentic Broadcast Match Header -->
+      <div style="background:rgba(13,23,40,0.9);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 16px;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        
+        <!-- Home Team -->
+        <div style="display:flex;align-items:center;gap:10px;text-align:left;flex:1;min-width:140px;">
+          <div style="width:34px;height:34px;border-radius:8px;background:${ses.clubColor};border:1px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#fff;">
+            ${renderCrest(ses.userCrest, 20)}
+          </div>
+          <div>
+            <div style="font-family:var(--font-display);font-size:15px;font-weight:900;color:#fff;line-height:1.1;">
+              ${esc(ses.userClubName)}
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);font-weight:700;">YOUR SQUAD</div>
+          </div>
+        </div>
+
+        <!-- Center Scoreboard & Live Clock (Soccer Champs LCD Style) -->
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="font-size:10px;font-weight:900;color:var(--accent-gold);letter-spacing:1px;text-transform:uppercase;">
+            HIGHLIGHT ${ses.chanceIndex + 1}/${ses.totalChances} · ${currentScn.minute}
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;margin:2px 0;">
+            <div id="shScoreBox" style="font-family:var(--font-display);font-size:26px;font-weight:900;color:#00f0ff;background:#030712;padding:2px 14px;border-radius:8px;border:1px solid #00f0ff;letter-spacing:2px;box-shadow:0 0 15px rgba(0,240,255,0.3);">
+              ${ses.goalsScored} - 0
+            </div>
+            <span style="font-size:12px;color:var(--accent-gold);font-weight:900;">
+              ${'⭐'.repeat(Math.max(1, Math.min(3, ses.starsEarned + 1)))}
+            </span>
+          </div>
+        </div>
+
+        <!-- Away Team -->
+        <div style="display:flex;align-items:center;gap:10px;text-align:right;justify-content:flex-end;flex:1;min-width:140px;">
+          <div>
+            <div style="font-family:var(--font-display);font-size:15px;font-weight:900;color:#fff;line-height:1.1;">
+              ${esc(ses.oppName)}
+            </div>
+            <div style="font-size:10px;color:var(--text-muted);font-weight:700;">OPPONENT</div>
+          </div>
+          <div style="width:34px;height:34px;border-radius:8px;background:${ses.oppColor};border:1px solid #fff;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px;color:#fff;">
+            ${renderCrest(ses.oppCrest, 20)}
+          </div>
+          <button class="btn btn-secondary btn-xs" onclick="closeScoreHeroModal()" style="margin-left:6px;font-weight:800;padding:4px 8px;">✕</button>
+        </div>
+      </div>
+
+      <!-- Current Phase Prompt Banner -->
+      <div style="background:rgba(0,240,255,0.08);border:1px solid rgba(0,240,255,0.3);padding:6px 14px;border-radius:8px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+        <div style="color:#00f0ff;font-weight:800;text-align:left;">
+          <span>${esc(currentPhase.phaseName)}:</span> <span style="color:#f1f5f9;font-weight:500;">${esc(currentPhase.instruction)}</span>
+        </div>
+        <div style="color:var(--text-muted);font-size:11px;font-weight:700;">
+          Phase ${ses.currentPhase + 1} of ${currentScn.phases.length}
+        </div>
+      </div>
+
+      <!-- High-DPI Canvas Pitch -->
+      <div style="position:relative;width:100%;max-width:700px;margin:0 auto;border-radius:14px;overflow:hidden;box-shadow:0 12px 35px rgba(0,0,0,0.9);border:2px solid rgba(255,255,255,0.18);">
+        <canvas id="scoreHeroCanvas" width="700" height="420" style="display:block;width:100%;height:auto;background:#144128;cursor:crosshair;touch-action:none;"></canvas>
+        
+        <!-- Live Action Banner Overlay -->
+        <div id="shFeedbackOverlay" style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%) scale(0.8);opacity:0;pointer-events:none;transition:all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);text-align:center;z-index:20;">
+          <div id="shFeedbackText" style="font-family:var(--font-display);font-size:42px;font-weight:900;color:var(--accent-gold);text-shadow:0 0 25px rgba(245,158,11,0.95), 0 4px 10px #000;letter-spacing:2px;">
+            GOOOOOAL!!
+          </div>
+          <div id="shFeedbackSub" style="font-size:14px;font-weight:800;color:#fff;text-shadow:0 2px 5px #000;">
+            TOP CORNER ROCKET!
+          </div>
+        </div>
+
+        <!-- Drawing Prompt Pill -->
+        <div id="shDrawingPrompt" style="position:absolute;bottom:12px;left:50%;transform:translateX(-50%);background:rgba(7,13,24,0.92);border:1px solid #00f0ff;color:#00f0ff;padding:5px 16px;border-radius:20px;font-size:11.5px;font-weight:800;pointer-events:none;letter-spacing:0.5px;box-shadow:0 0 15px rgba(0,240,255,0.4);white-space:nowrap;">
+          ✏️ DRAG FROM BALL TO DRAW CURVED PASS OR TOP-CORNER SHOT
+        </div>
+      </div>
+
+      <!-- Score! Hero Rewind & Action Bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px;background:rgba(255,255,255,0.03);padding:8px 14px;border-radius:10px;font-size:12px;flex-wrap:wrap;gap:8px;">
+        <div style="color:var(--text-muted);display:flex;align-items:center;gap:12px;">
+          <span>🎯 <b>Draw freehand curve</b></span>
+          <span>⚽ <b>3D loft &amp; banana curl</b></span>
+          <span>👥 <b>Multi-phase combination</b></span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-warning btn-sm" onclick="rewindCurrentScoreHeroPhase()" style="font-weight:900;color:#0a0f18;background:linear-gradient(90deg, #f59e0b, #eab308);display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(245,158,11,0.4);">
+            ⏪ HERO REWIND (TRY AGAIN)
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="skipScoreHeroPhase()" style="font-weight:800;">
+            NEXT CHANCE &rarr;
+          </button>
+        </div>
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  initScoreHeroCanvas();
+}
+
+function closeScoreHeroModal() {
+  if (activeKeyMomentsSession?.animId) {
+    cancelAnimationFrame(activeKeyMomentsSession.animId);
+  }
+  document.getElementById('scoreHeroModal')?.remove();
+  activeKeyMomentsSession = null;
+}
+
+function rewindCurrentScoreHeroPhase() {
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+  // Restore current phase state so user can immediately redraw
+  renderScoreHeroModalHtml();
+}
+
+function skipScoreHeroPhase() {
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+  const currentScn = ses.scenarios[ses.chanceIndex];
+  if (ses.currentPhase + 1 < currentScn.phases.length) {
+    ses.currentPhase++;
+    renderScoreHeroModalHtml();
+  } else if (ses.chanceIndex + 1 < ses.totalChances) {
+    ses.chanceIndex++;
+    ses.currentPhase = 0;
+    renderScoreHeroModalHtml();
+  } else {
+    renderScoreHeroFinalSummary();
+  }
+}
+
+// Cubic Bézier Curve helper for silky-smooth Score! Hero trajectory
+function getSmoothCurvePoints(rawPoints, segments = 30) {
+  if (rawPoints.length < 3) return rawPoints;
+  const smooth = [];
+  for (let i = 0; i < rawPoints.length - 1; i++) {
+    const p0 = i > 0 ? rawPoints[i - 1] : rawPoints[i];
+    const p1 = rawPoints[i];
+    const p2 = rawPoints[i + 1];
+    const p3 = i < rawPoints.length - 2 ? rawPoints[i + 2] : p2;
+    for (let t = 0; t < 1; t += 1 / segments) {
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+      const y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+      smooth.push({ x, y });
+    }
+  }
+  smooth.push(rawPoints[rawPoints.length - 1]);
+  return smooth;
+}
+
+function initScoreHeroCanvas() {
+  const canvas = document.getElementById('scoreHeroCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+
+  const currentScn = ses.scenarios[ses.chanceIndex];
+  const phase = currentScn.phases[ses.currentPhase];
+
+  let isDrawing = false;
+  let rawDrawnPoints = [];
+  let smoothTrajectory = [];
+  let ballAnimating = false;
+  let ballProgress = 0;
+  let ballCurrentPos = { x: phase.ballPos.x, y: phase.ballPos.y, height: 0 };
+  let chanceResolved = false;
+  let netRippleEffect = 0;
+
+  // Active actors
+  const actor = { ...phase.actor };
+  const targetTeammate = phase.targetTeammate ? { ...phase.targetTeammate } : null;
+  const defenders = (phase.defenders || []).map(d => ({ ...d }));
+  const gk = phase.gk ? { ...phase.gk, currentX: phase.gk.x, diveProgress: 0 } : { x: 320, y: 58, currentX: 320, r: 16, diveProgress: 0 };
+  const goal = phase.goal || { left: 230, right: 410, y: 48 };
+
+  // Score! Hero target corners (sweet spots)
+  const targetCorners = [
+    { name: 'TOP LEFT', x: goal.left + 25, y: goal.y + 10, r: 18 },
+    { name: 'TOP RIGHT', x: goal.right - 25, y: goal.y + 10, r: 18 },
+    { name: 'BOTTOM CORNER', x: goal.left + 25, y: goal.y + 32, r: 16 }
+  ];
+
+  function getCanvasPos(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY
+    };
+  }
+
+  function handleStart(e) {
+    if (ballAnimating || chanceResolved) return;
+    const pos = getCanvasPos(e);
+    // Allow start near active ball carrier actor
+    const dist = Math.hypot(pos.x - actor.x, pos.y - actor.y);
+    if (dist < 65) {
+      isDrawing = true;
+      rawDrawnPoints = [{ x: actor.x, y: actor.y }, { x: pos.x, y: pos.y }];
+      smoothTrajectory = rawDrawnPoints;
+    }
+  }
+
+  function handleMove(e) {
+    if (!isDrawing || ballAnimating || chanceResolved) return;
+    const pos = getCanvasPos(e);
+    const last = rawDrawnPoints[rawDrawnPoints.length - 1];
+    if (!last || Math.hypot(pos.x - last.x, pos.y - last.y) > 8) {
+      rawDrawnPoints.push(pos);
+      smoothTrajectory = getSmoothCurvePoints(rawDrawnPoints, 6);
+    }
+  }
+
+  function handleEnd() {
+    if (!isDrawing || ballAnimating || chanceResolved) return;
+    isDrawing = false;
+
+    if (smoothTrajectory.length < 8) {
+      rawDrawnPoints = [];
+      smoothTrajectory = [];
+      return;
+    }
+
+    // Launch Score! Hero ball flight
+    ballAnimating = true;
+    ballProgress = 0;
+    playSfx('kick');
+  }
+
+  canvas.onmousedown = handleStart;
+  window.onmousemove = handleMove;
+  window.onmouseup = handleEnd;
+
+  canvas.ontouchstart = (e) => { e.preventDefault(); handleStart(e); };
+  window.ontouchmove = (e) => { if (isDrawing) e.preventDefault(); handleMove(e); };
+  window.ontouchend = handleEnd;
+
+  // Main Canvas Render Loop
+  function loop() {
+    // 1. Draw Vibrant Emerald Turf with Mower Stripes
+    ctx.fillStyle = '#144128';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+    for (let y = 0; y < canvas.height; y += 42) {
+      if ((y / 42) % 2 === 0) ctx.fillRect(0, y, canvas.width, 42);
+    }
+
+    // Chalk Field Markings
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 2.5;
+
+    // Penalty Area
+    ctx.strokeRect(150, 48, 400, 245);
+    // 6-Yard Box
+    ctx.strokeRect(230, 48, 240, 80);
+    // Penalty Spot
+    ctx.fillStyle = '#fff';
+    ctx.beginPath();
+    ctx.arc(350, 195, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+    // Penalty Arc
+    ctx.beginPath();
+    ctx.arc(350, 195, 58, 0.23 * Math.PI, 0.77 * Math.PI, false);
+    ctx.stroke();
+
+    // 3D Goal Frame & Net Mesh
+    const netYOffset = Math.sin(netRippleEffect) * 6;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.fillRect(goal.left, 10, goal.right - goal.left, 38 + netYOffset);
+
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    for (let gx = goal.left; gx <= goal.right; gx += 12) {
+      ctx.beginPath(); ctx.moveTo(gx, 10); ctx.lineTo(gx, 48 + netYOffset); ctx.stroke();
+    }
+    for (let gy = 10; gy <= 48; gy += 8) {
+      ctx.beginPath(); ctx.moveTo(goal.left, gy); ctx.lineTo(goal.right, gy); ctx.stroke();
+    }
+
+    // Heavy Goalposts & Crossbar
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(goal.left, 45, goal.right - goal.left, 6);
+
+    // Goal Target Sweet-Spot Rings (Score! Hero Top Bins indicators)
+    if (phase.isFinalShot && !chanceResolved) {
+      targetCorners.forEach(tc => {
+        ctx.strokeStyle = 'rgba(245, 158, 11, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(tc.x, tc.y, tc.r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.2)';
+        ctx.fill();
+      });
+    }
+
+    // 2. Animate Teammate Movement Run
+    if (targetTeammate && targetTeammate.runTarget && !chanceResolved) {
+      targetTeammate.x += (targetTeammate.runTarget.x - targetTeammate.x) * 0.025;
+      targetTeammate.y += (targetTeammate.runTarget.y - targetTeammate.y) * 0.025;
+    }
+
+    // 3. Draw Players
+    // Goalkeeper
+    if (phase.isFinalShot) {
+      ctx.save();
+      ctx.translate(gk.currentX, gk.y);
+      if (gk.diveProgress > 0) {
+        ctx.rotate((gk.diveTargetX > gk.x ? 0.35 : -0.35) * Math.sin(gk.diveProgress * Math.PI));
+      }
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(0, 0, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#000';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.fillStyle = '#000';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('GK', 0, 3);
+      ctx.restore();
+    }
+
+    // Opponent Defenders
+    defenders.forEach(def => {
+      ctx.fillStyle = ses.oppColor;
+      ctx.beginPath();
+      ctx.arc(def.x, def.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1.8;
+      ctx.stroke();
+    });
+
+    // Target Teammate (If receiving pass)
+    if (targetTeammate) {
+      // Pulsing Receiving Ring
+      const recvPulse = 22 + Math.sin(Date.now() * 0.01) * 3;
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(targetTeammate.x, targetTeammate.y, recvPulse, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.fillStyle = ses.clubColor;
+      ctx.beginPath();
+      ctx.arc(targetTeammate.x, targetTeammate.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9.5px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(targetTeammate.number, targetTeammate.x, targetTeammate.y + 3);
+
+      // Name Tag over teammate
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 9px sans-serif';
+      ctx.fillText(targetTeammate.name, targetTeammate.x, targetTeammate.y - 18);
+    }
+
+    // Active Ball Carrier Actor
+    const pulseRing = 18 + Math.sin(Date.now() * 0.008) * 4;
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(actor.x, actor.y, pulseRing, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.fillStyle = ses.clubColor;
+    ctx.beginPath();
+    ctx.arc(actor.x, actor.y, 15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(actor.number, actor.x, actor.y + 4);
+
+    ctx.fillStyle = '#00f0ff';
+    ctx.font = 'bold 9.5px sans-serif';
+    ctx.fillText(actor.name, actor.x, actor.y - 19);
+
+    // 4. Draw Score! Hero Curved Trajectory with Glowing Bézier Line
+    if (smoothTrajectory.length > 1) {
+      ctx.save();
+      ctx.shadowColor = '#00f0ff';
+      ctx.shadowBlur = 14;
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3.8;
+      ctx.setLineDash([8, 6]);
+      ctx.lineDashOffset = -Date.now() * 0.02;
+
+      ctx.beginPath();
+      ctx.moveTo(smoothTrajectory[0].x, smoothTrajectory[0].y);
+      for (let i = 1; i < smoothTrajectory.length; i++) {
+        ctx.lineTo(smoothTrajectory[i].x, smoothTrajectory[i].y);
+      }
+      ctx.stroke();
+
+      // Trajectory Arrowhead
+      const lastPt = smoothTrajectory[smoothTrajectory.length - 1];
+      const prevPt = smoothTrajectory[Math.max(0, smoothTrajectory.length - 4)];
+      const tipAngle = Math.atan2(lastPt.y - prevPt.y, lastPt.x - prevPt.x);
+      const arrowLen = 15;
+
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(lastPt.x, lastPt.y);
+      ctx.lineTo(lastPt.x - arrowLen * Math.cos(tipAngle - Math.PI / 6), lastPt.y - arrowLen * Math.sin(tipAngle - Math.PI / 6));
+      ctx.lineTo(lastPt.x - arrowLen * Math.cos(tipAngle + Math.PI / 6), lastPt.y - arrowLen * Math.sin(tipAngle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // 5. Ball Flight Physics along Bézier Path
+    if (ballAnimating && smoothTrajectory.length > 0) {
+      ballProgress += 0.028;
+      const totalPts = smoothTrajectory.length;
+      const ptIdx = Math.min(totalPts - 1, Math.floor(ballProgress * totalPts));
+      const curPt = smoothTrajectory[ptIdx] || smoothTrajectory[totalPts - 1];
+
+      // 3D Parabolic elevation arc
+      const arcHeight = Math.sin(ballProgress * Math.PI) * 32;
+      ballCurrentPos.x = curPt.x;
+      ballCurrentPos.y = curPt.y;
+      ballCurrentPos.height = arcHeight;
+
+      // Goalkeeper dive towards shot
+      if (phase.isFinalShot) {
+        const lastPt = smoothTrajectory[smoothTrajectory.length - 1];
+        gk.diveTargetX = Math.max(goal.left + 20, Math.min(goal.right - 20, lastPt.x));
+        gk.currentX += (gk.diveTargetX - gk.currentX) * 0.14;
+        gk.diveProgress = ballProgress;
+      }
+
+      // Check Defender Interception
+      defenders.forEach(def => {
+        const dist = Math.hypot(ballCurrentPos.x - def.x, ballCurrentPos.y - def.y);
+        if (dist < 18 && ballCurrentPos.height < 14 && !chanceResolved) {
+          ballAnimating = false;
+          chanceResolved = true;
+          showShFeedback('🛡️ INTERCEPTED!', 'Opponent defender cut out the curve!');
+          playSfx('whistle');
+        }
+      });
+
+      // Flight Completion Check
+      if (ballProgress >= 1.0 && !chanceResolved) {
+        ballAnimating = false;
+        const endPos = smoothTrajectory[smoothTrajectory.length - 1];
+
+        if (!phase.isFinalShot && targetTeammate) {
+          // Teammate pass reception check
+          const distToTeammate = Math.hypot(endPos.x - targetTeammate.x, endPos.y - targetTeammate.y);
+          if (distToTeammate < 55) {
+            chanceResolved = true;
+            showShFeedback('👟 BEAUTIFUL PASS!', 'Teammate controls on the move!');
+            playSfx('kick');
+            ses.starsEarned++;
+            setTimeout(() => {
+              ses.currentPhase++;
+              renderScoreHeroModalHtml();
+            }, 1100);
+          } else {
+            chanceResolved = true;
+            showShFeedback('💨 OVERHIT PASS!', 'Pass sailed out of reach!');
+            playSfx('whistle');
+          }
+        } else if (phase.isFinalShot) {
+          // Final Shot on Goal!
+          const inGoalWidth = endPos.x >= goal.left + 8 && endPos.x <= goal.right - 8;
+          const inGoalDepth = endPos.y <= goal.y + 12;
+          const distToGk = Math.hypot(endPos.x - gk.currentX, endPos.y - gk.y);
+
+          if (inGoalWidth && inGoalDepth && distToGk > 26) {
+            // GOAL!!
+            chanceResolved = true;
+            netRippleEffect = 10;
+            ses.goalsScored++;
+            ses.starsEarned += 2;
+
+            const scoreBox = document.getElementById('shScoreBox');
+            if (scoreBox) {
+              scoreBox.textContent = `${ses.goalsScored} - 0`;
+              scoreBox.style.transform = 'scale(1.25)';
+              setTimeout(() => { scoreBox.style.transform = 'scale(1)'; }, 400);
+            }
+
+            showShFeedback('⚽ GOOOOOOOAL!!', 'Stunning curling finish into the corner!');
+            playSfx('goal');
+            playSfx('applause');
+
+            setTimeout(() => {
+              if (ses.chanceIndex + 1 < ses.totalChances) {
+                ses.chanceIndex++;
+                ses.currentPhase = 0;
+                renderScoreHeroModalHtml();
+              } else {
+                renderScoreHeroFinalSummary();
+              }
+            }, 2300);
+          } else if (inGoalWidth && inGoalDepth && distToGk <= 26) {
+            chanceResolved = true;
+            showShFeedback('🧤 LEAPING SAVE!', 'Keeper tips it wide at full stretch!');
+            playSfx('whistle');
+          } else {
+            chanceResolved = true;
+            showShFeedback('💨 OFF TARGET!', 'Shot missed the goal frame!');
+            playSfx('whistle');
+          }
+        }
+      }
+    }
+
+    if (netRippleEffect > 0) netRippleEffect -= 0.5;
+
+    // 6. Draw Ball with 3D Ground Shadow & Rotation
+    const bx = ballCurrentPos.x;
+    const by = ballCurrentPos.y;
+    const bh = ballCurrentPos.height || 0;
+
+    // Ground Shadow (Directly on grass)
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.beginPath();
+    ctx.ellipse(bx, by, Math.max(3, 8 - bh * 0.12), Math.max(2, 5 - bh * 0.08), 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 3D Elevated Ball
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(bx, by - bh, 8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    // Classic Ball Pentagon Pattern
+    ctx.fillStyle = '#111';
+    ctx.beginPath();
+    ctx.arc(bx, by - bh, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ses.animId = requestAnimationFrame(loop);
+  }
+
+  function showShFeedback(main, sub) {
+    const overlayEl = document.getElementById('shFeedbackOverlay');
+    const mainEl = document.getElementById('shFeedbackText');
+    const subEl = document.getElementById('shFeedbackSub');
+    if (overlayEl && mainEl && subEl) {
+      mainEl.textContent = main;
+      subEl.textContent = sub;
+      overlayEl.style.opacity = '1';
+      overlayEl.style.transform = 'translate(-50%, -50%) scale(1.1)';
+      setTimeout(() => {
+        overlayEl.style.opacity = '0';
+        overlayEl.style.transform = 'translate(-50%, -50%) scale(0.8)';
+      }, 1800);
+    }
+  }
+
+  ses.animId = requestAnimationFrame(loop);
+}
+
+function renderScoreHeroFinalSummary() {
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+  const overlay = document.getElementById('scoreHeroModal');
+  if (!overlay) return;
+
+  const won = ses.goalsScored >= 2;
+  const stars = Math.min(3, Math.max(1, ses.starsEarned || 2));
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(620px, 96vw);padding:26px;text-align:center;background:#070d18;border:2px solid #00f0ff;border-radius:20px;box-shadow:0 0 50px rgba(0,240,255,0.35);">
+      <div style="font-size:44px;margin-bottom:6px;">${'⭐'.repeat(stars)}</div>
+      <div class="card-kicker" style="color:var(--accent-gold);">FULL TIME · KEY MOMENTS COMPLETED</div>
+      <h2 style="font-family:var(--font-display);font-size:28px;font-weight:900;color:#fff;margin:4px 0 10px 0;">
+        ${won ? 'HEROIC MATCH-WINNER!' : (ses.goalsScored >= 1 ? 'THRILLING CONTEST!' : 'HARD-FOUGHT ENCOUNTER')}
+      </h2>
+      <div style="font-size:15px;color:var(--text-muted);margin-bottom:20px;">
+        You buried <b style="color:var(--accent-neon);font-size:24px;">${ses.goalsScored}</b> clutch goals across the 3 key match moments!
+      </div>
+
+      <div style="background:rgba(13,23,40,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:22px;display:flex;justify-content:space-around;text-align:center;">
+        <div>
+          <div style="font-size:11px;color:var(--text-dim);font-weight:800;">STARS EARNED</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent-gold);">${stars} / 3 STARS</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-dim);font-weight:800;">MANAGER REPUTATION</div>
+          <div style="font-size:18px;font-weight:900;color:var(--accent-neon);">${won ? '+5 REP' : '+2 REP'}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--text-dim);font-weight:800;">SQUAD MORALE</div>
+          <div style="font-size:18px;font-weight:900;color:#4ade80;">+8%</div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;justify-content:center;">
+        ${!ses.isArcadeMode ? `
+          <button class="btn btn-primary" onclick="submitSoccerChampsMatchdayResult()" style="flex:1;padding:14px;font-weight:900;font-size:14px;background:linear-gradient(90deg, #00f0ff, #3b82f6);color:#0a0f18;">
+            ⚽ APPLY RESULT &amp; UPDATE LEAGUE TABLE &rarr;
+          </button>
+        ` : `
+          <button class="btn btn-primary" onclick="startSoccerChampsKeyMoments(true)" style="flex:1;padding:14px;font-weight:900;">
+            🔄 PLAY NEXT HERO SCENARIO
+          </button>
+        `}
+        <button class="btn btn-secondary" onclick="closeScoreHeroModal()" style="padding:14px 20px;">
+          RETURN TO DUGOUT
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function submitSoccerChampsMatchdayResult() {
+  const ses = activeKeyMomentsSession;
+  if (!ses) return;
+
+  post('/api/world4/match/key-moments', ref({
+    goalsScored: ses.goalsScored,
+    chancesPlayed: ses.totalChances
+  })).then(res => {
+    closeScoreHeroModal();
+    S = res.state || S;
+    const r = res.result;
+    if (r?.matchResult) {
+      openMatchModal(r.matchResult);
+    } else {
+      alert(`Match recorded! Goals: ${ses.goalsScored}`);
+    }
+    renderGame();
+  }).catch(err => {
+    alert(err.message || 'Error recording match result.');
+    closeScoreHeroModal();
+  });
+}
+
+// =============================================================
+// FEATURE 2: SOCCER CHAMPS NATIONAL TEAMS & INTERNATIONAL OFFERS
+// =============================================================
+async function openNationalTeamModal() {
+  let natState = null;
+  try {
+    const q = session?.roomCode ? `?room=${encodeURIComponent(session.roomCode)}` : (session?.soloId ? `?soloId=${encodeURIComponent(session.soloId)}` : '');
+    const res = await fetch('/api/world4/national/state' + q);
+    natState = await res.json();
+  } catch (err) {
+    return alert('Unable to load National Team state.');
+  }
+
+  document.getElementById('nationalTeamModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'nationalTeamModal';
+
+  const job = natState.currentJob;
+  const offers = natState.offers || [];
+  const tourney = natState.tournament;
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(780px, 96vw);max-height:90vh;overflow-y:auto;padding:24px;background:#0a1322;border:2px solid #3b82f6;border-radius:18px;">
+      
+      <!-- Modal Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:46px;height:46px;border-radius:12px;background:rgba(59,130,246,0.2);border:1px solid #3b82f6;display:flex;align-items:center;justify-content:center;font-size:24px;">
+            🌍
+          </div>
+          <div>
+            <div class="card-kicker" style="color:#60a5fa;">INTERNATIONAL MANAGEMENT &amp; WORLD CUPS</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              National Federation Hub
+            </h2>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('nationalTeamModal').remove()">✕ CLOSE</button>
+      </div>
+
+      <!-- Current National Role Status -->
+      ${job ? `
+        <div style="background:linear-gradient(135deg, rgba(30,58,138,0.5), rgba(15,23,42,0.8));border:2px solid #3b82f6;border-radius:14px;padding:18px;margin-bottom:20px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div style="display:flex;align-items:center;gap:16px;">
+              <span style="font-size:48px;">${job.flag}</span>
+              <div>
+                <span class="pill" style="background:#22c55e;color:#0a0f18;font-weight:900;font-size:10px;">ACTIVE HEAD COACH</span>
+                <h3 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:2px 0;">
+                  ${esc(job.country)} National Team
+                </h3>
+                <div style="font-size:12px;color:#93c5fd;">
+                  FIFA World Rank: <b>#${job.rank}</b> · ${'⭐'.repeat(Math.round(job.stars))} (${job.rating} OVR)
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align:right;">
+              <div style="font-size:11px;color:var(--text-muted);">FEDERATION MANDATE</div>
+              <div style="font-size:13px;font-weight:800;color:var(--accent-gold);">${esc(job.mandate)}</div>
+              <div style="font-size:11.5px;color:#60a5fa;margin-top:4px;">Honorarium: <b>${esc(job.salaryFormatted)}</b></div>
+            </div>
+          </div>
+
+          <!-- Tournament Progress & Fixture Action -->
+          <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-size:11px;color:var(--text-muted);font-weight:800;">ACTIVE TOURNAMENT:</div>
+              <div style="font-size:14px;font-weight:900;color:#fff;">${esc(tourney?.name || 'World Nations Championship')} · <span style="color:var(--accent-neon);">${esc(tourney?.stage || 'Knockout Stage')}</span></div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="startSoccerChampsKeyMoments(false)" style="font-weight:900;background:linear-gradient(90deg, #00f0ff, #3b82f6);color:#0a0f18;">
+                🕹️ PLAY INTERNATIONAL KEY MOMENTS &rarr;
+              </button>
+              <button class="btn btn-secondary btn-sm" onclick="simulateNationalMatchFromUI()" style="font-weight:800;">
+                ⏩ SIMULATE ROUND
+              </button>
+            </div>
+          </div>
+        </div>
+      ` : `
+        <div style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.15);border-radius:14px;padding:16px;text-align:center;margin-bottom:20px;">
+          <div style="font-size:14px;font-weight:800;color:#fff;">No Current National Team Post</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:4px;">
+            Lead your club to victory to attract prestigious national federation inquiries below!
+          </div>
+        </div>
+      `}
+
+      <!-- Incoming National Team Offers -->
+      <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span>📬 OFFICIAL NATIONAL TEAM INVITATIONS</span>
+        <span class="pill" style="background:#3b82f6;color:#fff;font-size:10px;font-weight:900;">${offers.length} AVAILABLE</span>
+      </h3>
+
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        ${offers.length === 0 ? `
+          <div style="text-align:center;padding:24px;background:rgba(0,0,0,0.3);border-radius:12px;color:var(--text-dim);">
+            No pending federation offers right now. Win your next fixture to prompt fresh approaches!
+          </div>
+        ` : offers.map(off => `
+          <div style="background:rgba(15,23,42,0.8);border:1px solid rgba(59,130,246,0.3);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+              <div style="display:flex;align-items:center;gap:14px;">
+                <span style="font-size:38px;">${off.flag}</span>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <h4 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin:0;">
+                      ${esc(off.country)}
+                    </h4>
+                    <span class="pill" style="background:rgba(59,130,246,0.2);color:#93c5fd;border:1px solid #3b82f6;font-size:10px;font-weight:800;">
+                      FIFA RANK #${off.rank}
+                    </span>
+                  </div>
+                  <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">
+                    ${esc(off.federation)} · Captain: <b style="color:#fff;">${esc(off.captain)}</b> · ${'⭐'.repeat(Math.round(off.stars))} (${off.rating} OVR)
+                  </div>
+                </div>
+              </div>
+
+              <div style="text-align:right;">
+                <div style="font-size:11px;color:var(--text-muted);">COMPENSATION</div>
+                <div style="font-size:14px;font-weight:900;color:var(--accent-gold);">${esc(off.salaryFormatted)}</div>
+              </div>
+            </div>
+
+            <!-- Federation Letter -->
+            <div style="background:rgba(0,0,0,0.3);border-left:3px solid #3b82f6;padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:#cbd5e1;line-height:1.5;white-space:pre-line;">
+              ${esc(off.letter)}
+            </div>
+
+            <!-- Objective & Action -->
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+              <div style="font-size:11.5px;color:var(--text-muted);">
+                Tournament Mandate: <b style="color:#fff;">${esc(off.mandate)}</b>
+              </div>
+
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary btn-sm" onclick="respondToNationalOfferFromUI('${off.id}', 'accept')" style="font-weight:900;background:linear-gradient(90deg, #22c55e, #10b981);color:#0a0f18;">
+                  ✍️ ACCEPT NATIONAL POST (DUAL ROLE)
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="respondToNationalOfferFromUI('${off.id}', 'decline')">
+                  DECLINE
+                </button>
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function respondToNationalOfferFromUI(offerId, action) {
+  post('/api/world4/national/respond', ref({ offerId, action })).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    alert(res.result?.message || 'Updated national team appointment!');
+    openNationalTeamModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error responding to offer.'));
+}
+
+function simulateNationalMatchFromUI() {
+  post('/api/world4/national/simulate', ref({})).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    const r = res.result;
+    alert(`🌍 MATCH COMPLETED!\n\n${(r.results || []).map(m => `${m.home} ${m.homeGoals} - ${m.awayGoals} ${m.away}`).join('\n')}`);
+    openNationalTeamModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error simulating round.'));
+}
+
+// =============================================================
+// FEATURE 3: SOCCER CHAMPS YOUTH SCOUTS & WONDERKID ACADEMY
+// =============================================================
+async function openYouthScoutWonderkidModal() {
+  let yState = null;
+  try {
+    const q = session?.roomCode ? `&room=${encodeURIComponent(session.roomCode)}` : (session?.soloId ? `&soloId=${encodeURIComponent(session.soloId)}` : '');
+    const res = await fetch('/api/world4/youth/state?club=' + encodeURIComponent(S.selectedClub) + q);
+    yState = await res.json();
+  } catch (err) {
+    return alert('Unable to load Youth Scout state.');
+  }
+
+  document.getElementById('youthScoutModal')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'youthScoutModal';
+
+  const hired = yState.hiredScouts || [];
+  const dossiers = yState.dossiers || [];
+  const academy = yState.academyPlayers || [];
+  const available = yState.availableScouts || [];
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="width:min(860px, 96vw);max-height:90vh;overflow-y:auto;padding:24px;background:#0d1829;border:2px solid #eab308;border-radius:18px;">
+      
+      <!-- Modal Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:46px;height:46px;border-radius:12px;background:rgba(234,179,8,0.2);border:1px solid #eab308;display:flex;align-items:center;justify-content:center;font-size:24px;">
+            ⭐
+          </div>
+          <div>
+            <div class="card-kicker" style="color:#facc15;">GLOBAL WONDERKID RECRUITMENT &amp; ACADEMY</div>
+            <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:0;">
+              Youth Scouts &amp; Wonderkids Network
+            </h2>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span style="font-size:13px;color:var(--text-muted);">Club Treasury: <b style="color:var(--accent-gold);font-size:16px;">₹${money(yState.cash)}M</b></span>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('youthScoutModal').remove()">✕ CLOSE</button>
+        </div>
+      </div>
+
+      <!-- Section 1: Hired Youth Scouts & Missions -->
+      <div style="margin-bottom:24px;">
+        <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <span>🔭 MASTER SCOUTING DIRECTORS</span>
+          <span class="pill" style="background:#eab308;color:#0a0f18;font-size:10px;font-weight:900;">${hired.length} HIRED</span>
+        </h3>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;">
+          ${hired.map(sc => `
+            <div style="background:rgba(15,23,42,0.8);border:1px solid rgba(234,179,8,0.3);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <span style="font-size:28px;">${sc.avatar || '🔭'}</span>
+                  <span class="pill" style="background:rgba(234,179,8,0.2);color:#fef08a;font-size:9.5px;font-weight:800;">${'⭐'.repeat(Math.round(sc.starRating))}</span>
+                </div>
+                <h4 style="font-family:var(--font-display);font-size:16px;font-weight:900;color:#fff;margin:6px 0 2px 0;">
+                  ${esc(sc.name)}
+                </h4>
+                <div style="font-size:11px;color:#facc15;font-weight:700;">${esc(sc.title)}</div>
+                <div style="font-size:11.5px;color:var(--text-muted);margin-top:6px;line-height:1.4;">
+                  ${esc(sc.specialty)}
+                </div>
+              </div>
+
+              <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+                <button class="btn btn-warning btn-sm" onclick="dispatchExpeditionFromUI('${sc.id}', '${sc.region}')" style="width:100%;font-weight:900;color:#0a0f18;background:linear-gradient(90deg, #f59e0b, #eab308);">
+                  🚀 DISPATCH TO ${sc.region.toUpperCase()} &rarr;
+                </button>
+              </div>
+            </div>
+          `).join('')}
+
+          <!-- Option to hire more scouts -->
+          ${available.filter(a => !hired.some(h => h.id === a.id)).map(sc => `
+            <div style="background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.15);border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;">
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+                  <span style="font-size:28px;">${sc.avatar}</span>
+                  <span class="pill" style="background:rgba(255,255,255,0.08);color:var(--text-muted);font-size:9.5px;">AVAILABLE FOR HIRE</span>
+                </div>
+                <h4 style="font-family:var(--font-display);font-size:16px;font-weight:900;color:#fff;margin:6px 0 2px 0;">
+                  ${esc(sc.name)}
+                </h4>
+                <div style="font-size:11px;color:var(--text-muted);">${esc(sc.title)}</div>
+                <div style="font-size:11.5px;color:var(--text-dim);margin-top:6px;">${esc(sc.specialty)}</div>
+              </div>
+
+              <div style="margin-top:14px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+                <button class="btn btn-secondary btn-sm" onclick="hireScoutFromUI('${sc.id}')" style="width:100%;font-weight:800;border-color:var(--accent-gold);color:var(--accent-gold);">
+                  ✍️ HIRE SCOUT (₹${sc.hireCost}M)
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Section 2: Discovered Wonderkid Dossiers -->
+      <div style="margin-bottom:24px;">
+        <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <span>🌟 RECENT WONDERKID DOSSIERS (5-STAR PROSPECTS)</span>
+          <span class="pill" style="background:#00f0ff;color:#0a0f18;font-size:10px;font-weight:900;">${dossiers.filter(d => d.status === 'scouted').length} DISCOVERED</span>
+        </h3>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
+          ${dossiers.filter(d => d.status === 'scouted').length === 0 ? `
+            <div style="text-align:center;padding:24px;background:rgba(0,0,0,0.3);border-radius:12px;color:var(--text-dim);">
+              No active uncommitted wonderkid dossiers. Click "DISPATCH" on a master scout above to hunt for teenage phenoms!
+            </div>
+          ` : dossiers.filter(d => d.status === 'scouted').map(wk => `
+            <div style="background:rgba(15,23,42,0.85);border:1px solid rgba(0,240,255,0.3);border-radius:14px;padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+              <div style="display:flex;align-items:center;gap:16px;">
+                <div style="width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg, #00f0ff, #3b82f6);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;color:#0a0f18;box-shadow:0 0 15px rgba(0,240,255,0.4);">
+                  ${wk.position}
+                </div>
+                <div>
+                  <div style="display:flex;align-items:center;gap:8px;">
+                    <h4 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin:0;">
+                      ${esc(wk.name)}
+                    </h4>
+                    <span class="pill" style="background:rgba(234,179,8,0.2);color:#fef08a;border:1px solid #eab308;font-weight:900;font-size:10px;">
+                      POTENTIAL: ${esc(wk.potentialRange)}
+                    </span>
+                    <span class="pill" style="background:rgba(0,240,255,0.15);color:#00f0ff;font-size:10px;">
+                      Age ${wk.age} · ${esc(wk.nationality)}
+                    </span>
+                  </div>
+                  <div style="font-size:12px;color:var(--accent-gold);margin-top:3px;font-weight:700;">
+                    "${esc(wk.moniker)}" · <span style="color:#94a3b8;font-weight:400;">Trait: ${esc(wk.trait)}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                    Scouted by: <b>${esc(wk.recommendedBy)}</b> in ${esc(wk.region)} · Current: <b>${wk.rating} OVR</b>
+                  </div>
+                </div>
+              </div>
+
+              <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                <div style="text-align:right;margin-right:8px;">
+                  <div style="font-size:10.5px;color:var(--text-muted);">SIGNING FEE</div>
+                  <div style="font-size:15px;font-weight:900;color:var(--accent-gold);">₹${wk.signingFee}M</div>
+                </div>
+                <button class="btn btn-primary btn-sm" onclick="signWonderkidFromUI('${wk.id}', 'first_team')" style="font-weight:900;background:linear-gradient(90deg, #00f0ff, #3b82f6);color:#0a0f18;">
+                  ⚡ SIGN TO FIRST TEAM
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="signWonderkidFromUI('${wk.id}', 'academy')" style="font-weight:800;border-color:#eab308;color:#fef08a;">
+                  🏫 ENROLL IN ACADEMY
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Section 3: Club Youth Academy Enrolled Wonderkids -->
+      <div>
+        <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+          <span>🏫 ENROLLED ACADEMY WONDERKIDS</span>
+          <span class="pill" style="background:#22c55e;color:#0a0f18;font-size:10px;font-weight:900;">${academy.length} TRAINING</span>
+        </h3>
+
+        ${academy.length === 0 ? `
+          <div style="text-align:center;padding:20px;background:rgba(0,0,0,0.25);border-radius:12px;color:var(--text-dim);font-size:13px;">
+            No wonderkids currently in the academy. Sign scouted talents to nurture them!
+          </div>
+        ` : `
+          <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:12px;">
+            ${academy.map(ap => `
+              <div style="background:rgba(15,23,42,0.7);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <b style="color:#fff;font-size:14px;">${esc(ap.name)}</b>
+                    <span class="pill" style="background:rgba(34,197,94,0.2);color:#4ade80;font-size:9px;">${ap.position}</span>
+                  </div>
+                  <div style="font-size:11px;color:var(--accent-gold);margin-top:2px;">${esc(ap.moniker)}</div>
+                  <div style="font-size:11px;color:var(--text-muted);margin-top:2px;">
+                    Rating: <b>${ap.rating} OVR</b> · Ceiling: <b style="color:#4ade80;">${esc(ap.potentialRange)}</b>
+                  </div>
+                </div>
+                <button class="btn btn-success btn-xs" onclick="promoteAcademyWonderkidFromUI('${ap.id}')" style="font-weight:900;">
+                  🎓 PROMOTE &rarr;
+                </button>
+              </div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+}
+
+function hireScoutFromUI(scoutId) {
+  post('/api/world4/youth/hire-scout', ref({ club: S.selectedClub, scoutId })).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    alert(res.result?.message || 'Scout appointed!');
+    openYouthScoutWonderkidModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error hiring scout.'));
+}
+
+function dispatchExpeditionFromUI(scoutId, region) {
+  post('/api/world4/youth/dispatch', ref({ club: S.selectedClub, scoutId, region })).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    alert(res.result?.message || 'Expedition completed!');
+    openYouthScoutWonderkidModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error dispatching expedition.'));
+}
+
+function signWonderkidFromUI(wonderkidId, destination) {
+  post('/api/world4/youth/sign', ref({ club: S.selectedClub, wonderkidId, destination })).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    alert(res.result?.message || 'Wonderkid signed!');
+    openYouthScoutWonderkidModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error signing wonderkid.'));
+}
+
+function promoteAcademyWonderkidFromUI(academyPlayerId) {
+  post('/api/world4/youth/promote', ref({ club: S.selectedClub, academyPlayerId })).then(res => {
+    if (res.error) return alert(res.error);
+    S = res.state || S;
+    alert(res.result?.message || 'Promoted to first team squad!');
+    openYouthScoutWonderkidModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error promoting player.'));
+}
+
 function resumeSession() {
   if (!session?.soloId && !session?.roomCode) return modeScreen();
   refresh();
@@ -3692,133 +4917,117 @@ function renderGame() {
   }
 
   const userPlayers = S.market.filter(p => p.ownerClub === c.name);
-  const isUnderperforming = c.morale < 70 || (c.stats && (c.stats.losses || 0) > (c.stats.wins || 0));
   const b = calculateClientBudget(c);
+  const boardConfidence = S.boardStatus?.confidence || (c.boardConfidence || (S.managerCareer && S.managerCareer.boardConfidence) || 85);
+  const pendingApproaches = (S.managerCareer && S.managerCareer.approaches) ? S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled') : [];
+  const pendingOffers = (S.managerCareer && S.managerCareer.jobOffers) || [];
+  const natJob = S.nationalManagement?.currentJob;
+  const pendingInboundBids = (S.incomingOffers || []).filter(o => o.status === 'pending');
 
   app.innerHTML = `
-    <!-- Top Global HUD -->
-    <header class="hud-bar">
-      <div class="club-brand">
-        <div class="crest-badge" style="background:${c.jersey?.home || '#0b2545'};border-color:${c.jersey?.away || '#fff'};display:flex;align-items:center;justify-content:center;padding:2px;">
-          ${renderCrest(c.crest, 26)}
+    <!-- Top Global HUD (World Soccer Champs Tidy Modern Header) -->
+    <header class="hud-bar" style="padding:10px 24px;background:#070d18;border-bottom:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between;gap:16px;">
+      <div class="club-brand" style="display:flex;align-items:center;gap:12px;">
+        <div class="crest-badge" style="width:40px;height:40px;border-radius:10px;background:${c.jersey?.home || '#0b2545'};border:1.5px solid rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;padding:2px;flex-shrink:0;">
+          ${renderCrest(c.crest, 24)}
         </div>
         <div class="club-title">
           <div style="display:flex;align-items:center;gap:8px;">
-            <h1 style="margin:0;">${esc(c.name)}</h1>
+            <h1 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;line-height:1.2;">${esc(c.name)}</h1>
             ${userRole === 'owner' ? `
-              <button class="btn btn-secondary btn-xs" onclick="startOwnershipCinematic(true)" title="Replay Ownership Handover Story" style="padding:2px 8px;font-size:10px;opacity:0.85;display:inline-flex;align-items:center;gap:4px;">
-                ${svgIcon('film', 12)} <span>STORY</span>
-              </button>
+              <button class="btn btn-secondary btn-xs" onclick="startOwnershipCinematic(true)" style="padding:2px 7px;font-size:9.5px;opacity:0.85;">STORY</button>
             ` : `
-              <button class="btn btn-secondary btn-xs" onclick="openManagerOfficeModal()" title="View Manager Dossier & Reputation" style="padding:2px 8px;font-size:10px;opacity:0.85;display:inline-flex;align-items:center;gap:4px;border-color:rgba(42,139,242,0.4);color:#70b5ff;">
-                👔 <span>OFFICE</span>
-              </button>
+              <button class="btn btn-secondary btn-xs" onclick="openManagerOfficeModal()" style="padding:2px 7px;font-size:9.5px;border-color:rgba(42,139,242,0.4);color:#70b5ff;">OFFICE</button>
             `}
           </div>
-          <div class="club-meta" style="margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
-            <span class="pill" style="cursor:pointer;${getRoleBadgeStyle()}" onclick="openRoleSelectionModal()" title="Click to view or switch your career role (Manager vs Club Owner)">
-              ${getRoleBadgeContent()} ⚙️
-            </span>
-            <span class="pill pill-div">Div ${c.division}</span>
-            <span class="pill pill-season">Season ${S.season}</span>
-            <span class="pill pill-manager">${esc(c.manager ? c.manager.name : 'No Manager')}</span>
-            ${userRole === 'manager' ? `
-              <span class="pill" style="background:rgba(42,139,242,0.22);color:#70b5ff;border:1px solid rgba(42,139,242,0.5);cursor:pointer;font-weight:800;" onclick="openManagerOfficeModal()" title="Click to view Manager Profile, Reputation & Higher Division Job Offers">
-                ⭐ Rep: ${(S.managerCareer && S.managerCareer.reputation) ? S.managerCareer.reputation : (c.manager?.reputation || 28)}/100 · ${(S.managerCareer && S.managerCareer.tier) ? S.managerCareer.tier : 'Tactician'}
-              </span>
-              <span class="pill" style="background:rgba(34,197,94,0.18);color:#86efac;border:1px solid rgba(34,197,94,0.4);" title="Board of Directors Confidence">
-                🟢 Board: ${(S.managerCareer && S.managerCareer.boardConfidence) ? S.managerCareer.boardConfidence : (S.boardStatus?.confidence || 85)}%
-              </span>
-              ${(S.managerCareer && S.managerCareer.approaches && S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length > 0) ? `
-                <span class="pill" style="background:linear-gradient(90deg, #ef4444, #f59e0b);color:#fff;font-weight:900;cursor:pointer;animation:pulseBorder 2s infinite;box-shadow:0 0 10px rgba(239,68,68,0.6);" onclick="openManagerApproachesModal()" title="Other clubs are trying to hire you as their manager! Click to review approaches.">
-                  🚨 ${S.managerCareer.approaches.filter(a => a.status === 'pending' || a.status === 'stalled').length} CLUBS APPROACHING YOU!
-                </span>
-              ` : ((S.managerCareer && S.managerCareer.jobOffers && S.managerCareer.jobOffers.length > 0) ? `
-                <span class="pill" style="background:linear-gradient(90deg, #f59e0b, #ec4899);color:#0a0f18;font-weight:900;cursor:pointer;animation:pulseBorder 2s infinite;" onclick="openManagerApproachesModal()" title="Review club inquiries & job offers">
-                  💼 ${S.managerCareer.jobOffers.length} JOB OFFERS
-                </span>
-              ` : '')}
+          <!-- Clean Typographic Metadata (Zero-Pill Discipline) -->
+          <div style="font-size:11.5px;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap;">
+            <span>Division ${c.division}</span>
+            <span aria-hidden="true" style="color:var(--text-dim);">·</span>
+            <span>Season ${S.season}</span>
+            <span aria-hidden="true" style="color:var(--text-dim);">·</span>
+            <span>${esc(c.manager ? c.manager.name : 'Tactician')}</span>
+            <span aria-hidden="true" style="color:var(--text-dim);">·</span>
+            <span style="color:${boardConfidence >= 75 ? '#4ade80' : '#f59e0b'};font-weight:700;">Board: ${boardConfidence}%</span>
+            ${natJob ? `
+              <span aria-hidden="true" style="color:var(--text-dim);">·</span>
+              <span style="color:#60a5fa;cursor:pointer;font-weight:700;" onclick="openNationalTeamModal()">${natJob.flag} ${esc(natJob.country)}</span>
             ` : ''}
-            ${c.rivals?.same ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal('same')" title="${esc(c.rivals.same.derbyName || 'Rivalry')}">⚔️ Div ${c.division} Rival: ${esc(c.rivals.same.name)}</span>` : (c.rivalName ? `<span class="pill" style="background:rgba(239,68,68,0.18);color:#fca5a5;border:1px solid rgba(239,68,68,0.4);cursor:pointer;" onclick="openRivalryDossierModal()">⚔️ Rival: ${esc(c.rivalName)}</span>` : '')}
-            ${c.rivals?.higher ? `<span class="pill" style="background:rgba(234,179,8,0.18);color:#fef08a;border:1px solid rgba(234,179,8,0.4);cursor:pointer;" onclick="openRivalryDossierModal('higher')" title="Top-flight Goliath to shock in FA Cup!">👑 Div ${c.rivals.higher.division} Goliath: ${esc(c.rivals.higher.name)}</span>` : ''}
-            ${c.rivals?.lower ? `<span class="pill" style="background:rgba(56,189,248,0.18);color:#bae6fd;border:1px solid rgba(56,189,248,0.4);cursor:pointer;" onclick="openRivalryDossierModal('lower')" title="Grassroots Challenger in regional cups">🛡️ Div ${c.rivals.lower.division} Rival: ${esc(c.rivals.lower.name)}</span>` : ''}
           </div>
         </div>
       </div>
 
-      <div class="hud-metrics">
-        <!-- Persistent Live Budget Tracker Component with Real-Time Financial Health -->
-        ${renderHeaderBudgetTrackerHtml(c, b)}
-
-        <div class="hud-stat">
-          <span class="label">Stadium</span>
-          <span class="value">${money(c.stadium?.capacity || 20000)}</span>
-        </div>
-        <div class="hud-stat">
-          <span class="label">Popularity</span>
-          <span class="value" style="color:var(--accent-gold);">⭐ ${c.popularity || 60}%</span>
-        </div>
-        <div class="hud-stat">
-          <span class="label">Fan Satisfaction</span>
-          <span class="value" style="color:${(c.fanSatisfaction || 75) < 65 ? '#ff4757' : 'var(--accent-neon)'};">❤️ ${c.fanSatisfaction || 75}%</span>
-        </div>
-        <div class="hud-stat">
-          <span class="label">Squad</span>
-          <span class="value">${userPlayers.length} Men</span>
-        </div>
-        <div class="hud-stat">
-          <span class="label">Morale</span>
-          <span class="value" style="color:${c.morale < 65 ? '#ff4757' : 'var(--accent-gold)'};">${c.morale}%</span>
-        </div>
-      </div>
-
+      <!-- Quick Action Alert Badges (Only shown when pending notifications exist) -->
       <div style="display:flex;align-items:center;gap:8px;">
-        ${userRole === 'manager' ? `
-          <button class="btn btn-sm" onclick="openPressConferenceModal('general')" style="display:inline-flex;align-items:center;gap:6px;background:rgba(56,189,248,0.18);border:1px solid rgba(56,189,248,0.5);color:#7dd3fc;font-weight:800;" title="Call an Official Press Meeting / Media Briefing">
-            🎙️ <span>PRESS MEETING</span>
+        ${pendingApproaches.length > 0 ? `
+          <button class="btn btn-xs" onclick="openManagerApproachesModal()" style="background:#ef4444;color:#fff;font-weight:900;padding:4px 10px;border-radius:6px;animation:pulseBorder 2s infinite;border:none;">
+            🚨 ${pendingApproaches.length} CLUBS APPROACHING!
           </button>
-          <button class="btn btn-sm" onclick="openManagerRoleNegotiationModal('${esc(c.name)}', false)" style="display:inline-flex;align-items:center;gap:6px;background:rgba(168,85,247,0.18);border:1px solid rgba(168,85,247,0.5);color:#d8b4fe;font-weight:800;" title="Negotiate your manager role, contract salary, and squad war chest with the Board">
-            💼 <span>ROLE NEGOTIATION</span>
+        ` : (pendingOffers.length > 0 ? `
+          <button class="btn btn-xs" onclick="openManagerApproachesModal()" style="background:#f59e0b;color:#0a0f18;font-weight:900;padding:4px 10px;border-radius:6px;border:none;">
+            💼 ${pendingOffers.length} JOB OFFERS
+          </button>
+        ` : '')}
+
+        ${pendingInboundBids.length > 0 ? `
+          <button class="btn btn-xs" onclick="openIncomingOffersModal()" style="background:rgba(239,68,68,0.2);border:1px solid #ef4444;color:#fca5a5;font-weight:800;padding:4px 8px;border-radius:6px;">
+            💼 ${pendingInboundBids.length} BIDS
           </button>
         ` : ''}
-        <button id="hudIncomingBidsBtn" class="btn btn-sm" onclick="openIncomingOffersModal()" style="display:inline-flex;align-items:center;gap:6px;${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? 'background:rgba(239,68,68,0.25);border:1px solid #ef4444;color:#fca5a5;font-weight:800;animation:pulseBorder 2s infinite;' : 'background:rgba(255,255,255,0.06);border:1px solid var(--border-subtle);color:var(--text-muted);'}" title="Review & negotiate incoming transfer inquiries from AI clubs">
-          💼 <span>${userRole === 'manager' ? 'TRANSFER BIDS' : 'BIDS'} ${S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0 ? `(${S.incomingOffers.filter(o => o.status === 'pending').length})` : ''}</span>
-        </button>
-        <button id="hudSaveBtn" class="btn btn-sm" onclick="saveGame(true)" style="display:inline-flex;align-items:center;gap:6px;background:rgba(212,175,55,0.18);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:800;" title="Save entire club career to persistent storage">
-          💾 <span>SAVE GAME</span>
-        </button>
-        <button id="hudKickoffBtn" class="btn btn-success btn-sm" onclick="switchTab('matchday')" style="display:inline-flex;align-items:center;gap:6px;font-weight:800;">
-          ${svgIcon('ball', 15)} <span>MATCHDAY CENTER</span>
-        </button>
-        <button class="btn btn-secondary btn-sm" onclick="modeScreen()">EXIT</button>
+      </div>
+
+      <!-- Clean Unboxed Financial & Squad Stats (World Soccer Champs Tidy Metrics) -->
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div style="text-align:right;">
+          <div style="font-size:9.5px;font-weight:800;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;">TRANSFER BUDGET</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:var(--accent-neon);">₹${money(b.transferRemaining || c.cash || 45)}M</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9.5px;font-weight:800;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;">SQUAD</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:#fff;">${userPlayers.length} Men</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:9.5px;font-weight:800;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;">MORALE</div>
+          <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:${c.morale >= 70 ? 'var(--accent-neon)' : '#f59e0b'};">${c.morale}%</div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:6px;margin-left:6px;">
+          <button class="btn btn-sm" onclick="saveGame(true)" style="background:rgba(212,175,55,0.15);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:800;padding:6px 12px;border-radius:8px;" title="Save Career">
+            💾 SAVE
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="openRoleSelectionModal()" style="font-weight:800;padding:6px 10px;border-radius:8px;" title="Career Role Options">
+            ⚙️ ROLE
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="modeScreen()" style="padding:6px 10px;border-radius:8px;">
+            ✕
+          </button>
+        </div>
       </div>
     </header>
 
-    <!-- Consolidated 6-Tab Clean Navigation Bar -->
-    <nav class="nav-tabs">
+    <!-- Consolidated 7-Tab Navigation Bar (Soccer Champs Style) -->
+    <nav class="nav-tabs" style="background:#091220;border-bottom:1px solid rgba(255,255,255,0.08);padding:0 24px;display:flex;gap:4px;">
       <button class="tab-btn ${currentTab==='matchday'?'active':''}" onclick="switchTab('matchday')">
-        ${svgIcon('ball', 15)} <span>⚽ MATCHDAY</span>
-      </button>
-      <button class="tab-btn ${currentTab==='home'?'active':''}" onclick="switchTab('home')">
-        ${svgIcon('standings', 14)} <span>📊 DASHBOARD</span>
+        ⚽ <span>MATCHDAY</span>
       </button>
       <button class="tab-btn ${currentTab==='squad'?'active':''}" onclick="switchTab('squad')">
-        ${svgIcon('pitch', 14)} <span>🟢 SQUAD & TACTICS</span>
+        🟢 <span>SQUAD & TACTICS</span>
+      </button>
+      <button class="tab-btn ${currentTab==='competitions'?'active':''}" onclick="switchTab('competitions')">
+        📊 <span>LEAGUE & CUPS</span>
       </button>
       <button class="tab-btn ${currentTab==='transfers'?'active':''}" onclick="switchTab('transfers')">
-        ${svgIcon('transfers', 14)} <span>💼 TRANSFERS ${(S.incomingOffers && S.incomingOffers.filter(o => o.status === 'pending').length > 0) ? `<span style=\"background:#ef4444;color:#fff;font-size:9.5px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:3px;\">${S.incomingOffers.filter(o => o.status === 'pending').length}</span>` : ''}</span>
+        💼 <span>TRANSFERS</span>
       </button>
-      <button class="tab-btn ${currentTab==='competitions'?'active':''}" onclick="switchTab('competitions')" style="${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? 'border-color:var(--accent-gold);color:var(--accent-gold);' : ''}">
-        ${svgIcon('trophy', 14)} <span>🏆 COMPETITIONS ${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? '<span style=\"background:var(--accent-gold);color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;\">CUP LIVE</span>' : ''}</span>
+      <button class="tab-btn" onclick="openYouthScoutWonderkidModal()" style="color:#fef08a;">
+        ⭐ <span>WONDERKIDS</span>
+      </button>
+      <button class="tab-btn" onclick="openNationalTeamModal()" style="color:#93c5fd;">
+        🌍 <span>NATIONAL TEAM</span>
       </button>
       <button class="tab-btn ${currentTab==='club'?'active':''}" onclick="switchTab('club')">
-        ${svgIcon('stadium', 14)} <span>🏟️ CLUB & FINANCE</span>
+        🏟️ <span>CLUB & FINANCE</span>
       </button>
-      <div style="margin-left:auto;display:inline-flex;align-items:center;gap:6px;">
-        <button class="btn btn-sm" onclick="openRoleSelectionModal()" style="border-radius:20px;padding:6px 14px;font-weight:800;font-size:11.5px;display:inline-flex;align-items:center;gap:6px;${getRoleBadgeStyle()}" title="Toggle between Manager Mode and Club Owner Mode">
-          ${getRoleBadgeContent()} ⚙️
-        </button>
-      </div>
     </nav>
 
     <!-- Main Content Body -->
@@ -3829,6 +5038,14 @@ function renderGame() {
 }
 
 function switchTab(t, sub = null) {
+  if (t === 'wonderkids' || t === 'youth_academy' || t === 'academy') {
+    openYouthScoutWonderkidModal();
+    return;
+  }
+  if (t === 'national' || t === 'international') {
+    openNationalTeamModal();
+    return;
+  }
   if (['pitch', 'squad', 'setpieces', 'chemistry', 'youth', 'roster', 'tactics', 'medical', 'loans'].includes(t)) {
     currentTab = 'squad';
     subTabs.squad = t === 'squad' ? 'roster' : t;
@@ -4543,220 +5760,248 @@ function renderMatchday(container) {
     return;
   }
 
-  // Pre-Match Fixture Center View
+  // Pre-Match Fixture Center View (World Soccer Champs Tidy Layout)
+  const myClub = S.clubs.find(x => x.name === S.selectedClub);
+  const curDiv = myClub.division;
+  const divisionClubs = (S.clubs || [])
+    .filter(c => c.division === curDiv)
+    .sort((a, b) => {
+      const ptsA = (a.points != null ? a.points : (a.stats?.points != null ? a.stats.points : 0));
+      const ptsB = (b.points != null ? b.points : (b.stats?.points != null ? b.stats.points : 0));
+      if (ptsB !== ptsA) return ptsB - ptsA;
+      const gdA = ((a.gf || a.stats?.gf || 0) - (a.ga || a.stats?.ga || 0));
+      const gdB = ((b.gf || b.stats?.gf || 0) - (b.ga || b.stats?.ga || 0));
+      return gdB - gdA;
+    });
+
+  const userRank = divisionClubs.findIndex(c => c.name === myClub.name) + 1;
+  const standingsTop = divisionClubs.slice(0, 6);
+
   container.innerHTML = `
     <!-- Top Matchday Sub-Navigation -->
-    <div class="subnav-pills" style="margin-bottom:18px;">
-      <button class="subnav-pill ${subTabs.matchday === 'fixture' ? 'active' : ''}" onclick="subTabs.matchday='fixture'; renderMatchday(document.getElementById('gameContent'))">
-        ⚽ NEXT MATCH FIXTURE
-      </button>
-      <button class="subnav-pill ${subTabs.matchday === 'global_cup' ? 'active' : ''}" onclick="subTabs.matchday='global_cup'; renderMatchday(document.getElementById('gameContent'))">
-        🌍 GLOBAL CLUB WORLD CUP ${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? '<span style="background:var(--accent-gold);color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;">LIVE</span>' : ''}
-      </button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+      <div class="subnav-pills" style="margin:0;">
+        <button class="subnav-pill ${subTabs.matchday === 'fixture' ? 'active' : ''}" onclick="subTabs.matchday='fixture'; renderMatchday(document.getElementById('gameContent'))">
+          ⚽ NEXT MATCH FIXTURE
+        </button>
+        <button class="subnav-pill ${subTabs.matchday === 'global_cup' ? 'active' : ''}" onclick="subTabs.matchday='global_cup'; renderMatchday(document.getElementById('gameContent'))">
+          🌍 GLOBAL CLUB WORLD CUP ${(S.season % 2 === 0 || (S.globalTournament && S.globalTournament.status !== 'completed')) ? '<span style="background:var(--accent-gold);color:#0a0f18;font-size:9px;padding:1px 5px;border-radius:4px;font-weight:900;margin-left:4px;">LIVE</span>' : ''}
+        </button>
+      </div>
+
+      <div style="font-size:12px;color:var(--text-muted);display:flex;align-items:center;gap:8px;">
+        <span>League Rank: <b style="color:var(--accent-neon);">#${userRank || 1}</b> in Div ${curDiv}</span>
+        <span aria-hidden="true" style="color:var(--text-dim);">·</span>
+        <span>Board Confidence: <b style="color:#4ade80;">${S.boardStatus?.confidence || myClub.boardConfidence || 85}%</b></span>
+      </div>
     </div>
 
-    <!-- Executive Board Status & Season Objectives Card -->
-    <div class="game-card" style="margin-bottom:16px;background:linear-gradient(135deg, rgba(15,23,42,0.95), rgba(11,26,45,0.95));border:1px solid rgba(255,255,255,0.08);">
-      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:42px;height:42px;border-radius:12px;background:rgba(245,158,11,0.15);border:1px solid rgba(245,158,11,0.4);display:flex;align-items:center;justify-content:center;font-size:22px;">
-            👔
-          </div>
+    <!-- Matchday Hero Card (World Soccer Champs Centerpiece) -->
+    <div class="matchday-hero" style="border-color:${fixture.compBadgeColor};background:linear-gradient(135deg, rgba(13,23,40,0.95), rgba(7,13,24,0.98));box-shadow:0 12px 35px rgba(0,0,0,0.6);margin-bottom:20px;border-radius:18px;padding:20px;">
+      
+      <!-- Competition Banner Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.08);flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:24px;">${fixture.compIcon}</span>
           <div>
-            <div style="font-size:10px;font-weight:900;color:var(--accent-gold);text-transform:uppercase;letter-spacing:0.04em;">EXECUTIVE BOARDROOM STATUS</div>
-            <div style="font-family:var(--font-display);font-size:16px;font-weight:900;color:#fff;">
-              Board Approval: <span style="color:var(--accent-neon);">${S.boardStatus?.confidence || user.boardConfidence || 82}%</span>
-              <span class="pill" style="font-size:10px;margin-left:6px;background:rgba(34,197,94,0.15);color:#4ade80;border:1px solid rgba(34,197,94,0.3);">
-                ${esc(S.boardStatus?.stance || 'Delighted & Supportive')}
-              </span>
+            <div style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;line-height:1.2;">
+              ${esc(fixture.compLabel)}
+            </div>
+            <div style="font-size:11px;color:${fixture.compBadgeColor};font-weight:800;text-transform:uppercase;letter-spacing:0.5px;">
+              ${esc(fixture.compStage)} · Round ${S.matchday || 1}
             </div>
           </div>
         </div>
 
-        <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap;">
-          <div style="font-size:12px;color:var(--text-muted);">
-            Season Target: <b style="color:#fff;">${user.division === 1 ? 'Top 4 Finish' : `Promotion to Div ${user.division - 1}`}</b>
-          </div>
-          <div style="font-size:12px;color:var(--text-muted);">
-            FFP Status: <b style="color:#4ade80;">Compliant (Grade A)</b>
-          </div>
-          <button class="btn btn-secondary btn-xs" onclick="switchTab('club', 'manager')" style="border-color:rgba(255,255,255,0.15);">
-            CONVENE BOARD &rarr;
-          </button>
+        <div style="text-align:right;">
+          <span class="pill" style="background:${fixture.compBadgeColor}25;border:1px solid ${fixture.compBadgeColor};color:${fixture.compBadgeColor};font-weight:800;font-size:11px;padding:3px 10px;">
+            ${esc(fixture.stakes)}
+          </span>
         </div>
       </div>
-    </div>
 
-    <!-- Crystal Clear Match Type Banner (Requested by user) -->
-    <div style="background:${fixture.compBadgeColor}15;border:2px solid ${fixture.compBadgeColor};padding:14px 20px;border-radius:14px;margin-bottom:18px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-      <div style="display:flex;align-items:center;gap:14px;">
-        <span style="font-size:32px;">${fixture.compIcon}</span>
-        <div>
-          <div style="font-size:10.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;color:${fixture.compBadgeColor};">
-            MATCH COMPETITION TYPE:
-          </div>
-          <div style="font-family:var(--font-display);font-size:22px;font-weight:900;color:#fff;letter-spacing:0.5px;">
-            ${esc(fixture.compLabel)}
-          </div>
-        </div>
-      </div>
-      <div style="text-align:right;">
-        <span class="pill" style="background:${fixture.compBadgeColor}30;border:1px solid ${fixture.compBadgeColor};color:${fixture.compBadgeColor};font-weight:800;font-size:12px;padding:4px 12px;">
-          ${esc(fixture.compStage)}
-        </span>
-        <div style="font-size:11.5px;color:var(--text-muted);margin-top:4px;font-weight:600;">
-          ${esc(fixture.stakes)}
-        </div>
-      </div>
-    </div>
-
-    <!-- Matchday Hero Card -->
-    <div class="matchday-hero" style="border-color:${fixture.compBadgeColor};">
-      <!-- Head to Head Cards -->
-      <div class="matchup-grid">
+      <!-- Head to Head Matchup Grid -->
+      <div class="matchup-grid" style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;margin:12px 0;">
+        
         <!-- Home Team -->
-        <div class="club-match-card" style="${userHome ? 'border-color:var(--accent-blue);background:rgba(18,130,232,0.06);' : ''}">
-          <div class="crest-badge" style="width:64px;height:64px;margin:0 auto 12px;background:${userHome ? (fixture.userTeam.jersey?.home || '#0b2545') : (opp.jersey?.home || '#1b263b')};display:flex;align-items:center;justify-content:center;">
-            ${renderCrest(userHome ? (fixture.userTeam.crest || fixture.userTeam.name) : (opp.crest || opp.name), 46)}
+        <div class="club-match-card" style="text-align:center;padding:16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);${userHome ? 'border-color:var(--accent-blue);background:rgba(42,139,242,0.08);' : ''}">
+          <div class="crest-badge" style="width:60px;height:60px;margin:0 auto 10px;background:${userHome ? (fixture.userTeam.jersey?.home || '#0b2545') : (opp.jersey?.home || '#1b263b')};border-radius:14px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.2);">
+            ${renderCrest(userHome ? (fixture.userTeam.crest || fixture.userTeam.name) : (opp.crest || opp.name), 42)}
           </div>
-          <h3 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin-bottom:4px;">${esc(fixture.homeTeam)}</h3>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:3px;">${esc(fixture.homeTeam)}</h3>
           <div style="font-size:12px;color:var(--text-muted);">
             Division ${userHome ? fixture.userTeam.division : opp.division} · <b style="color:var(--accent-gold);">${userHome ? fixture.userTeam.rating : opp.rating} OVR</b>
           </div>
           ${userHome ? `
-            <div style="margin-top:10px;font-size:11px;color:var(--accent-neon);font-weight:800;background:rgba(0,240,255,0.1);padding:3px 8px;border-radius:6px;display:inline-block;">
+            <div style="margin-top:8px;font-size:10.5px;color:var(--accent-neon);font-weight:800;">
               🛡️ HOME ADVANTAGE (+5% Morale)
             </div>
           ` : ''}
         </div>
 
-        <!-- Center VS & Venue -->
-        <div class="vs-center-badge">
-          <div style="font-family:var(--font-display);font-size:32px;font-weight:900;color:var(--accent-gold);margin-bottom:4px;">VS</div>
-          <div style="font-size:12px;font-weight:700;color:#fff;">📍 ${esc(fixture.stadium)}</div>
-          <div style="font-size:11px;color:var(--text-dim);margin-top:3px;">Atmospheric Evening · Dry Pitch</div>
+        <!-- Center VS Badge & Venue -->
+        <div class="vs-center-badge" style="text-align:center;padding:0 12px;">
+          <div style="font-family:var(--font-display);font-size:32px;font-weight:900;color:var(--accent-gold);margin-bottom:4px;letter-spacing:1px;">VS</div>
+          <div style="font-size:12px;font-weight:800;color:#fff;">📍 ${esc(fixture.stadium)}</div>
+          <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Atmospheric Evening · Dry Pitch</div>
           <div style="font-size:11px;color:var(--text-dim);margin-top:2px;">Est. Attendance: <b>${money((user.stadium?.capacity || 20000) * 0.92)} fans</b></div>
         </div>
 
         <!-- Away Team -->
-        <div class="club-match-card" style="${!userHome ? 'border-color:var(--accent-blue);background:rgba(18,130,232,0.06);' : ''}">
-          <div class="crest-badge" style="width:64px;height:64px;margin:0 auto 12px;background:${!userHome ? (fixture.userTeam.jersey?.home || '#0b2545') : (opp.jersey?.home || '#1b263b')};display:flex;align-items:center;justify-content:center;">
-            ${renderCrest(!userHome ? (fixture.userTeam.crest || fixture.userTeam.name) : (opp.crest || opp.name), 46)}
+        <div class="club-match-card" style="text-align:center;padding:16px;border-radius:14px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);${!userHome ? 'border-color:var(--accent-blue);background:rgba(42,139,242,0.08);' : ''}">
+          <div class="crest-badge" style="width:60px;height:60px;margin:0 auto 10px;background:${!userHome ? (fixture.userTeam.jersey?.home || '#0b2545') : (opp.jersey?.home || '#1b263b')};border-radius:14px;display:flex;align-items:center;justify-content:center;border:2px solid rgba(255,255,255,0.2);">
+            ${renderCrest(!userHome ? (fixture.userTeam.crest || fixture.userTeam.name) : (opp.crest || opp.name), 42)}
           </div>
-          <h3 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin-bottom:4px;">${esc(fixture.awayTeam)}</h3>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin-bottom:3px;">${esc(fixture.awayTeam)}</h3>
           <div style="font-size:12px;color:var(--text-muted);">
             Division ${!userHome ? fixture.userTeam.division : opp.division} · <b style="color:var(--accent-gold);">${!userHome ? fixture.userTeam.rating : opp.rating} OVR</b>
           </div>
           ${opp.keyPlayer ? `
-            <div style="margin-top:10px;font-size:11px;color:#fca5a5;font-weight:800;background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);padding:3px 8px;border-radius:6px;display:inline-block;">
+            <div style="margin-top:8px;font-size:10.5px;color:#fca5a5;font-weight:800;">
               ⚠️ Key Threat: ${esc(opp.keyPlayer.name)} (${opp.keyPlayer.rating} ${esc(opp.keyPlayer.position)})
             </div>
           ` : ''}
         </div>
       </div>
 
-      <!-- Pre-Match Tactical Instructions -->
-      <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 18px;margin-top:18px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-          <div>
-            <div style="font-size:11px;font-weight:800;color:var(--accent-gold);text-transform:uppercase;">STARTING TACTICAL MENTALITY</div>
-            <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Select team tactical approach for this fixture:</div>
-          </div>
-          <div class="tactical-mentality-bar" style="margin:0;">
-            <button id="mentality_park_bus" class="mentality-btn park_bus ${clientSelectedMentality==='park_bus'?'active park_bus':''}" onclick="selectStartingMentality('park_bus')">
-              🛡️ Park the Bus
-            </button>
-            <button id="mentality_balanced" class="mentality-btn ${clientSelectedMentality==='balanced'?'active':''}" onclick="selectStartingMentality('balanced')">
-              ⚖️ Balanced
-            </button>
-            <button id="mentality_counter" class="mentality-btn counter ${clientSelectedMentality==='counter'?'active counter':''}" onclick="selectStartingMentality('counter')">
-              ⚡ Counter-Attack
-            </button>
-            <button id="mentality_attacking" class="mentality-btn attacking ${clientSelectedMentality==='attacking'?'active attacking':''}" onclick="selectStartingMentality('attacking')">
-              🔥 All-Out Attack
-            </button>
-          </div>
+      <!-- Pre-Match Tactical Mentality -->
+      <div style="background:rgba(0,0,0,0.3);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:10px 16px;margin:16px 0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+        <div style="font-size:11.5px;color:var(--text-muted);">
+          <b style="color:var(--accent-gold);">STARTING TACTICAL MENTALITY:</b> Choose approach before kickoff:
+        </div>
+        <div class="tactical-mentality-bar" style="margin:0;">
+          <button id="mentality_park_bus" class="mentality-btn park_bus ${clientSelectedMentality==='park_bus'?'active park_bus':''}" onclick="selectStartingMentality('park_bus')">
+            🛡️ Park Bus
+          </button>
+          <button id="mentality_balanced" class="mentality-btn ${clientSelectedMentality==='balanced'?'active':''}" onclick="selectStartingMentality('balanced')">
+            ⚖️ Balanced
+          </button>
+          <button id="mentality_counter" class="mentality-btn counter ${clientSelectedMentality==='counter'?'active counter':''}" onclick="selectStartingMentality('counter')">
+            ⚡ Counter
+          </button>
+          <button id="mentality_attacking" class="mentality-btn attacking ${clientSelectedMentality==='attacking'?'active attacking':''}" onclick="selectStartingMentality('attacking')">
+            🔥 Attack
+          </button>
         </div>
       </div>
 
-      <!-- Action Buttons -->
-      <div style="display:flex;gap:12px;justify-content:center;margin-top:20px;flex-wrap:wrap;">
-        <button id="kickoffBtn" class="btn btn-success" onclick="simulateMatch(false)" style="font-size:15px;padding:14px 32px;box-shadow:0 6px 20px rgba(0,210,135,0.4);">
-          ⚡ KICK OFF FIXTURE
+      <!-- Primary Action Buttons (World Soccer Champs Hero Arcade Mode) -->
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="startSoccerChampsKeyMoments(false)" style="font-size:15px;padding:14px 28px;background:linear-gradient(135deg, #00f0ff, #3b82f6);color:#0a0f18;font-weight:900;border:none;box-shadow:0 6px 25px rgba(0,240,255,0.45);display:inline-flex;align-items:center;gap:8px;">
+          ⚽ PLAY MATCH (SCORE! HERO MODE) &rarr;
         </button>
-        <button class="btn btn-secondary" onclick="simulateMatch(true)" style="padding:14px 24px;">
-          ⏩ QUICK SIMULATE
+        <button id="kickoffBtn" class="btn btn-secondary" onclick="simulateMatch(false)" style="font-size:14px;padding:14px 22px;font-weight:800;">
+          ⚡ KICK OFF (LIVE SIM)
         </button>
-        <button class="btn btn-secondary" onclick="openPressConferenceModal('pre')" style="padding:14px 22px;border-color:var(--accent-gold);color:var(--accent-gold);font-weight:800;">
-          🎙️ PRE-MATCH PRESS CONFERENCE
+        <button class="btn btn-secondary" onclick="simulateMatch(true)" style="font-size:14px;padding:14px 20px;font-weight:800;">
+          ⏩ QUICK SIM
         </button>
-        <button class="btn btn-secondary" onclick="openPenaltyShootoutModal('${esc(opp.name)}')" style="padding:14px 22px;border-color:var(--accent-neon);color:var(--accent-neon);font-weight:800;">
-          🎯 PENALTY SHOOTOUT SHOWDOWN
+        <button class="btn btn-secondary" onclick="openYouthScoutWonderkidModal()" style="padding:14px 18px;border-color:rgba(234,179,8,0.4);color:#fef08a;font-weight:800;">
+          ⭐ WONDERKIDS
+        </button>
+        <button class="btn btn-secondary" onclick="openNationalTeamModal()" style="padding:14px 18px;border-color:rgba(59,130,246,0.4);color:#93c5fd;font-weight:800;">
+          🌍 NATIONAL TEAM
+        </button>
+        <button class="btn btn-secondary" onclick="openPressConferenceModal('pre')" style="padding:14px 18px;border-color:var(--accent-gold);color:var(--accent-gold);font-weight:800;">
+          🎙️ PRESS
         </button>
       </div>
     </div>
 
-    <!-- Matchday Intel & Historical Form Grid -->
+    <!-- Tidy 2-Column Split Dashboard (Soccer Champs Clean Overview) -->
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-      <!-- Tactical Match Prep -->
-      <div class="game-card">
-        <div class="card-kicker">TACTICAL READINESS</div>
-        <div class="card-header">
-          <h3>Squad Comparison & Form</h3>
+      
+      <!-- Column 1: League Standings Snapshot (Soccer Champs Compact Table) -->
+      <div class="game-card" style="background:#0b1526;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:10px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-neon);font-size:10px;">STANDINGS OVERVIEW</div>
+            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;">
+              Division ${curDiv} League Table
+            </h3>
+          </div>
+          <button class="btn btn-secondary btn-xs" onclick="switchTab('competitions')" style="font-weight:800;">
+            FULL TABLE &rarr;
+          </button>
         </div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <table style="width:100%;border-collapse:collapse;font-size:12.5px;text-align:left;">
+          <thead>
+            <tr style="color:var(--text-dim);font-size:10.5px;border-bottom:1px solid rgba(255,255,255,0.08);">
+              <th style="padding:6px 4px;width:30px;">#</th>
+              <th style="padding:6px 8px;">CLUB</th>
+              <th style="padding:6px 8px;text-align:center;">PL</th>
+              <th style="padding:6px 8px;text-align:center;">GD</th>
+              <th style="padding:6px 8px;text-align:right;">PTS</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${standingsTop.map((clb, idx) => {
+              const isUser = clb.name === myClub.name;
+              const pts = clb.points != null ? clb.points : (clb.stats?.points || 0);
+              const played = clb.played != null ? clb.played : (clb.stats?.played || 0);
+              const gd = (clb.gf || clb.stats?.gf || 0) - (clb.ga || clb.stats?.ga || 0);
+              const isTop = idx < 2;
+              return `
+                <tr style="border-bottom:1px solid rgba(255,255,255,0.03);${isUser ? 'background:rgba(0,240,255,0.12);font-weight:900;' : ''}">
+                  <td style="padding:8px 4px;color:${isTop ? '#4ade80' : 'var(--text-muted)'};font-weight:800;">${idx + 1}</td>
+                  <td style="padding:8px 8px;color:${isUser ? '#00f0ff' : '#fff'};display:flex;align-items:center;gap:6px;">
+                    <span>${renderCrest(clb.crest, 16)}</span>
+                    <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">${esc(clb.name)}</span>
+                    ${isUser ? '<span style="font-size:9.5px;color:#00f0ff;font-weight:900;">(YOU)</span>' : ''}
+                  </td>
+                  <td style="padding:8px 8px;text-align:center;color:var(--text-muted);">${played}</td>
+                  <td style="padding:8px 8px;text-align:center;color:${gd >= 0 ? '#4ade80' : '#ef4444'};">${gd > 0 ? `+${gd}` : gd}</td>
+                  <td style="padding:8px 8px;text-align:right;font-weight:900;color:${isUser ? 'var(--accent-neon)' : '#fff'};">${pts}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Column 2: Tactical Intel & Opponent Dossier -->
+      <div class="game-card" style="background:#0b1526;border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:18px;">
+        <div style="margin-bottom:12px;border-bottom:1px solid rgba(255,255,255,0.06);padding-bottom:10px;">
+          <div class="card-kicker" style="color:var(--accent-gold);font-size:10px;">MATCHDAY INTELLIGENCE</div>
+          <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;">
+            Tactical Match Prep
+          </h3>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
           <div>
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;">
               <span>Squad Average Overall</span>
               <b style="color:var(--accent-neon);">${fixture.userTeam.rating} OVR vs ${opp.rating} OVR</b>
             </div>
-            <div style="height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;display:flex;">
+            <div style="height:7px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden;display:flex;">
               <div style="width:${Math.min(100, (fixture.userTeam.rating / (fixture.userTeam.rating + opp.rating)) * 100)}%;background:var(--accent-blue);"></div>
               <div style="width:${Math.min(100, (opp.rating / (fixture.userTeam.rating + opp.rating)) * 100)}%;background:#ef4444;"></div>
             </div>
           </div>
-          <div style="display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:8px;">
+
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;">
             <span>Team Morale Status</span>
-            <b style="color:${user.morale >= 70 ? 'var(--accent-neon)' : '#ff4757'};">${user.morale}% (${user.morale >= 70 ? 'High Confidence' : 'Slumping'})</b>
+            <b style="color:${myClub.morale >= 70 ? 'var(--accent-neon)' : '#ff4757'};">${myClub.morale}% (${myClub.morale >= 70 ? 'High Confidence' : 'Slumping'})</b>
           </div>
-          <div style="display:flex;justify-content:space-between;padding:10px 14px;background:rgba(255,255,255,0.03);border-radius:8px;">
+
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;">
             <span>Manager Tactical System</span>
-            <b style="color:#fff;">${esc(user.manager?.system || '4-3-3 Balanced')}</b>
+            <b style="color:#fff;">${esc(myClub.manager?.system || '4-3-3 Balanced')}</b>
           </div>
-          <button class="btn btn-secondary btn-sm" onclick="switchTab('squad', 'pitch')" style="width:100%;">
-            🔧 ADJUST STARTING XI & TACTICS &rarr;
+
+          <div style="display:flex;justify-content:space-between;padding:8px 12px;background:rgba(255,255,255,0.03);border-radius:8px;font-size:12px;">
+            <span>Board Target</span>
+            <b style="color:var(--accent-gold);">${myClub.division === 1 ? 'Top 4 Finish' : `Promotion to Div ${myClub.division - 1}`}</b>
+          </div>
+
+          <button class="btn btn-secondary btn-sm" onclick="switchTab('squad', 'pitch')" style="width:100%;margin-top:4px;font-weight:800;">
+            🔧 ADJUST STARTING XI &amp; FORMATION &rarr;
           </button>
         </div>
       </div>
 
-      <!-- Competition Context -->
-      <div class="game-card">
-        <div class="card-kicker">ROAD TO GLORY</div>
-        <div class="card-header">
-          <h3>${esc(fixture.compLabel)} Overview</h3>
-        </div>
-        <div style="font-size:13px;line-height:1.6;color:var(--text-muted);margin-bottom:14px;">
-          ${fixture.compType === 'global_cup' ? `
-            Compete against the greatest continental champions on the planet. Clean sheet progression guarantees knockout spot and multi-crore prize bonuses.
-          ` : fixture.compType === 'champions_league' ? `
-            European premier showcase against top-tier continental champions.
-          ` : fixture.compType === 'conference_league' ? `
-            Fast-paced continental knockout tournament against rising European clubs.
-          ` : fixture.compType === 'domestic_cup' ? `
-            Knockout elimination FA Cup. Extra time and penalties decide ties if level at 90 minutes.
-          ` : `
-            Crucial regular season division match. Three points needed to maintain promotion push and climb the ladder to Division 1.
-          `}
-        </div>
-        <div style="display:flex;gap:10px;">
-          <button class="btn btn-secondary btn-sm" onclick="switchTab('competitions')" style="flex:1;">
-            📊 VIEW STANDINGS &rarr;
-          </button>
-          <button class="btn btn-secondary btn-sm" onclick="switchTab('competitions', 'global_cup')" style="flex:1;">
-            🌍 CUP BRACKETS &rarr;
-          </button>
-        </div>
-      </div>
     </div>
   `;
 }
@@ -6951,6 +8196,15 @@ function renderDashboard(container) {
 
       <!-- Quick Role-Specific Actions -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="startSoccerChampsKeyMoments(true)" style="font-weight:900;background:linear-gradient(90deg, #00f0ff, #3b82f6);color:#0a0f18;box-shadow:0 4px 14px rgba(0,240,255,0.4);display:inline-flex;align-items:center;gap:6px;">
+          🕹️ <span>KEY MOMENTS ARENA</span>
+        </button>
+        <button class="btn btn-sm" onclick="openNationalTeamModal()" style="font-weight:900;background:rgba(59,130,246,0.22);border:1px solid #3b82f6;color:#93c5fd;display:inline-flex;align-items:center;gap:6px;">
+          🌍 <span>${(S.nationalManagement && S.nationalManagement.currentJob) ? `COACHING ${S.nationalManagement.currentJob.flag} ${S.nationalManagement.currentJob.country}` : 'NATIONAL OFFERS'}</span>
+        </button>
+        <button class="btn btn-sm" onclick="openYouthScoutWonderkidModal()" style="font-weight:900;background:rgba(234,179,8,0.22);border:1px solid #eab308;color:#fef08a;display:inline-flex;align-items:center;gap:6px;">
+          ⭐ <span>WONDERKID ACADEMY</span>
+        </button>
         ${userRole==='manager' ? `
           <button class="btn btn-warning btn-sm" onclick="openManagerOfficeModal()" style="font-weight:900;color:#0a0f18;box-shadow:0 4px 14px rgba(255,184,48,0.3);display:inline-flex;align-items:center;gap:6px;">
             💼 <span>MANAGER OFFICE</span>

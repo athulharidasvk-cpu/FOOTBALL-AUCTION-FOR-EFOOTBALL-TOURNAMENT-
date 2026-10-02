@@ -221,6 +221,97 @@ function attachApp(app){
     res.json({ success: true });
   });
 
+  // =============================================================
+  // SOCCER CHAMPS: NATIONAL TEAMS & INTERNATIONAL MANAGEMENT
+  // =============================================================
+  app.get('/api/world4/national/state', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    res.json(world.getNationalTeamState(w));
+  });
+
+  app.post('/api/world4/national/respond', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.respondToNationalOffer(w, req.body?.offerId || req.body?.country, req.body?.action);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/national/simulate', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.simulateNationalTournamentMatch(w, req.body?.keyMomentsGoals);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  // =============================================================
+  // SOCCER CHAMPS: YOUTH SCOUTS & WONDERKID ACADEMY
+  // =============================================================
+  app.get('/api/world4/youth/state', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    res.json(world.getYouthScoutState(w, req.query?.club || w.selectedClub));
+  });
+
+  app.post('/api/world4/youth/hire-scout', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.hireYouthScout(w, req.body?.club || w.selectedClub, req.body?.scoutId);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/youth/dispatch', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.dispatchWonderkidExpedition(w, req.body?.club || w.selectedClub, req.body?.scoutId, req.body?.region);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/youth/sign', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.signWonderkid(w, req.body?.club || w.selectedClub, req.body?.wonderkidId, req.body?.destination);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/youth/promote', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.promoteAcademyWonderkid(w, req.body?.club || w.selectedClub, req.body?.academyPlayerId);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  // =============================================================
+  // SOCCER CHAMPS: KEY MOMENTS MATCH RECORDER
+  // =============================================================
+  app.post('/api/world4/match/key-moments', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.recordKeyMomentsMatch(w, req.body);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
   // Club Takeovers & Multi-Club Empire
   app.get('/api/world4/takeovers',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});res.json(world.getTakeoverAndEmpireState(w,req.query?.club||w.selectedClub));});
   app.post('/api/world4/takeovers/action',(req,res)=>{const w=get(req,req);if(!w)return res.status(404).json({error:'World not found'});const r=world.executeTakeoverAction(w,req.body?.club||w.selectedClub,req.body?.action,req.body);world.persist();if(ioRef)broadcast(ioRef,w);res.json(r);});

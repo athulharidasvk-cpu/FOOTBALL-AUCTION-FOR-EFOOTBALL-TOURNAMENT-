@@ -1493,6 +1493,39 @@ function playSfx(type) {
         osc.connect(gain); gain.connect(audioCtx.destination);
         osc.start(now + i * 0.08); osc.stop(now + i * 0.08 + 0.35);
       });
+        } else if (type === 'whistle') {
+      const osc1 = audioCtx.createOscillator();
+      const osc2 = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc1.type = 'triangle'; osc2.type = 'sine';
+      osc1.frequency.setValueAtTime(2400, now);
+      osc2.frequency.setValueAtTime(2460, now);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc1.connect(gain); osc2.connect(gain); gain.connect(audioCtx.destination);
+      osc1.start(now); osc1.stop(now + 0.35);
+      osc2.start(now); osc2.stop(now + 0.35);
+    } else if (type === 'kick') {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(140, now);
+      osc.frequency.exponentialRampToValueAtTime(38, now + 0.12);
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(now); osc.stop(now + 0.12);
+    } else if (type === 'goal') {
+      [440, 554.37, 659.25, 880].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now + i * 0.06);
+        gain.gain.setValueAtTime(0.15, now + i * 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.4);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.06); osc.stop(now + i * 0.06 + 0.4);
+      });
     } else if (type === 'crisis') {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
@@ -3654,8 +3687,8 @@ function renderScoreHeroModalHtml() {
           <span>${svgIcon('users', 14)}  <b>Multi-phase combination</b></span>
         </div>
         <div style="display:flex;gap:8px;">
-          <button class="btn btn-warning btn-sm" onclick="rewindCurrentScoreHeroPhase()" style="font-weight:900;color:#0a0f18;background:linear-gradient(90deg, #f59e0b, #eab308);display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(245,158,11,0.4);">
-            ⏪ HERO REWIND (TRY AGAIN)
+          <button class="btn btn-warning btn-sm" onclick="resetCurrentScoreHeroLevel()" style="font-weight:900;color:#0a0f18;background:linear-gradient(90deg, #f59e0b, #eab308);display:inline-flex;align-items:center;gap:6px;box-shadow:0 0 12px rgba(245,158,11,0.4);" title="Restart current level from Phase 1">
+            ${svgIcon('refresh', 13, '#0a0f18')} <span>RESET LEVEL</span>
           </button>
           <button class="btn btn-secondary btn-sm" onclick="skipScoreHeroPhase()" style="font-weight:800;">
             NEXT CHANCE &rarr;
@@ -3678,11 +3711,16 @@ function closeScoreHeroModal() {
   activeKeyMomentsSession = null;
 }
 
-function rewindCurrentScoreHeroPhase() {
+function resetCurrentScoreHeroLevel() {
   const ses = activeKeyMomentsSession;
   if (!ses) return;
-  // Restore current phase state so user can immediately redraw
+  if (ses.animId) cancelAnimationFrame(ses.animId);
+  ses.currentPhase = 0;
   renderScoreHeroModalHtml();
+}
+
+function rewindCurrentScoreHeroPhase() {
+  resetCurrentScoreHeroLevel();
 }
 
 function skipScoreHeroPhase() {
@@ -4022,14 +4060,16 @@ function initScoreHeroCanvas() {
         gk.diveProgress = ballProgress;
       }
 
+      // Out of bounds check
+      if ((curPt.x < 10 || curPt.x > canvas.width - 10 || curPt.y < 10 || curPt.y > canvas.height - 10) && !chanceResolved) {
+        triggerScoreHeroReset(`${svgIcon('wind', 14)}  OUT OF PLAY!`, 'Ball curved out of the pitch!');
+      }
+
       // Check Defender Interception
       defenders.forEach(def => {
         const dist = Math.hypot(ballCurrentPos.x - def.x, ballCurrentPos.y - def.y);
         if (dist < 18 && ballCurrentPos.height < 14 && !chanceResolved) {
-          ballAnimating = false;
-          chanceResolved = true;
-          showShFeedback(`${svgIcon('shield', 14)} ️ INTERCEPTED!`, 'Opponent defender cut out the curve!');
-          playSfx('whistle');
+          triggerScoreHeroReset(`${svgIcon('shield', 14)}  INTERCEPTED!`, 'Opponent defender cut out the curve!');
         }
       });
 
@@ -4051,9 +4091,7 @@ function initScoreHeroCanvas() {
               renderScoreHeroModalHtml();
             }, 1100);
           } else {
-            chanceResolved = true;
-            showShFeedback(`${svgIcon('wind', 14)}  OVERHIT PASS!`, 'Pass sailed out of reach!');
-            playSfx('whistle');
+            triggerScoreHeroReset(`${svgIcon('wind', 14)}  MISSED PASS!`, 'Pass sailed out of reach of teammate!');
           }
         } else if (phase.isFinalShot) {
           // Final Shot on Goal!
@@ -4089,13 +4127,9 @@ function initScoreHeroCanvas() {
               }
             }, 2300);
           } else if (inGoalWidth && inGoalDepth && distToGk <= 26) {
-            chanceResolved = true;
-            showShFeedback(`${svgIcon('glove', 14)}  LEAPING SAVE!`, 'Keeper tips it wide at full stretch!');
-            playSfx('whistle');
+            triggerScoreHeroReset(`${svgIcon('glove', 14)}  LEAPING SAVE!`, 'Keeper tips it wide at full stretch!');
           } else {
-            chanceResolved = true;
-            showShFeedback(`${svgIcon('wind', 14)}  OFF TARGET!`, 'Shot missed the goal frame!');
-            playSfx('whistle');
+            triggerScoreHeroReset(`${svgIcon('wind', 14)}  OFF TARGET!`, 'Shot missed the goal frame!');
           }
         }
       }
@@ -4132,19 +4166,55 @@ function initScoreHeroCanvas() {
     ses.animId = requestAnimationFrame(loop);
   }
 
-  function showShFeedback(main, sub) {
+  let autoResetTimer = null;
+
+  function triggerScoreHeroReset(mainTitle, subTitle) {
+    if (chanceResolved && autoResetTimer) return;
+    chanceResolved = true;
+    ballAnimating = false;
+    playSfx('whistle');
+
+    showShFeedback(mainTitle, subTitle + ' Resetting level...', true);
+
+    const promptEl = document.getElementById('shDrawingPrompt');
+    if (promptEl) {
+      promptEl.style.borderColor = '#ef4444';
+      promptEl.style.color = '#fca5a5';
+      promptEl.style.background = 'rgba(239, 68, 68, 0.22)';
+      promptEl.style.boxShadow = '0 0 20px rgba(239, 68, 68, 0.6)';
+      promptEl.innerHTML = `${svgIcon('refresh', 13, '#fca5a5')}  <span style="font-weight:900;">${mainTitle} — RESETTING LEVEL...</span>`;
+    }
+
+    if (autoResetTimer) clearTimeout(autoResetTimer);
+    autoResetTimer = setTimeout(() => {
+      autoResetTimer = null;
+      if (activeKeyMomentsSession) {
+        activeKeyMomentsSession.currentPhase = 0;
+        renderScoreHeroModalHtml();
+      }
+    }, 1300);
+  }
+
+  function showShFeedback(main, sub, isFailure = false) {
     const overlayEl = document.getElementById('shFeedbackOverlay');
     const mainEl = document.getElementById('shFeedbackText');
     const subEl = document.getElementById('shFeedbackSub');
     if (overlayEl && mainEl && subEl) {
       mainEl.innerHTML = replaceEmojisWithSvg(main, 20);
       subEl.innerHTML = replaceEmojisWithSvg(sub, 13);
+      if (isFailure) {
+        mainEl.style.color = '#ef4444';
+        mainEl.style.textShadow = '0 0 25px rgba(239,68,68,0.95), 0 4px 10px #000';
+      } else {
+        mainEl.style.color = 'var(--accent-gold)';
+        mainEl.style.textShadow = '0 0 25px rgba(245,158,11,0.95), 0 4px 10px #000';
+      }
       overlayEl.style.opacity = '1';
       overlayEl.style.transform = 'translate(-50%, -50%) scale(1.1)';
       setTimeout(() => {
         overlayEl.style.opacity = '0';
         overlayEl.style.transform = 'translate(-50%, -50%) scale(0.8)';
-      }, 1800);
+      }, 1600);
     }
   }
 

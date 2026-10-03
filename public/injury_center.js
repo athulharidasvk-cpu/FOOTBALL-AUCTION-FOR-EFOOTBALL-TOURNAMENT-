@@ -152,14 +152,15 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
   }
 
   // Generate an injury randomly (e.g. during a match simulation)
-  function triggerMatchInjury(player, clubName) {
+  function triggerMatchInjury(targetPlayer, clubName) {
+    const p = targetPlayer || (typeof player === "function" ? player(null, null) : null) || { name: "Squad Member", position: "FW", rating: 80 };
     const template = INJURY_CATALOG[Math.floor(Math.random() * INJURY_CATALOG.length)];
     const newInjury = {
       id: "inj_" + Math.random().toString(36).substr(2, 8),
-      playerName: player.name,
+      playerName: p.name || "Squad Member",
       club: clubName,
-      position: player.position || "FW",
-      rating: player.rating || 82,
+      position: p.position || "FW",
+      rating: p.rating || 82,
       injuryType: template.type,
       severity: template.severity,
       matchesRemaining: template.matches,

@@ -1532,6 +1532,18 @@ function get(url) {
   });
 }
 
+
+// Universal player resolver helper function
+function player(state, idOrName) {
+  if (!idOrName) return null;
+  if (typeof idOrName === 'object' && idOrName.name) return idOrName;
+  const s = state || (typeof S !== 'undefined' ? S : null);
+  if (!s || !s.market || !Array.isArray(s.market)) return null;
+  const targetId = typeof idOrName === 'object' ? (idOrName.id || idOrName.playerId) : idOrName;
+  return s.market.find(p => p.id === targetId || p.name === targetId || String(p.id) === String(targetId)) || null;
+}
+window.player = player;
+
 function ref(extra = {}) {
   return Object.assign({}, extra,
     session?.roomCode ? { room: session.roomCode } : {},
@@ -3414,9 +3426,14 @@ function startSoccerChampsKeyMoments(isArcadeMode = false) {
   const fixture = computeClientNextFixture(S);
   const opp = fixture ? fixture.opponent : { name: 'Opposition XI', rating: 76, division: c.division, crest: `${svgIcon('shield', 14)} ️` };
 
-  const attackerName = (c.players && c.players[0] && player(S, c.players[0])?.name) || 'Star Striker';
-  const supportName = (c.players && c.players[1] && player(S, c.players[1])?.name) || 'Midfield Maestro';
-  const wingerName = (c.players && c.players[2] && player(S, c.players[2])?.name) || 'Pacy Winger';
+  const getPlayerName = (pid, fallback) => {
+    if (!pid) return fallback;
+    const p = (typeof player === 'function') ? player(S, pid) : (S?.market?.find(x => x.id === pid));
+    return (p && p.name) ? p.name : fallback;
+  };
+  const attackerName = getPlayerName(c.players && c.players[0], 'Star Striker');
+  const supportName = getPlayerName(c.players && c.players[1], 'Midfield Maestro');
+  const wingerName = getPlayerName(c.players && c.players[2], 'Pacy Winger');
 
   // Dynamic match minutes for Soccer Champs highlight timeline
   const matchMoments = [

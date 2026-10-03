@@ -3468,12 +3468,187 @@ function startSoccerChampsKeyMoments(isArcadeMode = false) {
   const supportName = getPlayerName(c.players && c.players[1], 'Midfield Maestro');
   const wingerName = getPlayerName(c.players && c.players[2], 'Pacy Winger');
 
-  // Dynamic match minutes for Soccer Champs highlight timeline
-  const matchMoments = [
-    { minute: "24'", label: 'COUNTER-ATTACK OVERLOAD', timeRatio: 0.25 },
-    { minute: "62'", label: 'TIKI-TAKA BOX PENETRATION', timeRatio: 0.65 },
-    { minute: "88'", label: 'LAST-GASP CLUTCH WINNER', timeRatio: 0.95 }
+  // Dynamic 4 to 5 Match Chances for Score! Hero Mode
+  const allScenarios = [
+    // Chance 1: 18' Early Wing Overload
+    {
+      minute: "18'",
+      momentLabel: 'EARLY WING OVERLOAD',
+      timeRatio: 0.20,
+      title: 'MOMENT 1 (18\'): EARLY WING OVERLOAD & CROSS-FIELD CURLER',
+      desc: 'Curve a through-ball into space for your winger, whip the cross into the penalty spot, and curl it into the top corner!',
+      phases: [
+        {
+          phaseName: 'PHASE 1: MIDFIELD THROUGH-BALL',
+          instruction: 'Draw a curving banana pass into the channel for your winger to sprint onto!',
+          ballPos: { x: 300, y: 340 },
+          actor: { name: supportName, number: '8', x: 300, y: 340 },
+          targetTeammate: { name: wingerName, number: '7', x: 470, y: 250, runTarget: { x: 480, y: 200 } },
+          defenders: [{ x: 370, y: 280, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 2: WHIPPED CROSS INTO THE BOX',
+          instruction: 'Draw a curling cross bending around the center-back towards the penalty spot!',
+          ballPos: { x: 480, y: 200 },
+          actor: { name: wingerName, number: '7', x: 480, y: 200 },
+          targetTeammate: { name: attackerName, number: '9', x: 320, y: 190, runTarget: { x: 320, y: 135 } },
+          defenders: [{ x: 395, y: 175, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 3: TOP CORNER VOLLEY / FINISH',
+          instruction: 'Draw your curved strike past the diving keeper into the top corner!',
+          ballPos: { x: 320, y: 135 },
+          actor: { name: attackerName, number: '9', x: 320, y: 135 },
+          targetTeammate: null,
+          defenders: [{ x: 260, y: 105, r: 15 }, { x: 380, y: 105, r: 15 }],
+          gk: { x: 320, y: 58, r: 16 },
+          goal: { left: 230, right: 410, y: 48 },
+          isFinalShot: true
+        }
+      ]
+    },
+    // Chance 2: 38' Tactical 1-2 Cutback
+    {
+      minute: "38'",
+      momentLabel: 'TACTICAL 1-2 CUTBACK',
+      timeRatio: 0.42,
+      title: 'MOMENT 2 (38\'): TACTICAL 1-2 CUTBACK THROUGH THE LINE',
+      desc: 'Thread a bending pass between the defensive pair, then curl a pinpoint finish inside the post!',
+      phases: [
+        {
+          phaseName: 'PHASE 1: SPLIT THE DEFENSIVE PAIR',
+          instruction: 'Draw a curving low pass between the defenders into the path of your striker!',
+          ballPos: { x: 220, y: 320 },
+          actor: { name: supportName, number: '10', x: 220, y: 320 },
+          targetTeammate: { name: attackerName, number: '9', x: 320, y: 220, runTarget: { x: 320, y: 160 } },
+          defenders: [{ x: 275, y: 260, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 2: CLINICAL SIDE-NETTING FINISH',
+          instruction: 'Draw a bending strike around the diving goalkeeper into the side netting!',
+          ballPos: { x: 320, y: 160 },
+          actor: { name: attackerName, number: '9', x: 320, y: 160 },
+          targetTeammate: null,
+          defenders: [{ x: 250, y: 115, r: 15 }],
+          gk: { x: 320, y: 58, r: 16 },
+          goal: { left: 230, right: 410, y: 48 },
+          isFinalShot: true
+        }
+      ]
+    },
+    // Chance 3: 62' Inside-Channel Breakaway
+    {
+      minute: "62'",
+      momentLabel: 'INSIDE-CHANNEL BREAKAWAY',
+      timeRatio: 0.68,
+      title: 'MOMENT 3 (62\'): RAPID BREAKAWAY & EDGE-OF-BOX CURLER',
+      desc: 'Release your winger down the inside channel, square it across the D, and curl a first-time strike into the top bins!',
+      phases: [
+        {
+          phaseName: 'PHASE 1: CHANNEL RELEASE PASS',
+          instruction: 'Draw an incisive diagonal curve past the midfield line for your winger to chase!',
+          ballPos: { x: 230, y: 350 },
+          actor: { name: supportName, number: '6', x: 230, y: 350 },
+          targetTeammate: { name: wingerName, number: '7', x: 440, y: 260, runTarget: { x: 450, y: 210 } },
+          defenders: [{ x: 330, y: 300, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 2: SQUARE PASS TO EDGE OF BOX',
+          instruction: 'Cut the ball back to the edge of the penalty arc for your incoming striker!',
+          ballPos: { x: 450, y: 210 },
+          actor: { name: wingerName, number: '7', x: 450, y: 210 },
+          targetTeammate: { name: attackerName, number: '9', x: 320, y: 210, runTarget: { x: 320, y: 165 } },
+          defenders: [{ x: 390, y: 180, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 3: CURVING BANANA STRIKE',
+          instruction: 'Curl a vicious bending shot away from the keeper into the side netting!',
+          ballPos: { x: 320, y: 165 },
+          actor: { name: attackerName, number: '9', x: 320, y: 165 },
+          targetTeammate: null,
+          defenders: [{ x: 260, y: 120, r: 15 }, { x: 380, y: 120, r: 15 }],
+          gk: { x: 320, y: 58, r: 16 },
+          goal: { left: 230, right: 410, y: 48 },
+          isFinalShot: true
+        }
+      ]
+    },
+    // Chance 4: 78' Far-Post Chip & Header
+    {
+      minute: "78'",
+      momentLabel: 'PENALTY BOX CHIP & HEADER',
+      timeRatio: 0.85,
+      title: 'MOMENT 4 (78\'): FAR-POST CHIP & DIVING HEADER',
+      desc: 'Float a delicate curved chip over the crowded backline and nod a pinpoint header inside the post!',
+      phases: [
+        {
+          phaseName: 'PHASE 1: BENDING CHIP OVER LOW BLOCK',
+          instruction: 'Draw a high curving chip over the center-back onto the far post!',
+          ballPos: { x: 210, y: 230 },
+          actor: { name: wingerName, number: '11', x: 210, y: 230 },
+          targetTeammate: { name: supportName, number: '8', x: 390, y: 170, runTarget: { x: 380, y: 130 } },
+          defenders: [{ x: 300, y: 200, r: 15 }],
+          isFinalShot: false
+        },
+        {
+          phaseName: 'PHASE 2: CROWD-PLEASING HEADER FINISH',
+          instruction: 'Angle a curved downward header past the stretching keeper into the corner!',
+          ballPos: { x: 380, y: 130 },
+          actor: { name: supportName, number: '8', x: 380, y: 130 },
+          targetTeammate: null,
+          defenders: [{ x: 330, y: 110, r: 15 }],
+          gk: { x: 310, y: 58, r: 16 },
+          goal: { left: 230, right: 410, y: 48 },
+          isFinalShot: true
+        }
+      ]
+    },
+    // Chance 5: 89' Clutch Free Kick
+    {
+      minute: "89'",
+      momentLabel: 'CLUTCH 25-YD FREE KICK',
+      timeRatio: 0.98,
+      title: 'MOMENT 5 (89\'): 25-YARD CLUTCH FREE KICK / SCREAMER',
+      desc: 'Draw a high curling arc over or around the 3-man wall into the top postage stamp to seal victory!',
+      phases: [
+        {
+          phaseName: 'CLUTCH FINISH: TOP BINS OR BUST',
+          instruction: 'Draw a steep curling curve bending around the defensive wall into the top corner!',
+          ballPos: { x: 320, y: 300 },
+          actor: { name: attackerName, number: '10', x: 320, y: 300 },
+          targetTeammate: null,
+          defenders: [
+            { x: 295, y: 185, r: 14 },
+            { x: 320, y: 185, r: 14 },
+            { x: 345, y: 185, r: 14 }
+          ],
+          gk: { x: 320, y: 58, r: 16 },
+          goal: { left: 230, right: 410, y: 48 },
+          isFinalShot: true
+        }
+      ]
+    }
   ];
+
+  // Each match randomly features 4 or 5 chances
+  const totalChances = Math.random() < 0.5 ? 4 : 5;
+  const scenarios = totalChances === 4 ? [allScenarios[0], allScenarios[1], allScenarios[2], allScenarios[4]] : allScenarios;
+
+  // Re-number titles to match active chance sequence
+  scenarios.forEach((sc, idx) => {
+    sc.title = sc.title.replace(/MOMENT \d+/, 'MOMENT ' + (idx + 1));
+  });
+
+  const matchMoments = scenarios.map(s => ({
+    minute: s.minute,
+    label: s.momentLabel,
+    timeRatio: s.timeRatio
+  }));
 
   activeKeyMomentsSession = {
     isArcadeMode,
@@ -3484,7 +3659,7 @@ function startSoccerChampsKeyMoments(isArcadeMode = false) {
     fixture,
     chanceIndex: 0,
     currentPhase: 0,
-    totalChances: 3,
+    totalChances,
     homeScore: 0,
     awayScore: 0,
     goalsScored: 0,
@@ -3495,93 +3670,7 @@ function startSoccerChampsKeyMoments(isArcadeMode = false) {
     clubColor: c.jersey?.home || '#00f0ff',
     oppColor: opp.jersey?.home || '#ef4444',
     matchMoments,
-    scenarios: [
-      {
-        minute: "24'",
-        title: 'MOMENT 1 (24\'): FAST BREAKAWAY & CROSS-FIELD CURLER',
-        desc: 'Curve a through-ball into space for your winger, whip the cross into the penalty spot, and curl it into the top corner!',
-        phases: [
-          {
-            phaseName: 'PHASE 1: MIDFIELD THROUGH-BALL',
-            instruction: 'Draw a curving banana pass into the channel for your winger to sprint onto!',
-            ballPos: { x: 300, y: 340 },
-            actor: { name: supportName, number: '8', x: 300, y: 340 },
-            targetTeammate: { name: wingerName, number: '7', x: 470, y: 250, runTarget: { x: 480, y: 200 } },
-            defenders: [{ x: 370, y: 280, r: 15 }],
-            isFinalShot: false
-          },
-          {
-            phaseName: 'PHASE 2: WHIPPED CROSS INTO THE BOX',
-            instruction: 'Draw a curling cross bending around the center-back towards the penalty spot!',
-            ballPos: { x: 480, y: 200 },
-            actor: { name: wingerName, number: '7', x: 480, y: 200 },
-            targetTeammate: { name: attackerName, number: '9', x: 320, y: 190, runTarget: { x: 320, y: 135 } },
-            defenders: [{ x: 395, y: 175, r: 15 }],
-            isFinalShot: false
-          },
-          {
-            phaseName: 'PHASE 3: TOP CORNER VOLLEY / FINISH',
-            instruction: 'Draw your curved strike past the diving keeper into the top corner!',
-            ballPos: { x: 320, y: 135 },
-            actor: { name: attackerName, number: '9', x: 320, y: 135 },
-            targetTeammate: null,
-            defenders: [{ x: 260, y: 105, r: 15 }, { x: 380, y: 105, r: 15 }],
-            gk: { x: 320, y: 58, r: 16 },
-            goal: { left: 230, right: 410, y: 48 },
-            isFinalShot: true
-          }
-        ]
-      },
-      {
-        minute: "62'",
-        title: 'MOMENT 2 (62\'): TACTICAL 1-2 CUTBACK THROUGH THE LINE',
-        desc: 'Thread a bending pass between the defensive pair, then curl a pinpoint finish inside the post!',
-        phases: [
-          {
-            phaseName: 'PHASE 1: SPLIT THE DEFENSIVE PAIR',
-            instruction: 'Draw a curving low pass between the defenders into the path of your striker!',
-            ballPos: { x: 220, y: 320 },
-            actor: { name: supportName, number: '10', x: 220, y: 320 },
-            targetTeammate: { name: attackerName, number: '9', x: 320, y: 220, runTarget: { x: 320, y: 160 } },
-            defenders: [{ x: 275, y: 260, r: 15 }],
-            isFinalShot: false
-          },
-          {
-            phaseName: 'PHASE 2: CLINICAL SIDE-NETTING FINISH',
-            instruction: 'Draw a bending strike around the diving goalkeeper into the side netting!',
-            ballPos: { x: 320, y: 160 },
-            actor: { name: attackerName, number: '9', x: 320, y: 160 },
-            targetTeammate: null,
-            defenders: [{ x: 250, y: 115, r: 15 }],
-            gk: { x: 320, y: 58, r: 16 },
-            goal: { left: 230, right: 410, y: 48 },
-            isFinalShot: true
-          }
-        ]
-      },
-      {
-        minute: "88'",
-        title: 'MOMENT 3 (88\'): 25-YARD CLUTCH FREE KICK / SCREAMER',
-        desc: 'Draw a high curling arc over or around the 3-man wall into the top postage stamp to seal victory!',
-        phases: [
-          {
-            phaseName: 'CLUTCH FINISH: TOP BINS OR BUST',
-            instruction: 'Draw a steep curling curve bending around the defensive wall into the top corner!',
-            ballPos: { x: 320, y: 300 },
-            actor: { name: attackerName, number: '10', x: 320, y: 300 },
-            targetTeammate: null,
-            defenders: [
-              { x: 295, y: 185, r: 14 },
-              { x: 320, y: 185, r: 14 },
-              { x: 345, y: 185, r: 14 }
-            ],
-            gk: { x: 320, y: 58, r: 16 },
-            goal: { left: 230, right: 410, y: 48 },
-            isFinalShot: true
-          }
-        ]
-      }
-    ]
+    scenarios
   };
 
   renderScoreHeroModalHtml();
@@ -4238,7 +4327,7 @@ function renderScoreHeroFinalSummary() {
         ${won ? 'HEROIC MATCH-WINNER!' : (ses.goalsScored >= 1 ? 'THRILLING CONTEST!' : 'HARD-FOUGHT ENCOUNTER')}
       </h2>
       <div style="font-size:15px;color:var(--text-muted);margin-bottom:20px;">
-        You buried <b style="color:var(--accent-neon);font-size:24px;">${ses.goalsScored}</b> clutch goals across the 3 key match moments!
+        You buried <b style="color:var(--accent-neon);font-size:24px;">${ses.goalsScored}</b> clutch goals across the ${ses.totalChances} key match moments!
       </div>
 
       <div style="background:rgba(13,23,40,0.8);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:22px;display:flex;justify-content:space-around;text-align:center;">

@@ -1733,6 +1733,9 @@ function svgIcon(name, size = 18, color = 'currentColor', extraClass = '') {
   if (EMOJI_ICON_MAP[key]) key = EMOJI_ICON_MAP[key];
 
   switch (key) {
+    case 'cloud': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>`;
+    case 'download': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+    case 'clock': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
     case 'trophy': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.45 1-1 1H8c-.55 0-1 .45-1 1v1c0 .55.45 1 1 1h8c.55 0 1-.45 1-1v-1c0-.55-.45-1-1-1h-1c-.55 0-1-.45-1-1v-2.34"/><path d="M6 4h12v6a6 6 0 0 1-12 0V4Z"/></svg>`;
     case 'globe': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>`;
     case 'flag': return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"${cls}><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>`;
@@ -4626,6 +4629,7 @@ function promoteAcademyWonderkidFromUI(academyPlayerId) {
 function resumeSession() {
   if (!session?.soloId && !session?.roomCode) return modeScreen();
   refresh();
+if (window.autoSaveManager) window.autoSaveManager.init();
 }
 
 function onlineSetup() {
@@ -5264,7 +5268,12 @@ function renderGame() {
         </div>
 
         <div style="display:flex;align-items:center;gap:6px;margin-left:6px;">
-          <button class="btn btn-sm" onclick="saveGame(true)" style="background:rgba(212,175,55,0.15);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:800;padding:6px 12px;border-radius:8px;" title="Save Career">
+          <!-- Auto-Save Status Badge & Config Modal Trigger -->
+          <div id="hudAutoSaveBadge" onclick="openAutoSaveSettingsModal()" style="display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border-radius:8px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.28);color:#4ade80;font-size:11px;font-weight:700;cursor:pointer;user-select:none;transition:all 0.25s;" title="Auto-Save Engine Active (Click to configure or backup)">
+            <span class="autosave-dot" style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>
+            <span id="hudAutoSaveText">Auto-Save: ON</span>
+          </div>
+          <button id="hudSaveBtn" class="btn btn-sm" onclick="saveGame(true)" style="background:rgba(212,175,55,0.15);border:1px solid var(--accent-gold);color:var(--accent-gold);font-weight:800;padding:6px 12px;border-radius:8px;" title="Manual Save to Persistent Disk">
             ${svgIcon('save', 13)} SAVE
           </button>
           <button class="btn btn-secondary btn-sm" onclick="openRoleSelectionModal()" style="font-weight:800;padding:6px 10px;border-radius:8px;" title="Career Role Options">
@@ -5307,6 +5316,7 @@ function renderGame() {
   `;
 
   renderTabContent();
+  if (window.autoSaveManager) window.autoSaveManager.updateHudBadges();
 }
 
 function switchTab(t, sub = null) {
@@ -5642,6 +5652,7 @@ function resumeInteractiveMatch() {
       `).join('');
       if (activeLiveMatch.finished) {
         renderGame();
+        if (window.autoSaveManager) window.autoSaveManager.triggerEventSave('match', 'Live Match Full Time');
       }
     } else {
       renderGame();
@@ -11583,7 +11594,550 @@ function openKitLaunchCelebrationModal(res) {
 // -------------------------------------------------------------
 // SAVE GAME & CAREER PERSISTENCE SYSTEM
 // -------------------------------------------------------------
+
+// =============================================================
+// AUTO-SAVE ENGINE & CAREER PERSISTENCE SYSTEM
+// =============================================================
+const autoSaveManager = {
+  config: {
+    enabled: true,
+    intervalSeconds: 60,
+    saveOnMatch: true,
+    saveOnTransfer: true,
+    saveOnTactics: true,
+    saveOnPageExit: true,
+    showToast: true
+  },
+  state: {
+    isSaving: false,
+    lastSaved: null,
+    lastSavedClub: null,
+    lastReason: null,
+    status: 'idle', // 'idle' | 'saving' | 'saved' | 'error'
+    nextSaveCountdown: 60,
+    tickerTimer: null,
+    debounceTimer: null,
+    revertTimer: null
+  },
+
+  init() {
+    try {
+      const stored = localStorage.getItem('fw_autosave_cfg');
+      if (stored) {
+        this.config = Object.assign(this.config, JSON.parse(stored));
+      }
+    } catch(e) {}
+
+    if (session && session.savedTime) {
+      this.state.lastSaved = session.savedTime;
+      this.state.lastSavedClub = session.savedClub;
+    }
+
+    this.state.nextSaveCountdown = this.config.intervalSeconds;
+    this.startTicker();
+    this.bindWindowEvents();
+    this.injectStyles();
+    console.log('[AutoSaveManager] Initialized. Interval:', this.config.intervalSeconds + 's, Enabled:', this.config.enabled);
+  },
+
+  saveConfig() {
+    try {
+      localStorage.setItem('fw_autosave_cfg', JSON.stringify(this.config));
+    } catch(e) {}
+    this.updateHudBadges();
+  },
+
+  toggle(enabled) {
+    this.config.enabled = !!enabled;
+    this.saveConfig();
+    this.state.nextSaveCountdown = this.config.intervalSeconds;
+    this.updateHudBadges();
+    const statusMsg = this.config.enabled ? 'Auto-Save Enabled (' + this.config.intervalSeconds + 's)' : 'Auto-Save Disabled';
+    this.showToast(this.config.enabled ? 'Auto-Save Active' : 'Auto-Save Paused', statusMsg);
+  },
+
+  setInterval(seconds) {
+    this.config.intervalSeconds = Number(seconds) || 60;
+    this.saveConfig();
+    this.state.nextSaveCountdown = this.config.intervalSeconds;
+    this.updateHudBadges();
+    this.showToast('Interval Updated', 'Auto-saving every ' + this.config.intervalSeconds + ' seconds');
+  },
+
+  startTicker() {
+    if (this.state.tickerTimer) clearInterval(this.state.tickerTimer);
+    this.state.tickerTimer = setInterval(() => {
+      if (!this.config.enabled) return;
+      if (!S || !S.selectedClub) return;
+      if (matchSimulationInProgress || this.state.isSaving) return;
+
+      this.state.nextSaveCountdown--;
+      if (this.state.nextSaveCountdown <= 0) {
+        this.state.nextSaveCountdown = this.config.intervalSeconds;
+        this.performSave('periodic', { silent: true });
+      } else {
+        this.updateCountdownUI();
+      }
+    }, 1000);
+  },
+
+  bindWindowEvents() {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && this.config.enabled && this.config.saveOnPageExit && S?.selectedClub) {
+        this.performSave('visibility_change', { silent: true });
+      }
+    });
+
+    window.addEventListener('beforeunload', () => {
+      if (this.config.enabled && this.config.saveOnPageExit && S?.selectedClub) {
+        if (session) {
+          session.savedTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          session.savedClub = S.selectedClub;
+          save();
+        }
+        try {
+          const body = JSON.stringify(ref({ club: S.selectedClub, autoSave: true, reason: 'unload' }));
+          if (navigator.sendBeacon) {
+            navigator.sendBeacon('/api/world4/save', new Blob([body], { type: 'application/json' }));
+          }
+        } catch(e) {}
+      }
+    });
+  },
+
+  triggerEventSave(eventKey, detail = '') {
+    if (!this.config.enabled) return;
+    if (!S || !S.selectedClub) return;
+
+    if (eventKey === 'match' && !this.config.saveOnMatch) return;
+    if (eventKey === 'transfer' && !this.config.saveOnTransfer) return;
+    if (eventKey === 'tactics' && !this.config.saveOnTactics) return;
+
+    if (this.state.debounceTimer) clearTimeout(this.state.debounceTimer);
+    this.state.debounceTimer = setTimeout(() => {
+      this.performSave(eventKey, { silent: true, detail });
+    }, 700);
+  },
+
+  performSave(reason = 'manual', options = {}) {
+    if (!S || !S.selectedClub) return Promise.resolve(null);
+    if (this.state.isSaving) return Promise.resolve(null);
+
+    const isSilent = options.silent !== false;
+    this.state.isSaving = true;
+    this.state.status = 'saving';
+    this.state.lastReason = reason;
+    this.updateHudBadges();
+
+    const saveBtn = document.getElementById('hudSaveBtn');
+    if (saveBtn) {
+      saveBtn.innerHTML = `<span>⏳ SAVING...</span>`;
+      saveBtn.style.opacity = '0.7';
+    }
+
+    return post('/api/world4/save', ref({ club: S?.selectedClub, autoSave: true, reason }))
+      .then(data => {
+        if (data && data.state) S = data.state;
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.state.lastSaved = now;
+        this.state.lastSavedClub = S.selectedClub;
+        this.state.status = 'saved';
+        this.state.isSaving = false;
+        this.state.nextSaveCountdown = this.config.intervalSeconds;
+
+        session = {
+          ...session,
+          savedClub: S?.selectedClub || session?.savedClub,
+          savedTime: now
+        };
+        save();
+
+        try {
+          localStorage.setItem('fw4_backup_' + S.selectedClub, JSON.stringify({
+            club: S.selectedClub,
+            time: now,
+            season: S.season,
+            matchday: S.matchday,
+            data: data.state || S
+          }));
+        } catch(e) {}
+
+        this.updateHudBadges();
+
+        if (saveBtn) {
+          saveBtn.innerHTML = `${svgIcon('save', 14)}  <span>SAVED!</span>`;
+          saveBtn.style.opacity = '1';
+          saveBtn.style.borderColor = 'var(--accent-neon)';
+          saveBtn.style.color = 'var(--accent-neon)';
+          setTimeout(() => {
+            if (saveBtn) {
+              saveBtn.innerHTML = `${svgIcon('save', 14)}  <span>SAVE GAME</span>`;
+              saveBtn.style.borderColor = 'var(--accent-gold)';
+              saveBtn.style.color = 'var(--accent-gold)';
+            }
+          }, 2200);
+        }
+
+        if (isSilent) {
+          if (this.config.showToast) {
+            const reasonLabels = {
+              periodic: 'Periodic Auto-Save',
+              match: 'Post-Match Auto-Save',
+              transfer: 'Transfer Market Auto-Save',
+              tactics: 'Tactics Auto-Save',
+              season: 'Season Rollover Auto-Save',
+              facility: 'Infrastructure Auto-Save',
+              club_select: 'Club Career Auto-Save',
+              visibility_change: 'Background Auto-Save'
+            };
+            const label = reasonLabels[reason] || 'Career Auto-Saved';
+            this.showToast(label, `${esc(S.selectedClub)} • ${now}`);
+          }
+        } else {
+          playSfx('stamp');
+          openSaveConfirmationModal(now);
+        }
+
+        if (this.state.revertTimer) clearTimeout(this.state.revertTimer);
+        this.state.revertTimer = setTimeout(() => {
+          this.state.status = 'idle';
+          this.updateHudBadges();
+        }, 3500);
+
+        if (typeof options.callback === 'function') options.callback(true, data);
+        return data;
+      })
+      .catch(err => {
+        console.warn('[AutoSave Warning] Server save fell back to local storage:', err);
+        const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        this.state.lastSaved = now;
+        this.state.status = 'error';
+        this.state.isSaving = false;
+        session = { ...session, savedClub: S?.selectedClub, savedTime: now };
+        save();
+
+        this.updateHudBadges();
+        if (saveBtn) {
+          saveBtn.innerHTML = `${svgIcon('save', 14)}  <span>SAVE GAME</span>`;
+          saveBtn.style.opacity = '1';
+        }
+        if (!isSilent) {
+          alert('Save error: ' + err.message + ' (Data backed up locally in session).');
+        }
+        if (typeof options.callback === 'function') options.callback(false, err);
+      });
+  },
+
+  updateHudBadges() {
+    const badge = document.getElementById('hudAutoSaveBadge');
+    if (!badge) return;
+
+    if (!this.config.enabled) {
+      badge.style.background = 'rgba(255,255,255,0.05)';
+      badge.style.borderColor = 'rgba(255,255,255,0.15)';
+      badge.style.color = 'var(--text-muted)';
+      badge.innerHTML = `
+        <span style="width:7px;height:7px;border-radius:50%;background:#64748b;display:inline-block;"></span>
+        <span>Auto-Save: OFF</span>
+      `;
+      badge.title = 'Auto-Save is Disabled (Click to configure)';
+      return;
+    }
+
+    if (this.state.status === 'saving') {
+      badge.style.background = 'rgba(56,189,248,0.15)';
+      badge.style.borderColor = 'rgba(56,189,248,0.4)';
+      badge.style.color = '#38bdf8';
+      badge.innerHTML = `
+        <span style="display:inline-block;animation:spinFast 1s linear infinite;line-height:1;">${svgIcon('refresh', 12, '#38bdf8')}</span>
+        <span>Auto-Saving...</span>
+      `;
+      badge.title = 'Saving career to persistent disk...';
+    } else if (this.state.status === 'saved') {
+      badge.style.background = 'rgba(34,197,94,0.15)';
+      badge.style.borderColor = 'rgba(34,197,94,0.5)';
+      badge.style.color = '#4ade80';
+      badge.innerHTML = `
+        <span style="display:inline-flex;align-items:center;color:#4ade80;">${svgIcon('check', 12, '#4ade80')}</span>
+        <span>Saved ${this.state.lastSaved || 'Now'}</span>
+      `;
+      badge.title = `Last auto-saved at ${this.state.lastSaved} (Click to open settings)`;
+    } else if (this.state.status === 'error') {
+      badge.style.background = 'rgba(245,158,11,0.15)';
+      badge.style.borderColor = 'rgba(245,158,11,0.4)';
+      badge.style.color = '#fbbf24';
+      badge.innerHTML = `
+        <span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block;"></span>
+        <span>Saved Locally</span>
+      `;
+      badge.title = 'Server unreachable; saved to browser storage';
+    } else {
+      badge.style.background = 'rgba(34,197,94,0.1)';
+      badge.style.borderColor = 'rgba(34,197,94,0.28)';
+      badge.style.color = '#4ade80';
+      badge.innerHTML = `
+        <span class="autosave-dot" style="width:7px;height:7px;border-radius:50%;background:#22c55e;box-shadow:0 0 6px #22c55e;display:inline-block;"></span>
+        <span>Auto-Save: ON</span>
+      `;
+      badge.title = `Auto-Save active (${this.config.intervalSeconds}s interval). Last save: ${this.state.lastSaved || 'None'}. Click to configure.`;
+    }
+  },
+
+  updateCountdownUI() {
+    const countdownEl = document.getElementById('autoSaveCountdownText');
+    if (countdownEl) {
+      countdownEl.innerText = `${this.state.nextSaveCountdown}s`;
+    }
+  },
+
+  showToast(title, subtitle) {
+    let container = document.getElementById('autoSaveToastContainer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'autoSaveToastContainer';
+      container.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+      document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'autosave-toast';
+    toast.style.cssText = `
+      background:rgba(9,18,32,0.92);
+      border:1px solid rgba(34,197,94,0.4);
+      box-shadow:0 12px 30px rgba(0,0,0,0.6);
+      backdrop-filter:blur(10px);
+      padding:10px 16px;
+      border-radius:10px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      color:#fff;
+      font-size:12.5px;
+      pointer-events:auto;
+      animation:toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      max-width:320px;
+    `;
+    toast.innerHTML = `
+      <div style="width:26px;height:26px;border-radius:6px;background:rgba(34,197,94,0.18);border:1px solid rgba(34,197,94,0.4);display:flex;align-items:center;justify-content:center;color:#4ade80;flex-shrink:0;">
+        ${svgIcon('save', 14, '#4ade80')}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-weight:800;font-size:12px;color:#4ade80;line-height:1.2;display:flex;align-items:center;gap:4px;">
+          <span>${esc(title)}</span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;">
+          ${esc(subtitle)}
+        </div>
+      </div>
+    `;
+
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateY(10px)';
+      toast.style.transition = 'all 0.4s ease';
+      setTimeout(() => toast.remove(), 400);
+    }, 2400);
+  },
+
+  injectStyles() {
+    if (document.getElementById('autoSaveStyles')) return;
+    const style = document.createElement('style');
+    style.id = 'autoSaveStyles';
+    style.textContent = `
+      @keyframes pulseSaveDot {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.4); opacity: 0.6; }
+      }
+      .autosave-dot {
+        animation: pulseSaveDot 2.2s infinite ease-in-out;
+      }
+      @keyframes toastSlideIn {
+        from { transform: translateY(16px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+};
+
+window.autoSaveManager = autoSaveManager;
+
+function openAutoSaveSettingsModal() {
+  document.getElementById('autoSaveSettingsModal')?.remove();
+  const cfg = autoSaveManager.config;
+  const state = autoSaveManager.state;
+  const c = S?.clubs?.find(x => x.name === S.selectedClub) || {};
+
+  const overlay = document.createElement('div');
+  overlay.id = 'autoSaveSettingsModal';
+  overlay.className = 'modal-overlay';
+  overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
+
+  overlay.innerHTML = `
+    <div class="modal-card" style="max-width:540px;box-shadow:0 24px 60px rgba(0,0,0,0.85);border-color:rgba(34,197,94,0.35);">
+      <div style="display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:14px;margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div style="width:42px;height:42px;border-radius:12px;background:rgba(34,197,94,0.15);border:1.5px solid rgba(34,197,94,0.4);display:flex;align-items:center;justify-content:center;color:#4ade80;">
+            ${svgIcon('save', 20, '#4ade80')}
+          </div>
+          <div>
+            <h3 style="font-family:var(--font-display);font-size:18px;font-weight:900;color:#fff;margin:0;">AUTO-SAVE & CAREER BACKUP</h3>
+            <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px;">Persistent Disk Synchronization Engine</div>
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('autoSaveSettingsModal').remove()" style="padding:4px 8px;border-radius:8px;">
+          ${svgIcon('x', 14)}
+        </button>
+      </div>
+
+      <!-- Master Switch -->
+      <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:12px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div style="font-weight:800;font-size:14px;color:#fff;">Automatic Background Saving</div>
+          <div style="font-size:12px;color:var(--text-muted);margin-top:2px;">Automatically save progress to server disk and local storage</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:50px;height:26px;cursor:pointer;">
+          <input type="checkbox" id="cfgAutoSaveEnabled" ${cfg.enabled ? 'checked' : ''} onchange="autoSaveManager.toggle(this.checked); renderAutoSaveSettingsModalContent();" style="opacity:0;width:0;height:0;">
+          <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${cfg.enabled ? '#22c55e' : '#334155'};transition:.3s;border-radius:26px;">
+            <span style="position:absolute;content:'';height:20px;width:20px;left:${cfg.enabled ? '26px' : '4px'};bottom:3px;background:white;transition:.3s;border-radius:50%;"></span>
+          </span>
+        </label>
+      </div>
+
+      <!-- Frequency Selection -->
+      <div style="margin-bottom:16px;opacity:${cfg.enabled ? '1' : '0.5'};pointer-events:${cfg.enabled ? 'auto' : 'none'};">
+        <label style="font-size:11px;font-weight:800;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;display:block;margin-bottom:8px;">
+          AUTO-SAVE FREQUENCY
+        </label>
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:8px;">
+          ${[
+            { sec: 30, label: '30 SEC' },
+            { sec: 60, label: '60 SEC (REC)' },
+            { sec: 120, label: '2 MIN' },
+            { sec: 300, label: '5 MIN' }
+          ].map(opt => `
+            <button class="btn btn-sm ${cfg.intervalSeconds === opt.sec ? 'btn-primary' : 'btn-secondary'}" onclick="autoSaveManager.setInterval(${opt.sec}); renderAutoSaveSettingsModalContent();" style="font-size:11px;padding:7px 4px;font-weight:800;">
+              ${opt.label}
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Smart Trigger Events -->
+      <div style="margin-bottom:16px;opacity:${cfg.enabled ? '1' : '0.5'};pointer-events:${cfg.enabled ? 'auto' : 'none'};">
+        <label style="font-size:11px;font-weight:800;color:var(--text-dim);letter-spacing:0.06em;text-transform:uppercase;display:block;margin-bottom:8px;">
+          EVENT-BASED AUTO-SAVE TRIGGERS
+        </label>
+        <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border-subtle);border-radius:12px;padding:10px 14px;display:flex;flex-direction:column;gap:10px;font-size:12.5px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="cfgSaveOnMatch" ${cfg.saveOnMatch ? 'checked' : ''} onchange="autoSaveManager.config.saveOnMatch = this.checked; autoSaveManager.saveConfig();">
+            <span>Save immediately after every completed Matchday / Cup tie</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="cfgSaveOnTransfer" ${cfg.saveOnTransfer ? 'checked' : ''} onchange="autoSaveManager.config.saveOnTransfer = this.checked; autoSaveManager.saveConfig();">
+            <span>Save after player transfers, contract signings, or loans</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="cfgSaveOnTactics" ${cfg.saveOnTactics ? 'checked' : ''} onchange="autoSaveManager.config.saveOnTactics = this.checked; autoSaveManager.saveConfig();">
+            <span>Save when tactical playbook, formation, or squad lineup changes</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="cfgSaveOnPageExit" ${cfg.saveOnPageExit ? 'checked' : ''} onchange="autoSaveManager.config.saveOnPageExit = this.checked; autoSaveManager.saveConfig();">
+            <span>Emergency save on window close or tab backgrounding</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="cfgShowToast" ${cfg.showToast ? 'checked' : ''} onchange="autoSaveManager.config.showToast = this.checked; autoSaveManager.saveConfig();">
+            <span>Show discreet bottom-right notification toast upon saving</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Current Sync Diagnostics -->
+      <div style="background:var(--bg-card-subtle);border:1px solid var(--border-subtle);border-radius:12px;padding:12px 14px;margin-bottom:18px;font-size:12px;">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Current Active Career:</span>
+          <b style="color:#fff;">${esc(c.name || S?.selectedClub || 'No club active')}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Last Persistent Save:</span>
+          <b style="color:var(--accent-neon);">${state.lastSaved || session?.savedTime || 'Never in this session'}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+          <span style="color:var(--text-muted);">Next Auto-Save In:</span>
+          <b style="color:var(--accent-gold);" id="autoSaveCountdownText">${cfg.enabled ? `${state.nextSaveCountdown}s` : 'Disabled'}</b>
+        </div>
+        <div style="display:flex;justify-content:space-between;">
+          <span style="color:var(--text-muted);">Storage Target:</span>
+          <span style="color:#94a3b8;font-weight:700;">Disk File (football_world_saves.json) + localStorage</span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="autoSaveManager.performSave('manual', { silent: false }); document.getElementById('autoSaveSettingsModal')?.remove();" style="flex:1;min-width:160px;padding:10px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;gap:8px;">
+          ${svgIcon('save', 15)} <span>SAVE DISK SNAPSHOT NOW</span>
+        </button>
+        <button class="btn btn-secondary" onclick="exportCareerJsonBackup()" style="padding:10px 14px;font-weight:800;display:inline-flex;align-items:center;gap:6px;" title="Download JSON copy of career data">
+          ${svgIcon('document', 14)} <span>EXPORT JSON</span>
+        </button>
+        <button class="btn btn-secondary" onclick="restoreFromLocalBackup()" style="padding:10px 14px;font-weight:800;display:inline-flex;align-items:center;gap:6px;" title="Restore latest local backup">
+          ${svgIcon('refresh', 14)} <span>RESTORE BACKUP</span>
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function renderAutoSaveSettingsModalContent() {
+  const modal = document.getElementById('autoSaveSettingsModal');
+  if (modal) {
+    openAutoSaveSettingsModal();
+  }
+}
+
+function exportCareerJsonBackup() {
+  if (!S) return alert('No career currently active to export.');
+  const backup = {
+    club: S.selectedClub,
+    season: S.season,
+    matchday: S.matchday,
+    exportedAt: new Date().toISOString(),
+    state: S
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `career_${(S.selectedClub || 'save').toLowerCase().replace(/\s+/g, '_')}_s${S.season}_m${S.matchday}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  autoSaveManager.showToast('Backup Exported', 'Downloaded career JSON backup');
+}
+
+function restoreFromLocalBackup() {
+  if (!S?.selectedClub) return alert('No active club to restore.');
+  try {
+    const raw = localStorage.getItem('fw4_backup_' + S.selectedClub);
+    if (!raw) return alert('No local snapshot found for ' + S.selectedClub + ' yet. Play or save once to create a snapshot.');
+    const parsed = JSON.parse(raw);
+    if (confirm(`Restore snapshot for ${parsed.club} from ${parsed.time} (Season ${parsed.season}, Matchday ${parsed.matchday})?`)) {
+      if (parsed.data) {
+        S = parsed.data;
+        renderGame();
+        autoSaveManager.showToast('Backup Restored', `Restored ${parsed.club} from ${parsed.time}`);
+        document.getElementById('autoSaveSettingsModal')?.remove();
+      }
+    }
+  } catch(e) {
+    alert('Error restoring backup: ' + e.message);
+  }
+}
+
 function saveGame(showAlert = true) {
+  if (window.autoSaveManager) return autoSaveManager.performSave("manual", { silent: !showAlert });
+
   const saveBtn = document.getElementById('hudSaveBtn');
   if (saveBtn) {
     saveBtn.innerHTML = `<span>⏳ SAVING...</span>`;
@@ -11852,6 +12406,7 @@ function simulateMatch(fastMode = false) {
         activeLiveMatch = null;
         openMatchModal(data.match || data);
         renderGame();
+        if (window.autoSaveManager) window.autoSaveManager.triggerEventSave('match', 'Fast Matchday');
       } else {
         startInteractiveLiveMatch(data.match || data);
       }
@@ -12012,6 +12567,7 @@ function advanceSeason() {
     triggerLiveBudgetUpdate(`${svgIcon('trophy', 14)}  Season ${data.season || S.season} Advanced: Prize pool & salary ledger rolled over`, 'revenue');
     renderGame();
     openSeasonGalaModal(data.verdict, data.season || S.season);
+    if (window.autoSaveManager) window.autoSaveManager.performSave('season', { silent: true });
   }).catch(err => alert(err.message));
 }
 
@@ -15590,6 +16146,7 @@ function saveTacticalPlaybookUI() {
     playSfx('stamp');
     alert(`${svgIcon('clipboard', 14)}  TACTICAL PHILOSOPHY DEPLOYED!\n\nYour squad has drilled the system. Tactical identity updated for upcoming fixtures.`);
     renderSquadSection(document.getElementById('gameContent'));
+    if (window.autoSaveManager) window.autoSaveManager.triggerEventSave('tactics', 'Tactical Playbook');
   }).catch(err => alert(err.message));
 }
 

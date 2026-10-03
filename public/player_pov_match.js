@@ -772,11 +772,11 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
         this.player.goals += 1;
         this.player.shotsOnTarget += 1;
         this.player.rating = Math.min(10, this.player.rating + 1.2);
-        this.showBanner("${getSvgIcon('ball', 14)} GOOOOAL!", `Magnificent finish by ${this.player.name}!`, `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`);
+        this.showBanner(`${getSvgIcon('ball', 14)} GOOOOAL!`, `Magnificent finish by ${this.player.name}!`, `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`);
         this.triggerCommentary(`${getSvgIcon('party', 14)} SENSATIONAL GOAL! ${this.player.name} finds the back of the net! Stadium erupts!`);
       } else {
         this.matchData.awayScore += 1;
-        this.showBanner("${getSvgIcon('lightning', 14)} OPPONENT GOAL", `${this.matchData.awayTeam} strike back!`, `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`);
+        this.showBanner(`${getSvgIcon('lightning', 14)} OPPONENT GOAL`, `${this.matchData.awayTeam} strike back!`, `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`);
       }
 
       this.updateScoreboardDom();
@@ -932,7 +932,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
 
       ctx.fillStyle = "#000";
       ctx.font = "bold 9px sans-serif";
-      ctx.fillText("${getSvgIcon('ball', 14)} FOOTBALL AUCTION • PREMIER LEAGUE • TRANSFER MARKET • POV ARENA", 20, horizonY - 4);
+      ctx.fillText(`${getSvgIcon('ball', 14)} FOOTBALL AUCTION • PREMIER LEAGUE • TRANSFER MARKET • POV ARENA`, 20, horizonY - 4);
 
       // Floodlight beams
       ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
@@ -1452,11 +1452,11 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
         });
       }
 
-      this.showBanner("${getSvgIcon('flag-checkered', 14)} FULL TIME!", `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`, `Your Rating: ${this.player.rating.toFixed(1)} ${getSvgIcon('star', 14)} • Goals: ${this.player.goals}`);
+      this.showBanner(`${getSvgIcon('flag-checkered', 14)} FULL TIME!`, `${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`, `Your Rating: ${this.player.rating.toFixed(1)} ${getSvgIcon('star', 14)} • Goals: ${this.player.goals}`);
 
       setTimeout(() => {
         if (typeof showSaveToast === "function") {
-          showSaveToast(`Match finished! Result: ${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`, "${getSvgIcon('ball', 14)}");
+          showSaveToast(`Match finished! Result: ${this.matchData.homeTeam} ${this.matchData.homeScore} - ${this.matchData.awayScore} ${this.matchData.awayTeam}`, `${getSvgIcon('ball', 14)}`);
         }
       }, 2500);
     }

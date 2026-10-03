@@ -16,24 +16,24 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
 
   // Team Logo & Crest Database
   const CLUB_CRESTS = {
-    "Real Madrid": { emoji: "${getSvgIcon('crown', 14)}", primary: "#ffffff", secondary: "#d4af37", stars: 5 },
-    "Barcelona": { emoji: "${getSvgIcon('dot-blue', 14)}${getSvgIcon('dot-red', 14)}", primary: "#991b1b", secondary: "#1e3a8a", stars: 5 },
-    "Manchester City": { emoji: "${getSvgIcon('office', 14)}️", primary: "#38bdf8", secondary: "#0f172a", stars: 5 },
-    "Bayern Munich": { emoji: "${getSvgIcon('shield', 14)}️", primary: "#dc2626", secondary: "#ffffff", stars: 5 },
-    "Arsenal": { emoji: "${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}", primary: "#ef4444", secondary: "#ffffff", stars: 5 },
-    "Liverpool": { emoji: "${getSvgIcon('shield', 14)}", primary: "#b91c1c", secondary: "#10b981", stars: 5 },
-    "Paris Saint-Germain": { emoji: "${getSvgIcon('temple', 14)}", primary: "#1e3a8a", secondary: "#dc2626", stars: 5 },
-    "Borussia Dortmund": { emoji: "${getSvgIcon('zap', 14)}", primary: "#facc15", secondary: "#09090b", stars: 4.5 },
-    "Juventus": { emoji: "${getSvgIcon('jersey', 14)}", primary: "#ffffff", secondary: "#09090b", stars: 4.5 },
-    "Inter Milan": { emoji: "${getSvgIcon('shield', 14)}", primary: "#1e40af", secondary: "#09090b", stars: 4.5 },
-    "AC Milan": { emoji: "${getSvgIcon('flame', 14)}", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
-    "Atletico Madrid": { emoji: "${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}", primary: "#b91c1c", secondary: "#1e3a8a", stars: 4.5 },
-    "Napoli": { emoji: "${getSvgIcon('flame', 14)}", primary: "#0ea5e9", secondary: "#ffffff", stars: 4 },
-    "Bayer Leverkusen": { emoji: "${getSvgIcon('shield', 14)}", primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
-    "Ajax": { emoji: "${getSvgIcon('swords', 14)}️", primary: "#ffffff", secondary: "#dc2626", stars: 4 },
-    "Benfica": { emoji: "${getSvgIcon('shield', 14)}", primary: "#dc2626", secondary: "#ffffff", stars: 4 },
-    "Sporting CP": { emoji: "${getSvgIcon('shield', 14)}", primary: "#16a34a", secondary: "#ffffff", stars: 4 },
-    "FC Porto": { emoji: "${getSvgIcon('flame', 14)}", primary: "#1d4ed8", secondary: "#ffffff", stars: 4 }
+    "Real Madrid": { emoji: `${getSvgIcon('crown', 14)}`, primary: "#ffffff", secondary: "#d4af37", stars: 5 },
+    "Barcelona": { emoji: `${getSvgIcon('dot-blue', 14)}${getSvgIcon('dot-red', 14)}`, primary: "#991b1b", secondary: "#1e3a8a", stars: 5 },
+    "Manchester City": { emoji: `${getSvgIcon('office', 14)}️`, primary: "#38bdf8", secondary: "#0f172a", stars: 5 },
+    "Bayern Munich": { emoji: `${getSvgIcon('shield', 14)}️`, primary: "#dc2626", secondary: "#ffffff", stars: 5 },
+    "Arsenal": { emoji: `${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}`, primary: "#ef4444", secondary: "#ffffff", stars: 5 },
+    "Liverpool": { emoji: `${getSvgIcon('shield', 14)}`, primary: "#b91c1c", secondary: "#10b981", stars: 5 },
+    "Paris Saint-Germain": { emoji: `${getSvgIcon('temple', 14)}`, primary: "#1e3a8a", secondary: "#dc2626", stars: 5 },
+    "Borussia Dortmund": { emoji: `${getSvgIcon('zap', 14)}`, primary: "#facc15", secondary: "#09090b", stars: 4.5 },
+    "Juventus": { emoji: `${getSvgIcon('jersey', 14)}`, primary: "#ffffff", secondary: "#09090b", stars: 4.5 },
+    "Inter Milan": { emoji: `${getSvgIcon('shield', 14)}`, primary: "#1e40af", secondary: "#09090b", stars: 4.5 },
+    "AC Milan": { emoji: `${getSvgIcon('flame', 14)}`, primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
+    "Atletico Madrid": { emoji: `${getSvgIcon('dot-red', 14)}${getSvgIcon('dot-white', 14)}`, primary: "#b91c1c", secondary: "#1e3a8a", stars: 4.5 },
+    "Napoli": { emoji: `${getSvgIcon('flame', 14)}`, primary: "#0ea5e9", secondary: "#ffffff", stars: 4 },
+    "Bayer Leverkusen": { emoji: `${getSvgIcon('shield', 14)}`, primary: "#dc2626", secondary: "#09090b", stars: 4.5 },
+    "Ajax": { emoji: `${getSvgIcon('swords', 14)}️`, primary: "#ffffff", secondary: "#dc2626", stars: 4 },
+    "Benfica": { emoji: `${getSvgIcon('shield', 14)}`, primary: "#dc2626", secondary: "#ffffff", stars: 4 },
+    "Sporting CP": { emoji: `${getSvgIcon('shield', 14)}`, primary: "#16a34a", secondary: "#ffffff", stars: 4 },
+    "FC Porto": { emoji: `${getSvgIcon('flame', 14)}`, primary: "#1d4ed8", secondary: "#ffffff", stars: 4 }
   };
 
   function getClubCrest(clubName) {
@@ -43,7 +43,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
       const customLogo = userTeam.customLogo || userTeam.crestSvg;
       return {
         customLogo: customLogo,
-        emoji: "${getSvgIcon('shield', 14)}️",
+        emoji: `${getSvgIcon('shield', 14)}️`,
         primary: "#38bdf8",
         secondary: "#facc15",
         stars: 5
@@ -57,7 +57,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
     const hues = [210, 350, 140, 270, 45, 180];
     const hue = hues[Math.abs(hash) % hues.length];
     return {
-      emoji: "${getSvgIcon('ball', 14)}",
+      emoji: `${getSvgIcon('ball', 14)}`,
       primary: `hsl(${hue}, 80%, 50%)`,
       secondary: "#ffffff",
       stars: 4
@@ -75,7 +75,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
         streakLabel: "STEADY FORM",
         streakClass: "streak-neutral",
         dotsHtml: "",
-        badgeText: "${getSvgIcon('lightning', 14)} 50% MOMENTUM"
+        badgeText: `${getSvgIcon('lightning', 14)} 50% MOMENTUM`
       };
     }
 
@@ -142,7 +142,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
     // Determine winning/losing streak
     let streakType = "neutral";
     let streakCount = 0;
-    let streakLabel = "${getSvgIcon('scales', 14)}️ STEADY FORM";
+    let streakLabel = `${getSvgIcon('scales', 14)}️ STEADY FORM`;
     let streakClass = "streak-neutral";
 
     if (last5.length > 0) {
@@ -168,7 +168,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
         streakLabel = `${getSvgIcon('shield', 14)}️ UNBEATEN (${last5.length} MATCHES)`;
         streakClass = "streak-unbeaten";
       } else if (firstRes === "W") {
-        streakLabel = "${getSvgIcon('lightning', 14)} POSITIVE FORM";
+        streakLabel = `${getSvgIcon('lightning', 14)} POSITIVE FORM`;
         streakClass = "streak-positive";
       }
     }
@@ -190,7 +190,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
       streakLabel,
       streakClass,
       dotsHtml,
-      badgeText: `${streakType === "win" ? "${getSvgIcon('flame', 14)}" : streakType === "loss" ? "${getSvgIcon('wind', 14)}️" : "${getSvgIcon('lightning', 14)}"} ${momentumScore}% MOMENTUM`
+      badgeText: `${streakType === "win" ? `${getSvgIcon('flame', 14)}` : streakType === "loss" ? `${getSvgIcon('wind', 14)}️` : `${getSvgIcon('lightning', 14)}`} ${momentumScore}% MOMENTUM`
     };
   }
 
@@ -585,22 +585,22 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
     let html = "";
     // Display recent events first or reverse chronological
     filtered.slice().reverse().forEach(ev => {
-      let icon = "${getSvgIcon('lightning', 14)}";
+      let icon = `${getSvgIcon('lightning', 14)}`;
       let cardClass = "ev-action";
       if (ev.type === "goal") {
-        icon = "${getSvgIcon('ball', 14)}";
+        icon = `${getSvgIcon('ball', 14)}`;
         cardClass = "ev-goal";
       } else if (ev.type === "save") {
-        icon = "${getSvgIcon('glove', 14)}";
+        icon = `${getSvgIcon('glove', 14)}`;
         cardClass = "ev-save";
       } else if (ev.type === "yellow_card") {
-        icon = "${getSvgIcon('card-yellow', 14)}";
+        icon = `${getSvgIcon('card-yellow', 14)}`;
         cardClass = "ev-yellow";
       } else if (ev.type === "red_card") {
-        icon = "${getSvgIcon('card-red', 14)}";
+        icon = `${getSvgIcon('card-red', 14)}`;
         cardClass = "ev-red";
       } else if (ev.type === "kickoff" || ev.type === "fulltime" || ev.type === "halftime") {
-        icon = "${getSvgIcon('flag-checkered', 14)}";
+        icon = `${getSvgIcon('flag-checkered', 14)}`;
         cardClass = "ev-whistle";
       }
 
@@ -876,7 +876,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
     let html = "";
     fixtures.forEach((f, idx) => {
       const playedMark = f.played ? `(${f.homeScore}-${f.awayScore})` : "(Upcoming)";
-      const derbyMark = f.isRivalry ? "${getSvgIcon('flame', 14)} " : "";
+      const derbyMark = f.isRivalry ? `${getSvgIcon('flame', 14)} ` : "";
       html += `<option value="${idx}">R${f.round}: ${derbyMark}${f.homeTeam} vs ${f.awayTeam} ${playedMark}</option>`;
     });
 

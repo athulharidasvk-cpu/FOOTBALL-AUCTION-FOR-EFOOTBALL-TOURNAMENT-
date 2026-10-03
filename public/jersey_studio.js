@@ -517,9 +517,9 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
 
     const saveBtn = document.getElementById("btnSaveJerseyKit");
     if (saveBtn) {
-      saveBtn.innerText = "${getSvgIcon('check', 14)} Official Kit Saved!";
+      saveBtn.innerText = `${getSvgIcon('check', 14)} Official Kit Saved!`;
       setTimeout(() => {
-        saveBtn.innerText = "${getSvgIcon('save', 14)} Save & Launch Official Kit";
+        saveBtn.innerText = `${getSvgIcon('save', 14)} Save & Launch Official Kit`;
       }, 2500);
     }
   }

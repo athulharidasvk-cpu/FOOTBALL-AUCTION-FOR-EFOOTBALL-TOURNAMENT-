@@ -218,13 +218,13 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
 
     ctx.font = "bold 24px sans-serif";
     ctx.fillStyle = "#38bdf8";
-    ctx.fillText("${getSvgIcon('ball', 14)} FOOTBALL AUCTION LEAGUE", 20, 40);
+    ctx.fillText(`${getSvgIcon('ball', 14)} FOOTBALL AUCTION LEAGUE`, 20, 40);
 
     ctx.fillStyle = "#facc15";
     ctx.fillText("⭐ PEP'S TACTICAL MASTERCLASS", 420, 40);
 
     ctx.fillStyle = "#22c55e";
-    ctx.fillText("${getSvgIcon('trophy', 14)} BALLON D'OR CUP", 820, 40);
+    ctx.fillText(`${getSvgIcon('trophy', 14)} BALLON D'OR CUP`, 820, 40);
 
     return new THREE.CanvasTexture(canvas);
   }
@@ -1167,7 +1167,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
             this.startHighlight(this.currentHighlightIndex + 1);
           } else {
             // Loop or celebrate final whistle
-            this.displayCommentary("${getSvgIcon('flag-checkered', 14)} FULL-TIME WHISTLE! What an exhilarating match!", "fulltime");
+            this.displayCommentary(`${getSvgIcon('flag-checkered', 14)} FULL-TIME WHISTLE! What an exhilarating match!`, "fulltime");
             if (typeof global.playWhistleSound === "function") global.playWhistleSound();
             this.isPaused = true;
             this.updateHud();
@@ -1400,7 +1400,7 @@ const getSvgIcon = (n, s=14, c="currentColor") => (typeof window !== "undefined"
       this.soundEnabled = !this.soundEnabled;
       const soundBtn = document.getElementById("btnMatch3dSound");
       if (soundBtn) {
-        soundBtn.innerHTML = this.soundEnabled ? "${getSvgIcon('sound', 14)} Sound: ON" : "${getSvgIcon('mute', 14)} Sound: OFF";
+        soundBtn.innerHTML = this.soundEnabled ? `${getSvgIcon('sound', 14)} Sound: ON` : `${getSvgIcon('mute', 14)} Sound: OFF`;
       }
     }
 

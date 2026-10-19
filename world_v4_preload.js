@@ -150,6 +150,36 @@ function attachApp(app){
     if (!w) return res.status(404).json({ error: 'World not found' });
     res.json(world.getManagerCareerState(w) || {});
   });
+  app.post('/api/world4/manager/invest-perk', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.investManagerPerk(w, req.body?.perkId);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/match/shootout', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.recordInteractivePenaltyShootout(w, req.body || {});
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
+  app.post('/api/world4/manager/set-style', (req, res) => {
+    const w = get(req, req);
+    if (!w) return res.status(404).json({ error: 'World not found' });
+    const r = world.setManagerActiveStyle(w, req.body?.styleId);
+    if (r?.error) return res.status(400).json(r);
+    world.persist();
+    if (ioRef) broadcast(ioRef, w);
+    res.json({ result: r, state: safeState(w) });
+  });
+
   app.post('/api/world4/manager/assign', (req, res) => {
     const w = get(req, req);
     if (!w) return res.status(404).json({ error: 'World not found' });

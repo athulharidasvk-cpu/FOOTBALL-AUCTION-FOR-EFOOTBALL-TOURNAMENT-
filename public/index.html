@@ -2457,6 +2457,337 @@ function showManagerUnveilingModal(clubName, mgrName) {
 // -------------------------------------------------------------
 // MANAGER OFFICE & REPUTATION DOSSIER MODAL
 // -------------------------------------------------------------
+
+
+// =============================================================
+// FEATURE 1: COACHING SKILL TREE & TALENT PERKS
+// =============================================================
+function investManagerPerkClient(perkId) {
+  post('/api/world4/manager/invest-perk', ref({ perkId })).then(res => {
+    playSfx('deal');
+    playSfx('applause');
+    S = res.state || S;
+    alert(`Coaching Perk Upgraded!\n\n${perkId.replace(/_/g, ' ').toUpperCase()} is now Rank ${res.result?.newRank || 1}!`);
+    document.getElementById('managerOfficeModal')?.remove();
+    openManagerOfficeModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error investing talent point.'));
+}
+
+// =============================================================
+// FEATURE 2: INTERACTIVE HALFTIME TEAM TALKS & TOUCHLINE SHOUTS
+// =============================================================
+function openHalftimeTeamTalkModal() {
+  document.getElementById('halftimeTalkModal')?.remove();
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  if (!c) return alert('Select a club first.');
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'halftimeTalkModal';
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:580px;text-align:center;background:#070d18;border:2px solid #38bdf8;border-radius:18px;box-shadow:0 0 50px rgba(56,189,248,0.35);padding:24px;">
+      <div style="font-size:36px;margin-bottom:6px;">🗣️</div>
+      <div class="card-kicker" style="color:#38bdf8;">HALFTIME TEAM TALK &amp; TOUCHLINE SHOUTS</div>
+      <h2 style="font-family:var(--font-display);font-size:24px;font-weight:900;color:#fff;margin:4px 0 10px 0;">
+        Dressing Room Tactical Rally
+      </h2>
+      <p style="font-size:12.5px;color:var(--text-muted);margin-bottom:20px;">
+        Address your squad at the interval. Your managerial shout directly affects second-half work rate, tactical discipline, and squad morale!
+      </p>
+
+      <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px;text-align:left;">
+        <!-- Option 1: Demand More -->
+        <button class="btn btn-secondary" onclick="deliverHalftimeShout('hairdryer')" style="padding:14px;border:1px solid rgba(239,68,68,0.4);background:rgba(239,68,68,0.08);display:flex;align-items:center;gap:12px;border-radius:12px;">
+          <span style="font-size:26px;">🔥</span>
+          <div style="flex:1;">
+            <b style="color:#fff;font-size:14px;display:block;">"DEMAND MORE!" (Fierce Attacking Push)</b>
+            <span style="font-size:11.5px;color:#fca5a5;">Boosts second-half attacking intensity (+25% goal chance, higher stamina drain).</span>
+          </div>
+        </button>
+
+        <!-- Option 2: Stay Disciplined -->
+        <button class="btn btn-secondary" onclick="deliverHalftimeShout('tactical')" style="padding:14px;border:1px solid rgba(56,189,248,0.4);background:rgba(56,189,248,0.08);display:flex;align-items:center;gap:12px;border-radius:12px;">
+          <span style="font-size:26px;">📋</span>
+          <div style="flex:1;">
+            <b style="color:#fff;font-size:14px;display:block;">"STAY TACTICALLY DISCIPLINED!" (Shape &amp; Composure)</b>
+            <span style="font-size:11.5px;color:#7dd3fc;">Shuts down opponent counter-attacks and solidifies defensive shape (+20% defensive composure).</span>
+          </div>
+        </button>
+
+        <!-- Option 3: Believe in the System -->
+        <button class="btn btn-secondary" onclick="deliverHalftimeShout('rally')" style="padding:14px;border:1px solid rgba(34,197,94,0.4);background:rgba(34,197,94,0.08);display:flex;align-items:center;gap:12px;border-radius:12px;">
+          <span style="font-size:26px;">🛡️</span>
+          <div style="flex:1;">
+            <b style="color:#fff;font-size:14px;display:block;">"BELIEVE IN THE SYSTEM!" (Emotional Rally)</b>
+            <span style="font-size:11.5px;color:#86efac;">Boosts squad morale (+15%), restores team confidence, and mitigates consecutive loss slump panic!</span>
+          </div>
+        </button>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('halftimeTalkModal')?.remove()">
+        CANCEL &times;
+      </button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function deliverHalftimeShout(talkType) {
+  post('/api/world4/match/halftime-talk', ref({ talkType })).then(res => {
+    document.getElementById('halftimeTalkModal')?.remove();
+    playSfx('applause');
+    const outcome = res.outcome || {};
+    alert(`${outcome.verdict || 'Team Talk Delivered!'}\n\n${outcome.narrative || 'Squad absorbed the instructions!'}`);
+    renderGame();
+  }).catch(err => alert(err.message || 'Error delivering team talk.'));
+}
+
+// =============================================================
+// FEATURE 3: INTERACTIVE CUP PENALTY SHOOTOUT ARENA
+// =============================================================
+let activeShootoutSession = null;
+
+function openInteractivePenaltyShootoutModal(fixture) {
+  document.getElementById('penaltyShootoutModal')?.remove();
+  const c = S.clubs.find(x => x.name === S.selectedClub);
+  const opp = fixture ? fixture.opponent : { name: 'Opposition XI' };
+
+  activeShootoutSession = {
+    fixture,
+    round: 1,
+    maxRounds: 5,
+    userIsHome: fixture?.isHome !== false,
+    userClub: c?.name || 'Your XI',
+    oppClub: opp?.name || 'Rival XI',
+    userScore: 0,
+    oppScore: 0,
+    userHistory: [],
+    oppHistory: [],
+    turn: 'user_kick', // 'user_kick' | 'opp_kick'
+    completed: false
+  };
+
+  renderPenaltyShootoutModalHtml();
+}
+
+function renderPenaltyShootoutModalHtml() {
+  document.getElementById('penaltyShootoutModal')?.remove();
+  const ses = activeShootoutSession;
+  if (!ses) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.id = 'penaltyShootoutModal';
+  overlay.style.zIndex = '99999';
+
+  overlay.innerHTML = `
+    <div class="modal-box" style="max-width:680px;background:#070d18;border:2px solid var(--accent-gold);border-radius:20px;padding:22px;text-align:center;box-shadow:0 0 60px rgba(245,158,11,0.35);">
+      
+      <!-- Shootout Broadcast Header -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;background:rgba(13,23,40,0.8);padding:10px 16px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);">
+        <div style="text-align:left;">
+          <b style="font-size:15px;color:#fff;display:block;">${esc(ses.userClub)}</b>
+          <span style="font-size:11px;color:var(--text-muted);">YOU</span>
+        </div>
+        <div>
+          <span class="pill" style="background:#f59e0b;color:#0a0f18;font-weight:900;font-size:11px;">
+            PENALTY SHOOTOUT · ROUND ${ses.round}/5
+          </span>
+          <div style="font-family:var(--font-display);font-size:32px;font-weight:900;color:#fff;letter-spacing:2px;margin-top:2px;">
+            ${ses.userScore} - ${ses.oppScore}
+          </div>
+        </div>
+        <div style="text-align:right;">
+          <b style="font-size:15px;color:#fff;display:block;">${esc(ses.oppClub)}</b>
+          <span style="font-size:11px;color:var(--text-muted);">OPPONENT</span>
+        </div>
+      </div>
+
+      <!-- Shootout Dot Matrix Tally -->
+      <div style="display:flex;justify-content:space-around;background:rgba(0,0,0,0.3);padding:8px 14px;border-radius:10px;margin-bottom:16px;font-size:12px;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:var(--text-muted);font-weight:700;">YOUR KICKS:</span>
+          ${[0, 1, 2, 3, 4].map(i => {
+            const res = ses.userHistory[i];
+            return `<span style="width:14px;height:14px;border-radius:50%;display:inline-block;background:${res === true ? '#22c55e' : (res === false ? '#ef4444' : 'rgba(255,255,255,0.15)')};box-shadow:${res === true ? '0 0 8px #22c55e' : 'none'};"></span>`;
+          }).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="color:var(--text-muted);font-weight:700;">OPPONENT KICKS:</span>
+          ${[0, 1, 2, 3, 4].map(i => {
+            const res = ses.oppHistory[i];
+            return `<span style="width:14px;height:14px;border-radius:50%;display:inline-block;background:${res === true ? '#22c55e' : (res === false ? '#ef4444' : 'rgba(255,255,255,0.15)')};box-shadow:${res === true ? '0 0 8px #22c55e' : 'none'};"></span>`;
+          }).join('')}
+        </div>
+      </div>
+
+      <!-- Interactive Goal Target Arena -->
+      <div style="position:relative;width:100%;max-width:540px;height:220px;margin:0 auto 18px auto;background:linear-gradient(180deg, #0d2818 0%, #081810 100%);border:3px solid #ffffff;border-radius:12px;box-shadow:inset 0 0 40px rgba(0,0,0,0.8);overflow:hidden;">
+        <!-- Crossbar & Posts -->
+        <div style="position:absolute;top:0;left:0;right:0;bottom:0;background:repeating-linear-gradient(0deg, transparent, transparent 18px, rgba(255,255,255,0.06) 18px, rgba(255,255,255,0.06) 20px), repeating-linear-gradient(90deg, transparent, transparent 18px, rgba(255,255,255,0.06) 18px, rgba(255,255,255,0.06) 20px);"></div>
+        
+        <!-- Live Center Status Badge -->
+        <div id="shTargetPrompt" style="position:absolute;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.85);padding:4px 14px;border-radius:20px;font-size:11.5px;font-weight:800;color:var(--accent-gold);border:1px solid var(--accent-gold);letter-spacing:0.5px;">
+          ${ses.turn === 'user_kick' ? '⚽ YOUR TURN TO SHOOT · PICK A TARGET ZONE' : '🧤 OPPONENT STEPPING UP · CHOOSE GOALIE DIVE'}
+        </div>
+
+        ${ses.turn === 'user_kick' ? `
+          <!-- 5 Striker Target Zones -->
+          <div style="position:absolute;top:45px;left:25px;">
+            <button class="btn btn-warning btn-xs" onclick="handlePenaltyStrike('top_left')" style="font-weight:900;padding:12px 14px;background:rgba(245,158,11,0.25);border:2px dashed #f59e0b;color:#fff;">
+              🎯 TOP LEFT
+            </button>
+          </div>
+          <div style="position:absolute;top:45px;right:25px;">
+            <button class="btn btn-warning btn-xs" onclick="handlePenaltyStrike('top_right')" style="font-weight:900;padding:12px 14px;background:rgba(245,158,11,0.25);border:2px dashed #f59e0b;color:#fff;">
+              🎯 TOP RIGHT
+            </button>
+          </div>
+          <div style="position:absolute;bottom:25px;left:25px;">
+            <button class="btn btn-warning btn-xs" onclick="handlePenaltyStrike('bottom_left')" style="font-weight:900;padding:12px 14px;background:rgba(245,158,11,0.25);border:2px dashed #f59e0b;color:#fff;">
+              ⚡ BOTTOM LEFT
+            </button>
+          </div>
+          <div style="position:absolute;bottom:25px;right:25px;">
+            <button class="btn btn-warning btn-xs" onclick="handlePenaltyStrike('bottom_right')" style="font-weight:900;padding:12px 14px;background:rgba(245,158,11,0.25);border:2px dashed #f59e0b;color:#fff;">
+              ⚡ BOTTOM RIGHT
+            </button>
+          </div>
+          <div style="position:absolute;top:80px;left:50%;transform:translateX(-50%);">
+            <button class="btn btn-warning btn-xs" onclick="handlePenaltyStrike('center')" style="font-weight:900;padding:12px 18px;background:rgba(56,189,248,0.25);border:2px dashed #38bdf8;color:#fff;">
+              👑 PANENKA CENTER
+            </button>
+          </div>
+        ` : `
+          <!-- 3 Goalkeeper Dive Options -->
+          <div style="position:absolute;top:70px;left:30px;">
+            <button class="btn btn-primary btn-sm" onclick="handleGoalkeeperDive('left')" style="font-weight:900;padding:14px 18px;background:linear-gradient(90deg, #0284c7, #38bdf8);border:2px solid #fff;">
+              🧤 DIVE LEFT
+            </button>
+          </div>
+          <div style="position:absolute;top:70px;left:50%;transform:translateX(-50%);">
+            <button class="btn btn-primary btn-sm" onclick="handleGoalkeeperDive('center')" style="font-weight:900;padding:14px 18px;background:linear-gradient(90deg, #10b981, #059669);border:2px solid #fff;">
+              🧤 HOLD CENTER
+            </button>
+          </div>
+          <div style="position:absolute;top:70px;right:30px;">
+            <button class="btn btn-primary btn-sm" onclick="handleGoalkeeperDive('right')" style="font-weight:900;padding:14px 18px;background:linear-gradient(90deg, #0284c7, #38bdf8);border:2px solid #fff;">
+              🧤 DIVE RIGHT
+            </button>
+          </div>
+        `}
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-muted);">
+        <span>${ses.turn === 'user_kick' ? 'Striker: Pick a corner to beat the keeper.' : 'Keeper: Anticipate the strike direction to save!'}</span>
+        <button class="btn btn-secondary btn-xs" onclick="document.getElementById('penaltyShootoutModal')?.remove()">
+          ABANDON SHOOTOUT
+        </button>
+      </div>
+
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
+function handlePenaltyStrike(zone) {
+  const ses = activeShootoutSession;
+  if (!ses || ses.completed) return;
+
+  playSfx('kick');
+  const aiKeeperDive = ['left', 'center', 'right'][Math.floor(Math.random() * 3)];
+  const isGoal = (zone.includes('left') && aiKeeperDive !== 'left') ||
+                 (zone.includes('right') && aiKeeperDive !== 'right') ||
+                 (zone === 'center' && aiKeeperDive !== 'center') ||
+                 Math.random() < 0.70;
+
+  if (isGoal) {
+    ses.userScore += 1;
+    ses.userHistory.push(true);
+    playSfx('goal');
+    alert('⚽ GOOOOOAL!! Pinpoint strike buried into the back of the net!');
+  } else {
+    ses.userHistory.push(false);
+    playSfx('whistle');
+    alert('🧤 SAVED! Opposition keeper leaped across and pushed it wide!');
+  }
+
+  // Switch to opponent kick
+  ses.turn = 'opp_kick';
+  renderPenaltyShootoutModalHtml();
+}
+
+function handleGoalkeeperDive(userDive) {
+  const ses = activeShootoutSession;
+  if (!ses || ses.completed) return;
+
+  playSfx('kick');
+  const oppTarget = ['left', 'center', 'right'][Math.floor(Math.random() * 3)];
+  const isSaved = (userDive === oppTarget) && Math.random() < 0.85;
+
+  if (isSaved) {
+    ses.oppHistory.push(false);
+    playSfx('whistle');
+    playSfx('applause');
+    alert('🧤 HEROIC SAVE!! You guessed right and punched the ball away!');
+  } else {
+    ses.oppScore += 1;
+    ses.oppHistory.push(true);
+    playSfx('goal');
+    alert('⚽ OPPONENT SCORES! Strike flew past your fingertips into the corner.');
+  }
+
+  // End of Round check
+  if (ses.round < ses.maxRounds) {
+    ses.round += 1;
+    ses.turn = 'user_kick';
+    renderPenaltyShootoutModalHtml();
+  } else {
+    finalizePenaltyShootout();
+  }
+}
+
+function finalizePenaltyShootout() {
+  const ses = activeShootoutSession;
+  if (!ses) return;
+  ses.completed = true;
+
+  const won = ses.userScore > ses.oppScore;
+  const isDraw = ses.userScore === ses.oppScore;
+  const finalWinner = won ? ses.userClub : (isDraw ? (Math.random() > 0.5 ? ses.userClub : ses.oppClub) : ses.oppClub);
+
+  post('/api/world4/match/shootout', ref({
+    homeScore: ses.userIsHome ? ses.userScore : ses.oppScore,
+    awayScore: ses.userIsHome ? ses.oppScore : ses.userScore,
+    winnerName: finalWinner
+  })).then(res => {
+    document.getElementById('penaltyShootoutModal')?.remove();
+    playSfx('applause');
+    if (finalWinner === ses.userClub) {
+      alert(`🏆 CUP GLORY!! \n\nYou won the penalty shootout ${ses.userScore}-${ses.oppScore} and advanced to the next round of the Cup!`);
+    } else {
+      alert(`💔 HEARTBREAK ON PENALTIES! \n\nDefeated ${ses.userScore}-${ses.oppScore} on penalties.`);
+    }
+    S = res.state || S;
+    renderGame();
+  }).catch(err => {
+    document.getElementById('penaltyShootoutModal')?.remove();
+    alert('Shootout finalized: ' + finalWinner + ' wins.');
+  });
+}
+
+function setManagerActiveStyleClient(styleId) {
+  post('/api/world4/manager/set-style', ref({ styleId })).then(res => {
+    playSfx('deal');
+    S = res.state || S;
+    alert(`Tactical Philosophy Switched!\n\nNow playing: ${res.result?.styleMeta?.name || styleId}`);
+    document.getElementById('managerOfficeModal')?.remove();
+    openManagerOfficeModal();
+    renderGame();
+  }).catch(err => alert(err.message || 'Error activating playing style.'));
+}
+
 async function openManagerOfficeModal() {
   let careerData = null;
   try {
@@ -2561,6 +2892,218 @@ async function openManagerOfficeModal() {
         <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border-subtle);border-radius:10px;padding:12px;text-align:center;">
           <span style="font-size:10.5px;color:var(--text-muted);display:block;">PROMOTIONS</span>
           <b style="font-size:18px;color:var(--accent-gold);">${svgIcon('party', 16, 'var(--accent-gold)')} ${mc.promotions || 0}</b>
+        </div>
+      </div>
+
+      <!-- TACTICAL PLAYING STYLES & MASTERY PROVINCES SECTION -->
+      <div style="background:linear-gradient(135deg, rgba(13,23,40,0.95), rgba(15,30,55,0.9));border:1px solid rgba(0,229,153,0.35);border-radius:14px;padding:18px 20px;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="card-kicker" style="color:var(--accent-neon);">TACTICAL PHILOSOPHY &amp; PLAYING STYLE MASTERY</div>
+        <div style="background:rgba(0,0,0,0.3);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px solid rgba(255,255,255,0.08);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;flex-wrap:wrap;gap:8px;">
+            <span style="font-size:11.5px;font-weight:900;color:var(--accent-gold);letter-spacing:0.5px;text-transform:uppercase;">
+              🎖️ MANAGER LEVEL ROADMAP · UNLOCK NEW PHILOSOPHIES
+            </span>
+            <span style="font-size:11px;color:#38bdf8;font-weight:800;">
+              CURRENT: LEVEL ${mc.level || 1} (${mc.xp || 0}/${mc.xpToNextLevel || 100} XP)
+            </span>
+          </div>
+          <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;scrollbar-width:thin;">
+            ${[
+              { lvl: 1, name: 'Gegenpress', id: 'gegenpress' },
+              { lvl: 2, name: 'Tiki-Taka', id: 'tikitaka' },
+              { lvl: 3, name: 'Gegen-Counter', id: 'gegen_counter' },
+              { lvl: 4, name: 'Wing Overload', id: 'wing_play' },
+              { lvl: 5, name: 'Catenaccio', id: 'catenaccio' },
+              { lvl: 6, name: 'Vertical Tiki', id: 'vertical_tikitaka' },
+              { lvl: 7, name: 'Route One', id: 'route_one' },
+              { lvl: 8, name: 'Joga Bonito', id: 'joga_bonito' },
+              { lvl: 9, name: 'Iron Curtain', id: 'park_the_bus' },
+              { lvl: 10, name: 'Total Football', id: 'total_football' }
+            ].map(item => {
+              const isUnlocked = (mc.level || 1) >= item.lvl || (mc.unlockedStyles && mc.unlockedStyles.includes(item.id));
+              return `
+                <div style="flex:0 0 auto;padding:6px 10px;border-radius:8px;border:1px solid ${isUnlocked ? 'var(--accent-neon)' : 'rgba(255,255,255,0.1)'};background:${isUnlocked ? 'rgba(0,229,153,0.12)' : 'rgba(255,255,255,0.03)'};text-align:center;min-width:92px;">
+                  <div style="font-size:10px;font-weight:900;color:${isUnlocked ? 'var(--accent-neon)' : 'var(--text-muted)'};">LVL ${item.lvl}</div>
+                  <div style="font-size:10.5px;font-weight:800;color:${isUnlocked ? '#fff' : '#64748b'};overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${item.name}</div>
+                  <div style="font-size:9px;color:${isUnlocked ? '#4ade80' : '#475569'};font-weight:700;">${isUnlocked ? '✓ UNLOCKED' : '🔒 LOCKED'}</div>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+            <h3 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin:2px 0;">
+              Playing Styles &amp; Tactical Provinces
+            </h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:0;">
+              Every match you manage increases your tactical proficiency. Win games to achieve breakthroughs and discover new philosophies!
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="pill" style="background:#0284c7;color:#fff;font-weight:800;font-size:11px;">
+              POPULARITY: ${mc.popularity || 32}%
+            </span>
+            <span class="pill" style="background:rgba(0,229,153,0.2);border:1px solid var(--accent-neon);color:var(--accent-neon);font-weight:800;font-size:11px;">
+              DISCOVERED: ${(mc.unlockedStyles || ['gegenpress']).length}/10 STYLES
+            </span>
+          </div>
+        </div>
+
+        <!-- Styles Catalog Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(280px, 1fr));gap:12px;">
+          ${(() => {
+            const catalog = [
+              { id: 'gegenpress', name: 'Gegenpress (Heavy Metal Pressing)', desc: 'High-intensity immediate pressing after losing possession to force turnovers.', perk: '+15% Counter-Pressing & High Turnovers', icon: 'lightning' },
+              { id: 'tikitaka', name: 'Tiki-Taka (Positional Master)', desc: 'Dominate possession through short triangular passing and patient probing.', perk: '+16% Passing Precision & Possession Dominance', icon: 'target' },
+              { id: 'catenaccio', name: 'Catenaccio (Fortress Low Block)', desc: 'Rigid defensive wall, disciplined marking, and devastating direct counters.', perk: '+20% Tackle Success & Clean Sheet Ratio', icon: 'shield' },
+              { id: 'route_one', name: 'Route One (Direct Target Man)', desc: 'Bypass midfield with long diagonal passes to an aerial target striker.', perk: '+18% Aerial Duels & Direct Knockdowns', icon: 'rocket' },
+              { id: 'total_football', name: 'Fluid Total Football', desc: 'Interchangeable positions, overlapping wingbacks, and total creative freedom.', perk: '+15% Creative Freedom & Overload Chances', icon: 'waves' },
+              { id: 'joga_bonito', name: 'Joga Bonito (Expressive Samba Flair)', desc: 'Expressive technical wizardry, unpredictable dribbling, and flair.', perk: '+20% Dribble Completion & Long-Range Screamers', icon: 'sparkles' },
+              { id: 'gegen_counter', name: 'Gegen-Counter (Blitz Transition)', desc: 'Structured mid-block then explode forward with lethal transition sprints.', perk: '+22% Fast-Break Speed & 1-on-1 Finishing', icon: 'flame' },
+              { id: 'wing_play', name: 'Wing Overload (Touchline Dominance)', desc: 'Funnel attacks through touchline wingers whipping crosses across goal.', perk: '+18% Whipped Cross Accuracy & Far-Post Volleys', icon: 'wind' },
+              { id: 'park_the_bus', name: 'Iron Curtain (Ultra-Defensive Shield)', desc: 'Suffocate all central space with 10 men behind the ball.', perk: '+25% Blocked Shots & Goal Suppression', icon: 'lock' },
+              { id: 'vertical_tikitaka', name: 'Vertical Tiki-Taka (Rapid Penetration)', desc: 'Possession dominance merged with rapid vertical line-breaking through-balls.', perk: '+18% Line-Breaking Passes & High Expected Goals (xG)', icon: 'sword' }
+            ];
+
+            const unlocked = mc.unlockedStyles || ['gegenpress'];
+            const active = mc.activeStyle || (currentClub.tactics && currentClub.tactics.preset) || 'gegenpress';
+
+            return catalog.map(st => {
+              const isUnlocked = unlocked.includes(st.id);
+              const isActive = active === st.id;
+              const profData = (mc.styleProficiency && mc.styleProficiency[st.id]) || { proficiency: 25, masteryTier: 'Familiar', matches: 0, wins: 0 };
+              const prof = profData.proficiency || 25;
+              const tier = profData.masteryTier || (prof >= 75 ? 'Master' : prof >= 50 ? 'Accomplished' : prof >= 25 ? 'Familiar' : 'Novice');
+
+              if (!isUnlocked) {
+                return `
+                  <div style="background:rgba(7,13,24,0.6);border:1px dashed rgba(255,255,255,0.15);border-radius:12px;padding:14px;opacity:0.75;display:flex;flex-direction:column;justify-content:space-between;">
+                    <div>
+                      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                        <span style="font-size:13px;font-weight:900;color:#94a3b8;">🔒 ${esc(st.name)}</span>
+                        <span class="pill" style="background:rgba(255,255,255,0.06);color:#64748b;font-size:9.5px;font-weight:800;">LOCKED</span>
+                      </div>
+                      <p style="font-size:11px;color:#64748b;line-height:1.35;margin:0 0 10px 0;">${esc(st.desc)}</p>
+                    </div>
+                    <div style="font-size:10.5px;color:var(--accent-gold);background:rgba(245,158,11,0.08);padding:6px 8px;border-radius:6px;border:1px solid rgba(245,158,11,0.2);">
+                      💡 Play &amp; win matches to achieve a breakthrough!
+                    </div>
+                  </div>
+                `;
+              }
+
+              return `
+                <div style="background:${isActive ? 'linear-gradient(135deg, rgba(0,229,153,0.12), rgba(13,23,40,0.95))' : 'rgba(13,23,40,0.85)'};border:1px solid ${isActive ? 'var(--accent-neon)' : 'rgba(255,255,255,0.12)'};border-radius:12px;padding:14px;display:flex;flex-direction:column;justify-content:space-between;box-shadow:${isActive ? '0 0 20px rgba(0,229,153,0.2)' : 'none'};">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                      <span style="font-size:14px;font-weight:900;color:#fff;">${esc(st.name)}</span>
+                      ${isActive ? `<span class="pill" style="background:#00e599;color:#0a0f18;font-size:9.5px;font-weight:900;">ACTIVE STYLE</span>` : `<span class="pill" style="background:#0284c7;color:#fff;font-size:9.5px;font-weight:800;">UNLOCKED</span>`}
+                    </div>
+                    <p style="font-size:11.5px;color:var(--text-muted);line-height:1.35;margin:0 0 8px 0;">${esc(st.desc)}</p>
+                    <div style="font-size:11px;color:var(--accent-neon);font-weight:700;margin-bottom:10px;">
+                      ⚡ Perk: ${esc(st.perk)}
+                    </div>
+                    <!-- Mastery Progress Bar -->
+                    <div style="margin-bottom:12px;">
+                      <div style="display:flex;justify-content:space-between;font-size:10.5px;margin-bottom:3px;">
+                        <span style="color:var(--text-muted);font-weight:700;">PROVINCE MASTERY:</span>
+                        <b style="color:${isActive ? 'var(--accent-neon)' : '#38bdf8'};">${prof}% (${esc(tier)})</b>
+                      </div>
+                      <div style="width:100%;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
+                        <div style="width:${prof}%;height:100%;background:linear-gradient(90deg, #0284c7, #00e599);border-radius:3px;"></div>
+                      </div>
+                      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-dim);margin-top:3px;">
+                        <span>Matches: ${profData.matches || 0}</span>
+                        <span>Wins: ${profData.wins || 0}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    ${isActive ? `
+                      <button class="btn btn-secondary btn-xs" style="width:100%;cursor:default;opacity:0.9;font-weight:800;color:var(--accent-neon);border-color:var(--accent-neon);">
+                        ✓ CURRENTLY DEPLOYED
+                      </button>
+                    ` : `
+                      <button class="btn btn-primary btn-xs" onclick="setManagerActiveStyleClient('${st.id}')" style="width:100%;font-weight:800;background:linear-gradient(90deg, #0284c7, #38bdf8);">
+                        ACTIVATE AS PRIMARY STYLE &rarr;
+                      </button>
+                    `}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          })()}
+        </div>
+      </div>
+
+            <!-- COACHING TALENT TREE & SPECIALIZATION PERKS SECTION -->
+      <div style="background:linear-gradient(135deg, rgba(30,58,138,0.25), rgba(15,23,42,0.95));border:1px solid rgba(56,189,248,0.4);border-radius:14px;padding:18px 20px;margin-bottom:24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+          <div>
+            <div class="card-kicker" style="color:#38bdf8;">RPG COACHING TALENT SPECIALIZATIONS</div>
+            <h3 style="font-family:var(--font-display);font-size:19px;font-weight:900;color:#fff;margin:2px 0;">
+              Managerial Skill Tree &amp; Talent Perks
+            </h3>
+            <p style="font-size:12px;color:var(--text-muted);margin:0;">
+              Earn 1 Talent Point every time you level up. Invest points to unlock tactical mastery, crisis immunity, and scouting prowess!
+            </p>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span class="pill" style="background:linear-gradient(90deg, #f59e0b, #eab308);color:#0a0f18;font-weight:900;font-size:11px;box-shadow:0 0 12px rgba(245,158,11,0.4);">
+              ⭐ ${mc.talentPoints || 0} TALENT POINTS AVAILABLE
+            </span>
+          </div>
+        </div>
+
+        <!-- 3 Specialization Branches Grid -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));gap:12px;">
+          ${(() => {
+            const perks = mc.perks || {};
+            const tp = mc.talentPoints || 0;
+            const perkList = [
+              { id: 'fluid_geometry', name: 'Fluid Geometry', branch: 'Tactical Maestro', desc: '+15% faster Playing Style proficiency gain per match.', icon: '⚡' },
+              { id: 'clutch_specialists', name: 'Clutch Specialists', branch: 'Tactical Maestro', desc: '+25% higher goal-scoring chance in the final 10 mins of matches.', icon: '🎯' },
+              { id: 'crisis_shield', name: 'Crisis Shield', branch: 'Master Motivator', desc: 'Reduces popularity and proficiency drops on consecutive loss slumps by 40%.', icon: '🛡️' },
+              { id: 'dressing_room_harmony', name: 'Dressing Room Harmony', branch: 'Master Motivator', desc: 'Doubles post-defeat squad morale recovery and prevents revolts.', icon: '🤝' },
+              { id: 'golden_eye', name: 'Golden Eye', branch: 'Master Scout', desc: '+20% higher chance of scouting 85+ potential generational wonderkids.', icon: '🔍' },
+              { id: 'boardroom_clout', name: 'Boardroom Clout', branch: 'Master Scout', desc: '+15% higher seasonal transfer war chest approved by the Chairman.', icon: '💼' }
+            ];
+
+            return perkList.map(p => {
+              const rank = perks[p.id] || 0;
+              const maxed = rank >= 3;
+              return `
+                <div style="background:rgba(13,23,40,0.85);border:1px solid ${rank > 0 ? 'rgba(56,189,248,0.4)' : 'rgba(255,255,255,0.08)'};border-radius:12px;padding:12px;display:flex;flex-direction:column;justify-content:space-between;">
+                  <div>
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                      <span style="font-size:13px;font-weight:900;color:#fff;">${p.icon} ${esc(p.name)}</span>
+                      <span class="pill" style="background:${rank > 0 ? '#0284c7' : 'rgba(255,255,255,0.1)'};color:#fff;font-size:9.5px;font-weight:900;">
+                        RANK ${rank}/3
+                      </span>
+                    </div>
+                    <div style="font-size:10px;color:#38bdf8;font-weight:700;margin-bottom:4px;text-transform:uppercase;">${esc(p.branch)}</div>
+                    <p style="font-size:11px;color:var(--text-muted);line-height:1.35;margin:0 0 10px 0;">${esc(p.desc)}</p>
+                  </div>
+                  <div>
+                    ${maxed ? `
+                      <button class="btn btn-secondary btn-xs" style="width:100%;cursor:default;color:#22c55e;border-color:#22c55e;font-weight:800;">
+                        ✓ MAXED OUT
+                      </button>
+                    ` : (tp > 0 ? `
+                      <button class="btn btn-warning btn-xs" onclick="investManagerPerkClient('${p.id}')" style="width:100%;font-weight:900;color:#0a0f18;background:linear-gradient(90deg, #f59e0b, #eab308);">
+                        + INVEST 1 TALENT POINT
+                      </button>
+                    ` : `
+                      <button class="btn btn-secondary btn-xs" disabled style="width:100%;opacity:0.6;font-size:10px;">
+                        LEVEL UP FOR POINTS
+                      </button>
+                    `)}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          })()}
         </div>
       </div>
 
@@ -12653,6 +13196,97 @@ function openMatchModal(m) {
           </div>
         </div>
       ` : ''}
+
+      ${(m.managerProgression || S.managerCareer?.latestProgression) ? (() => {
+        const p = m.managerProgression || S.managerCareer.latestProgression;
+        return `
+        <div style="background:linear-gradient(135deg, rgba(13,23,40,0.95), rgba(10,34,64,0.9));border:1px solid rgba(0,229,153,0.35);border-radius:14px;padding:14px 16px;margin-bottom:16px;text-align:left;box-shadow:0 6px 20px rgba(0,0,0,0.4);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span style="font-size:18px;">${svgIcon('medal', 16, 'var(--accent-neon)')}</span>
+              <span style="font-family:var(--font-display);font-size:13.5px;font-weight:900;color:#fff;letter-spacing:0.5px;">
+                POST-MATCH MANAGER PROGRESSION
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <span class="pill" style="background:#0284c7;color:#fff;font-size:10px;font-weight:900;">
+                LVL ${p.level} · +${p.xpGained} XP
+              </span>
+              ${p.levelUp ? `<span class="pill" style="background:linear-gradient(90deg, #f59e0b, #ec4899);color:#0a0f18;font-weight:900;font-size:10px;">LEVEL UP!</span>` : ''}
+            </div>
+          </div>
+
+          <!-- Slump Warning if 2+ Consecutive Defeats -->
+          ${(p.losingSlump && p.losingSlump.active) ? `
+            <div style="background:linear-gradient(90deg, rgba(239,68,68,0.25), rgba(185,28,28,0.3));border:1px solid #ef4444;border-radius:10px;padding:10px 12px;margin-bottom:10px;display:flex;align-items:center;gap:10px;box-shadow:0 0 16px rgba(239,68,68,0.4);">
+              <span style="font-size:24px;">🚨</span>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:900;color:#fca5a5;letter-spacing:0.5px;text-transform:uppercase;">
+                  TACTICAL CRISIS: ${p.losingSlump.consecutiveLosses} CONSECUTIVE LOSSES!
+                </div>
+                <div style="font-size:11.5px;color:#fecaca;line-height:1.35;margin-top:2px;">
+                  Dressing room tactical doubt has set in. ${esc(p.losingSlump.styleName)} proficiency dropped by <b style="color:#ef4444;">-${p.losingSlump.proficiencyDrop}%</b> and popularity fell by <b style="color:#ef4444;">-${p.losingSlump.popularityDrop}%</b>. Win next match to restore squad confidence!
+                </div>
+              </div>
+            </div>
+          ` : ''}
+
+          <!-- Popularity & Style Mastery Row -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px;">
+            <!-- Popularity Metric -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:4px;">
+                <span style="color:var(--text-muted);font-weight:700;">MANAGER POPULARITY</span>
+                <b style="color:var(--accent-gold);">${p.popularity}% <span style="font-size:10px;color:var(--accent-neon);">(+${p.popularityChange >= 0 ? '+' : ''}${p.popularityChange}%)</span></b>
+              </div>
+              <div style="width:100%;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:4px;">
+                <div style="width:${Math.min(100, p.popularity)}%;height:100%;background:linear-gradient(90deg, #f59e0b, #eab308);border-radius:3px;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-dim);display:flex;justify-content:space-between;">
+                <span>Fan Trust: ${p.fanApproval}%</span>
+                <span>Rep: ⭐ ${p.reputation}</span>
+              </div>
+            </div>
+
+            <!-- Playing Style Proficiency -->
+            <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:10px;padding:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;font-size:11px;margin-bottom:4px;">
+                <span style="color:var(--text-muted);font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">${esc(p.styleName)}</span>
+                <b style="color:var(--accent-neon);">${p.newProficiency}% <span style="font-size:10px;">(+${p.styleProficiencyGain}%)</span></b>
+              </div>
+              <div style="width:100%;height:6px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;margin-bottom:4px;">
+                <div style="width:${Math.min(100, p.newProficiency)}%;height:100%;background:linear-gradient(90deg, #0284c7, #00e599);border-radius:3px;"></div>
+              </div>
+              <div style="font-size:10px;color:var(--text-dim);display:flex;justify-content:space-between;">
+                <span>Mastery Tier:</span>
+                <b style="color:#70b5ff;">${esc(p.masteryTier)}</b>
+              </div>
+            </div>
+          </div>
+
+          <!-- New Style Discovered Banner -->
+          ${p.discoveredNewStyle ? `
+            <div style="background:linear-gradient(90deg, rgba(245,158,11,0.25), rgba(0,229,153,0.2));border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;margin-top:6px;display:flex;align-items:center;gap:10px;box-shadow:0 0 20px rgba(245,158,11,0.3);">
+              <span style="font-size:24px;">💡</span>
+              <div style="flex:1;">
+                <div style="font-size:11px;font-weight:900;color:var(--accent-gold);letter-spacing:0.5px;text-transform:uppercase;">
+                  NEW PLAYING STYLE DISCOVERED!
+                </div>
+                <div style="font-size:13px;font-weight:900;color:#fff;">
+                  ${esc(p.discoveredNewStyle.name)}
+                </div>
+                <div style="font-size:10.5px;color:#cbd5e1;line-height:1.3;margin-top:2px;">
+                  "${esc(p.discoveredNewStyle.description)}" · Perk: <b style="color:var(--accent-neon);">${esc(p.discoveredNewStyle.perk || 'Tactical Boost')}</b>
+                </div>
+              </div>
+              <button class="btn btn-warning btn-xs" onclick="document.getElementById('matchSimModal')?.remove(); openManagerOfficeModal();" style="font-weight:900;color:#0a0f18;white-space:nowrap;padding:4px 8px;">
+                TACTICS &rarr;
+              </button>
+            </div>
+          ` : ''}
+        </div>
+        `;
+      })() : ''}
 
       ${(S.managerCareer && S.managerCareer.latestApproachAlert) ? `
         <div style="background:linear-gradient(90deg, rgba(239,68,68,0.2), rgba(245,158,11,0.2));border:1px solid #ef4444;border-radius:10px;padding:12px 14px;margin-bottom:16px;text-align:left;box-shadow:0 4px 16px rgba(239,68,68,0.3);">

@@ -1144,8 +1144,14 @@ function match(s,homeName,awayName,opts={}){
 
   const hr = getRating(h);
   const ar = getRating(a);
-  let hg = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (hr > ar ? 0.8 : 0))));
-  let ag = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (ar > hr ? 0.8 : 0))));
+  // Tactical Counter-Play Bonus!
+  let tacticalCounterBonus = 0;
+  if (fixture.oppositionTactics && fixture.oppositionTactics.counterActive) {
+    tacticalCounterBonus = isHome ? 0.45 : -0.45;
+  }
+
+  let hg = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (hr > ar ? 0.8 : 0) + (isHome ? tacticalCounterBonus : 0))));
+  let ag = Math.max(0, Math.min(6, Math.floor(Math.random() * 2.8 + (ar > hr ? 0.8 : 0) + (!isHome ? -tacticalCounterBonus : 0))));
 
   let penalties = null;
   let cupWinner = null;
@@ -5309,6 +5315,26 @@ function getManagerCareerState(s) {
       promotions: 0,
       titles: 0,
       boardConfidence: 85,
+      popularity: Math.min(100, Math.max(20, startRep + 8)),
+      fanApproval: 75,
+      mediaHype: 35,
+      level: 1,
+      xp: 0,
+      xpToNextLevel: 100,
+      activeStyle: (c && c.tactics && c.tactics.preset) ? c.tactics.preset : 'gegenpress',
+      unlockedStyles: ['gegenpress'],
+      discoveredStylesCount: 1,
+      styleProficiency: {
+        gegenpress: {
+          id: 'gegenpress',
+          name: 'Gegenpress (Heavy Metal Pressing)',
+          proficiency: 32,
+          matches: 0,
+          wins: 0,
+          unlocked: true,
+          masteryTier: 'Familiar'
+        }
+      },
       jobOffers: [],
       approaches: [],
       careerHistory: c ? [
@@ -5366,7 +5392,8 @@ function acceptManagerJobOffer(s, targetClubName) {
 }
 
 function updateManagerReputationAfterMatch(s, user, matchResult, isCup) {
-  if (!s || !s.managerCareer || !matchResult || !user) return;
+  if (!s || !matchResult || !user) return;
+  if (!s.managerCareer) getManagerCareerState(s);
   const mc = s.managerCareer;
   const isUserHome = matchResult.home === user.name;
   const userGoals = isUserHome ? matchResult.homeGoals : matchResult.awayGoals;
@@ -5378,30 +5405,261 @@ function updateManagerReputationAfterMatch(s, user, matchResult, isCup) {
   const isWon = userGoals > oppGoals || (matchResult.cupWinner === user.name);
   const isDraw = userGoals === oppGoals && !matchResult.cupWinner;
 
+  // Initialize progression metrics if missing
+  mc.popularity = mc.popularity || 28;
+  mc.fanApproval = mc.fanApproval || 75;
+  mc.mediaHype = mc.mediaHype || 35;
+  mc.level = mc.level || 1;
+  mc.xp = mc.xp || 0;
+  mc.xpToNextLevel = mc.xpToNextLevel || (mc.level * 100);
+  mc.unlockedStyles = mc.unlockedStyles || ['gegenpress'];
+  mc.styleProficiency = mc.styleProficiency || {};
+  mc.consecutiveLosses = mc.consecutiveLosses || 0;
+
+  // Active Tactical Playing Style
+  const activeStyleId = (user.tactics && user.tactics.preset) ? user.tactics.preset : (mc.activeStyle || 'gegenpress');
+  mc.activeStyle = activeStyleId;
+  if (!mc.unlockedStyles.includes(activeStyleId)) mc.unlockedStyles.push(activeStyleId);
+
+  const styleMeta = (typeof TACTICAL_PRESETS !== 'undefined' && TACTICAL_PRESETS[activeStyleId]) ? TACTICAL_PRESETS[activeStyleId] : { name: activeStyleId };
+
+  if (!mc.styleProficiency[activeStyleId]) {
+    mc.styleProficiency[activeStyleId] = {
+      id: activeStyleId,
+      name: styleMeta.name || activeStyleId,
+      proficiency: 25,
+      matches: 0,
+      wins: 0,
+      unlocked: true,
+      masteryTier: 'Familiar'
+    };
+  }
+  const sRecord = mc.styleProficiency[activeStyleId];
+  sRecord.matches = (sRecord.matches || 0) + 1;
+
+  // 1. OUTCOME EVALUATION & CONSECUTIVE LOSSES SLUMP RULE
+  let popGain = 0;
+  let fanGain = 0;
+  let xpGain = 25; // Base XP for match completed
+  let losingSlump = null;
+
   if (isWon) {
     mc.wins = (mc.wins || 0) + 1;
-    let repGain = 2;
-    if (matchResult.isDerby) repGain += 2;
-    if (opp && opp.division < user.division) repGain += 3; // Giant-killing lower tier bonus!
-    if (opp && (opp.reputation || 60) > (user.reputation || 60) + 10) repGain += 2;
-    mc.reputation = Math.min(100, (mc.reputation || 25) + repGain);
-    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 3);
-    if (user.manager) user.manager.reputation = mc.reputation;
+    sRecord.wins = (sRecord.wins || 0) + 1;
+    mc.consecutiveLosses = 0; // Reset consecutive losses streak!
+    popGain = 4;
+    fanGain = 5;
+    xpGain += 45;
+
+    if (matchResult.isDerby) {
+      popGain += 4;
+      fanGain += 4;
+      xpGain += 25;
+    }
+    if (opp && opp.division < user.division) {
+      // Giant-killing lower tier bonus
+      popGain += 5;
+      fanGain += 5;
+      xpGain += 30;
+    }
+    if (opp && (opp.reputation || 60) > (user.reputation || 60) + 10) {
+      popGain += 3;
+    }
+    if (oppGoals === 0) {
+      popGain += 2;
+      fanGain += 3;
+      xpGain += 15;
+    }
+    if (userGoals >= 3) {
+      popGain += 2;
+      fanGain += 2;
+      xpGain += 20;
+    }
+
+    mc.popularity = Math.min(100, mc.popularity + popGain);
+    mc.fanApproval = Math.min(100, mc.fanApproval + fanGain);
+    mc.mediaHype = Math.min(100, mc.mediaHype + 5);
+    mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 4);
   } else if (isDraw) {
     mc.draws = (mc.draws || 0) + 1;
-    if (opp && opp.division < user.division) {
-      mc.reputation = Math.min(100, (mc.reputation || 25) + 1);
-    }
+    mc.consecutiveLosses = 0; // Draw stops consecutive losses streak
+    xpGain += 20;
+    popGain = 1;
+    fanGain = 1;
+    mc.popularity = Math.min(100, mc.popularity + popGain);
     mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 1);
   } else {
+    // LOSS
     mc.losses = (mc.losses || 0) + 1;
-    if (opp && opp.division > user.division) {
-      mc.reputation = Math.max(15, (mc.reputation || 25) - 1);
+    mc.consecutiveLosses += 1;
+    xpGain += 12;
+
+    // SPECIFIC REQUIREMENT: when losing two or more consecutive matches their popularity and proficiency decrease!
+    if (mc.consecutiveLosses >= 2) {
+      // Crisis Shield perk reduces slump penalties by up to 60%!
+      const crisisShieldRank = (mc.perks && mc.perks.crisis_shield) || 0;
+      const reductionFactor = crisisShieldRank > 0 ? (1 - (crisisShieldRank * 0.25)) : 1.0;
+
+      const rawPopDrop = 4 + (mc.consecutiveLosses - 2) * 2;
+      const rawProfDrop = 3 + (mc.consecutiveLosses - 2) * 2;
+      const slumpPopDrop = Math.max(1, Math.round(rawPopDrop * reductionFactor));
+      const slumpProfDrop = Math.max(1, Math.round(rawProfDrop * reductionFactor));
+
+      mc.popularity = Math.max(5, mc.popularity - slumpPopDrop);
+      mc.fanApproval = Math.max(10, mc.fanApproval - (slumpPopDrop + 3));
+      mc.boardConfidence = Math.max(15, (mc.boardConfidence || 85) - (4 + mc.consecutiveLosses));
+
+      losingSlump = {
+        active: true,
+        consecutiveLosses: mc.consecutiveLosses,
+        popularityDrop: slumpPopDrop,
+        proficiencyDrop: slumpProfDrop,
+        styleName: sRecord.name
+      };
+
+      addNews(s, `🚨 TACTICAL CRISIS: ${mc.name} has suffered ${mc.consecutiveLosses} consecutive losses! Dressing room tactical doubt has reduced ${sRecord.name} proficiency by ${slumpProfDrop}% and manager popularity by ${slumpPopDrop}%.`, 'crisis');
+    } else {
+      // First single loss
+      popGain = -1;
+      fanGain = -2;
+      mc.popularity = Math.max(10, mc.popularity + popGain);
+      mc.fanApproval = Math.max(25, mc.fanApproval + fanGain);
+      mc.boardConfidence = Math.max(20, (mc.boardConfidence || 85) - 3);
     }
-    mc.boardConfidence = Math.max(20, (mc.boardConfidence || 85) - 3);
+  }
+
+  // 2. STYLE PROFICIENCY PROGRESSION & SLUMP DECREASE
+  let styleProfGain = 0;
+  if (losingSlump) {
+    // Decrease proficiency of active style during 2+ consecutive losses
+    styleProfGain = -losingSlump.proficiencyDrop;
+    sRecord.proficiency = Math.max(5, (sRecord.proficiency || 25) + styleProfGain);
+  } else {
+    // Normal style proficiency gain
+    styleProfGain = isWon ? 4 : (isDraw ? 2 : 1);
+    if (isWon && userGoals >= 2) styleProfGain += 1;
+    if (isWon && oppGoals === 0) styleProfGain += 1;
+    sRecord.proficiency = Math.min(100, (sRecord.proficiency || 25) + styleProfGain);
+  }
+
+  // 3. MANAGER XP, LEVEL PROGRESSION, PHILOSOPHY UNLOCKS & PROFICIENCY BOOSTS
+  mc.xp += xpGain;
+  let didLevelUp = false;
+  let newlyUnlockedPhilosophy = null;
+
+  if (mc.xp >= mc.xpToNextLevel) {
+    mc.level += 1;
+    mc.xp -= mc.xpToNextLevel;
+    mc.xpToNextLevel = mc.level * 120;
+    didLevelUp = true;
+    mc.boardConfidence = Math.min(100, mc.boardConfidence + 5);
+    mc.talentPoints = (mc.talentPoints || 0) + 1; // Awards Coaching Talent Point!
+
+    // LEVEL BOOST: Boosts Style Proficiency for the manager on leveling up! (+5% boost!)
+    sRecord.proficiency = Math.min(100, (sRecord.proficiency || 25) + 5);
+    styleProfGain += 5;
+
+    // LEVEL UNLOCK: Levels unlock new Tactical Philosophies!
+    const unlockMeta = (typeof LEVEL_TACTICAL_UNLOCKS !== 'undefined') ? LEVEL_TACTICAL_UNLOCKS[mc.level] : null;
+    if (unlockMeta && !mc.unlockedStyles.includes(unlockMeta.id)) {
+      mc.unlockedStyles.push(unlockMeta.id);
+      const styleInfo = (typeof TACTICAL_PRESETS !== 'undefined' && TACTICAL_PRESETS[unlockMeta.id]) ? TACTICAL_PRESETS[unlockMeta.id] : unlockMeta;
+      mc.styleProficiency[unlockMeta.id] = {
+        id: unlockMeta.id,
+        name: styleInfo.name,
+        proficiency: 25,
+        matches: 0,
+        wins: 0,
+        unlocked: true,
+        masteryTier: 'Familiar'
+      };
+      newlyUnlockedPhilosophy = styleInfo;
+      addNews(s, `🎖️ LEVEL ${mc.level} UNLOCK: ${mc.name} has unlocked the '${styleInfo.name}' Tactical Philosophy! Now available in your Tactical Playbook.`, 'tactics');
+    }
+
+    addNews(s, `🎖️ MANAGERIAL ACCLAIM: ${mc.name} has advanced to Manager Level ${mc.level}! Active style proficiency boosted by +5% and reputation enhanced.`, 'manager');
+  }
+
+  // Update Mastery Tier for active style
+  if (sRecord.proficiency >= 90) sRecord.masteryTier = 'Legendary Tactician';
+  else if (sRecord.proficiency >= 75) sRecord.masteryTier = 'Master';
+  else if (sRecord.proficiency >= 50) sRecord.masteryTier = 'Accomplished';
+  else if (sRecord.proficiency >= 25) sRecord.masteryTier = 'Familiar';
+  else sRecord.masteryTier = 'Novice';
+
+  // 4. STYLE PROFICIENCY & LEVEL DIRECTLY IMPACT MANAGER'S REPUTATION
+  const unlockedStylesList = mc.unlockedStyles || ['gegenpress'];
+  let totalProf = 0;
+  unlockedStylesList.forEach(stId => {
+    totalProf += (mc.styleProficiency[stId]?.proficiency || 20);
+  });
+  const avgProficiency = Math.round(totalProf / Math.max(1, unlockedStylesList.length));
+
+  // Dynamic formula linking Level, Style Proficiency, and Win Record directly to Reputation
+  const dynamicReputation = Math.round(18 + (mc.level * 3.5) + (avgProficiency * 0.35) + (mc.wins * 1.5) - (mc.losses * 1.0));
+  mc.reputation = Math.min(100, Math.max(15, dynamicReputation));
+  if (user.manager) user.manager.reputation = mc.reputation;
+
+  // Update Manager Career Tier Title
+  if (mc.reputation >= 90 || mc.level >= 20) mc.tier = 'Legendary Hall of Famer';
+  else if (mc.reputation >= 75 || mc.level >= 14) mc.tier = 'World-Class Icon';
+  else if (mc.reputation >= 60 || mc.level >= 9) mc.tier = 'Elite Gaffer';
+  else if (mc.reputation >= 45 || mc.level >= 5) mc.tier = 'Tactical Innovator';
+  else if (mc.reputation >= 32 || mc.level >= 2) mc.tier = 'Rising Coach';
+  else mc.tier = 'Grassroots Tactician';
+
+  // 5. BONUS DISCOVERY BREAKTHROUGHS
+  let discoveredNewStyle = newlyUnlockedPhilosophy;
+  if (!discoveredNewStyle) {
+    const catalogKeys = (typeof TACTICAL_PRESETS !== 'undefined') ? Object.keys(TACTICAL_PRESETS) : [];
+    const lockedStyles = catalogKeys.filter(id => !mc.unlockedStyles.includes(id));
+    if (lockedStyles.length > 0 && isWon && (mc.wins % 3 === 0 || Math.random() < 0.25)) {
+      const newStyleId = lockedStyles[Math.floor(Math.random() * lockedStyles.length)];
+      const newMeta = TACTICAL_PRESETS[newStyleId];
+      if (newMeta) {
+        mc.unlockedStyles.push(newStyleId);
+        mc.styleProficiency[newStyleId] = {
+          id: newStyleId,
+          name: newMeta.name,
+          proficiency: 20,
+          matches: 0,
+          wins: 0,
+          unlocked: true,
+          masteryTier: 'Novice'
+        };
+        discoveredNewStyle = newMeta;
+        addNews(s, `💡 TACTICAL BREAKTHROUGH: After today's masterclass, ${mc.name} has discovered and unlocked the '${newMeta.name}' playing style!`, 'tactics');
+      }
+    }
   }
 
   mc.winRate = Math.round((mc.wins / mc.matches) * 100);
+
+  // Package progression snapshot for post-match UI
+  const progressionData = {
+    xpGained: xpGain,
+    level: mc.level,
+    currentXp: mc.xp,
+    xpToNextLevel: mc.xpToNextLevel,
+    levelUp: didLevelUp,
+    popularity: mc.popularity,
+    popularityChange: isWon ? popGain : (losingSlump ? -losingSlump.popularityDrop : popGain),
+    fanApproval: mc.fanApproval,
+    reputation: mc.reputation,
+    styleId: activeStyleId,
+    styleName: sRecord.name,
+    styleProficiencyGain: styleProfGain,
+    newProficiency: sRecord.proficiency,
+    masteryTier: sRecord.masteryTier,
+    avgProficiency,
+    consecutiveLosses: mc.consecutiveLosses,
+    losingSlump,
+    discoveredNewStyle
+  };
+
+  mc.latestProgression = progressionData;
+  matchResult.managerProgression = progressionData;
+
   refreshManagerJobOffers(s);
 
   // Other clubs dynamically approach the manager!
@@ -5413,6 +5671,110 @@ function updateManagerReputationAfterMatch(s, user, matchResult, isCup) {
       generateManagerApproaches(s, 1, { oppName: isWon ? oppName : null });
     }
   } catch (err) {}
+}
+
+
+
+// =============================================================
+// MANAGERIAL SKILL TREE & TALENT PERKS ENGINE
+// =============================================================
+const COACHING_PERK_CATALOG = {
+  fluid_geometry: {
+    id: 'fluid_geometry',
+    name: 'Fluid Geometry',
+    branch: 'tactical_maestro',
+    desc: '+15% faster Playing Style proficiency gain per match.',
+    maxRank: 3
+  },
+  clutch_specialists: {
+    id: 'clutch_specialists',
+    name: 'Clutch Specialists',
+    branch: 'tactical_maestro',
+    desc: '+25% higher goal-scoring chance in the final 10 minutes of matches.',
+    maxRank: 3
+  },
+  crisis_shield: {
+    id: 'crisis_shield',
+    name: 'Crisis Shield',
+    branch: 'master_motivator',
+    desc: 'Reduces popularity and proficiency penalties from consecutive losses by 40%.',
+    maxRank: 3
+  },
+  dressing_room_harmony: {
+    id: 'dressing_room_harmony',
+    name: 'Dressing Room Harmony',
+    branch: 'master_motivator',
+    desc: 'Doubles post-defeat squad morale recovery and prevents player revolts.',
+    maxRank: 3
+  },
+  golden_eye: {
+    id: 'golden_eye',
+    name: 'Golden Eye',
+    branch: 'master_scout',
+    desc: '+20% higher chance of scouting 85+ potential generational wonderkids.',
+    maxRank: 3
+  },
+  boardroom_clout: {
+    id: 'boardroom_clout',
+    name: 'Boardroom Clout',
+    branch: 'master_scout',
+    desc: '+15% higher seasonal transfer war chest approved by the Chairman.',
+    maxRank: 3
+  }
+};
+
+function investManagerPerk(s, perkId) {
+  if (!s) return { error: 'World not found.' };
+  if (!s.managerCareer) getManagerCareerState(s);
+  const mc = s.managerCareer;
+
+  mc.talentPoints = mc.talentPoints || 0;
+  if (mc.talentPoints <= 0) {
+    return { error: 'No Talent Points available. Level up your manager to earn more points!' };
+  }
+
+  const perkMeta = COACHING_PERK_CATALOG[perkId];
+  if (!perkMeta) return { error: 'Unknown coaching perk.' };
+
+  mc.perks = mc.perks || {};
+  const currentRank = mc.perks[perkId] || 0;
+  if (currentRank >= perkMeta.maxRank) {
+    return { error: `${perkMeta.name} is already at maximum rank (${perkMeta.maxRank}/${perkMeta.maxRank}).` };
+  }
+
+  mc.talentPoints -= 1;
+  mc.perks[perkId] = currentRank + 1;
+
+  addNews(s, `🎖️ COACHING SPECIALIZATION: ${mc.name} invested a talent point into '${perkMeta.name}' (Rank ${mc.perks[perkId]}/${perkMeta.maxRank})!`, 'manager');
+  persist();
+  return {
+    success: true,
+    perkId,
+    newRank: mc.perks[perkId],
+    remainingTalentPoints: mc.talentPoints,
+    perks: mc.perks,
+    managerCareer: mc
+  };
+}
+
+function setManagerActiveStyle(s, styleId) {
+  if (!s) return { error: 'World not found.' };
+  if (!s.managerCareer) getManagerCareerState(s);
+  const mc = s.managerCareer;
+  const user = s.selectedClub ? club(s, s.selectedClub) : null;
+  mc.unlockedStyles = mc.unlockedStyles || ['gegenpress'];
+  if (!mc.unlockedStyles.includes(styleId)) {
+    return { error: 'This playing style has not been unlocked yet.' };
+  }
+  mc.activeStyle = styleId;
+  if (user) {
+    user.tactics = user.tactics || {};
+    user.tactics.preset = styleId;
+  }
+  const meta = (typeof TACTICAL_PRESETS !== 'undefined') ? TACTICAL_PRESETS[styleId] : null;
+  addNews(s, `📋 TACTICAL BLUEPRINT APPLIED: ${mc.name} implemented the '${meta?.name || styleId}' playing style as the club's primary philosophy!`, 'tactics');
+  persist();
+  return { success: true, activeStyle: styleId, styleMeta: meta, managerCareer: mc };
 }
 
 function getManagerContractState(s, clubName) {
@@ -6140,6 +6502,45 @@ function promoteAcademyWonderkid(s, clubName, academyPlayerId) {
 // =============================================================
 // FEATURE: SOCCER CHAMPS KEY MOMENTS MATCH RECORDER
 // =============================================================
+
+function recordInteractivePenaltyShootout(s, shootoutData) {
+  if (!s) return { error: 'World not found.' };
+  const user = club(s, s.selectedClub);
+  if (!user) return { error: 'User club not found.' };
+
+  const fixture = getNextFixture(s);
+  if (!fixture) return { error: 'No upcoming fixture for shootout.' };
+
+  const homeScore = Number(shootoutData.homeScore) || 4;
+  const awayScore = Number(shootoutData.awayScore) || 3;
+  const winnerName = shootoutData.winnerName || (homeScore > awayScore ? fixture.homeTeam : fixture.awayTeam);
+  const isUserWinner = winnerName === user.name;
+
+  // Record cup progression
+  s.matchday = (s.matchday || 0) + 1;
+  const matchResult = {
+    home: fixture.homeTeam,
+    away: fixture.awayTeam,
+    homeGoals: 2,
+    awayGoals: 2,
+    penalties: { home: homeScore, away: awayScore },
+    cupWinner: winnerName,
+    isCup: true,
+    competitionName: fixture.fullTitle || 'Domestic FA Cup',
+    interactiveShootout: true,
+    userWonShootout: isUserWinner,
+    date: new Date().toISOString()
+  };
+
+  if (s.managerCareer) {
+    updateManagerReputationAfterMatch(s, user, matchResult, true);
+  }
+
+  addNews(s, `🏆 PENALTY SHOOTOUT DRAMA: ${fixture.homeTeam} 2-2 ${fixture.awayTeam} (${homeScore}-${awayScore} pens). ${winnerName} triumphs on penalty spot drama!`, 'match');
+  persist();
+  return { success: true, matchResult, state: s };
+}
+
 function recordKeyMomentsMatch(s, payload = {}) {
   const user = club(s, s.selectedClub);
   if (!user) return { error: 'Choose a club first.' };
@@ -6180,27 +6581,11 @@ function recordKeyMomentsMatch(s, payload = {}) {
     date: new Date().toISOString()
   };
 
-  // Update manager career stats
+  // Update manager career stats with full progression
   if (s.managerCareer) {
-    const mc = s.managerCareer;
-    mc.matches = (mc.matches || 0) + 1;
-    if (userWon) {
-      mc.wins = (mc.wins || 0) + 1;
-      mc.reputation = Math.min(100, (mc.reputation || 25) + 4);
-      mc.boardConfidence = Math.min(100, (mc.boardConfidence || 85) + 4);
-      user.morale = Math.min(100, (user.morale || 75) + 6);
-    } else if (isDraw) {
-      mc.draws = (mc.draws || 0) + 1;
-      mc.reputation = Math.min(100, (mc.reputation || 25) + 1);
-    } else {
-      mc.losses = (mc.losses || 0) + 1;
-      mc.boardConfidence = Math.max(30, (mc.boardConfidence || 85) - 3);
-      user.morale = Math.max(40, (user.morale || 75) - 4);
-    }
-
-    if (userWon && Math.random() < 0.5) {
-      generateManagerApproaches(s, 1, { oppName: opp.name, postWin: true });
-    }
+    try {
+      updateManagerReputationAfterMatch(s, user, matchResult, fixture.compType !== 'league');
+    } catch(e) {}
   }
 
   // Update league standings if league match
@@ -6248,4 +6633,4 @@ function recordKeyMomentsMatch(s, payload = {}) {
 }
 
 function roomsList(){return [...worldRooms.values()].map(s=>({code:s.roomCode,name:s.roomName,count:Object.values(s.humans||{}).filter(x=>x.online).length,max:s.maxHumans,host:s.host}));}
-module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch,negotiateManagerRole,getManagerContractState,generateManagerApproaches,respondToManagerApproach,solicitManagerApproaches,getNationalTeamState,respondToNationalOffer,simulateNationalTournamentMatch,getYouthScoutState,hireYouthScout,dispatchWonderkidExpedition,signWonderkid,promoteAcademyWonderkid,recordKeyMomentsMatch};
+module.exports={worldRooms,soloWorlds,createRoom,createSolo,getWorld,joinRoom,leaveRoom,createClub,chooseClub,hiringManager:hireManager,hireManager,managerRecommendations,managerMeeting,setExpectation,startBattle,intervene,completeBattle,loan,releasePlayer,sellPlayer,updatePlayerSalary,simulate,getNextFixture,advanceSeason,updateEconomy,updateJersey,launchJersey,sponsorshipOffers,signSponsor,createCustomPlayer,dispatchScout,negotiateTransfer,calculateClubBudget,recordTransaction,setupClubRivalries,globalState,roomsList,persist,upgradeLegacyWorld,generateSeasonAwards,initiateGlobalTournament,simulateGlobalTournamentRound,generateAiTransferApproaches,respondToIncomingOffer,initiateUclTournament,simulateUclRound,initiateEuropaTournament,simulateEuropaRound,initiateDomesticCup,simulateDomesticCupRound,initiatePlayoffs,simulatePlayoffsRound,getDeadlineDayState,executeDeadlineDayAction,executeSwapTransfer,getDressingRoomStatus,resolveDressingRoomTalk,getInternationalStatus,acceptInternationalRole,simulateInternationalMatch,getStadiumVisualState,upgradeStadiumModule,setStadiumTifo,getDerbyHeadToHead,getTacticalPlaybookState,updateTacticalPlaybook,getMedicalCenterState,executeMedicalAction,getLoanArmyState,loanOutPlayer,recallLoanPlayer,getTakeoverAndEmpireState,executeTakeoverAction,getContractMatrixState,executeContractRenewal,getPreseasonTourState,simulatePreseasonTour,getHallOfFameState,hostTestimonialMatch,executeHalfTimeTalk,generateVarReviewIncident,getLowerDivisionClubs,assignManagerToClub,refreshManagerJobOffers,getManagerCareerState,acceptManagerJobOffer,updateManagerReputationAfterMatch,negotiateManagerRole,getManagerContractState,generateManagerApproaches,respondToManagerApproach,solicitManagerApproaches,getNationalTeamState,respondToNationalOffer,simulateNationalTournamentMatch,getYouthScoutState,hireYouthScout,dispatchWonderkidExpedition,signWonderkid,promoteAcademyWonderkid,recordKeyMomentsMatch,setManagerActiveStyle,investManagerPerk,recordInteractivePenaltyShootout};
